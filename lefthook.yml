@@ -3,7 +3,7 @@
 pre-commit:
   parallel: true
   jobs:
-    - run: pnpm exec biome format --write --staged
+    - run: pnpm exec biome format --write --staged --no-errors-on-unmatched
       stage_fixed: true
 
 pre-push:
