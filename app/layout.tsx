@@ -32,10 +32,13 @@ export default async function RootLayout({
     checkDb: true,
   })
     .then((result) => {
-      console.log('Health check completed', result);
+      console.log('Health check succeeded', result);
     })
     .catch((error) => {
       console.error('Health check failed', error);
+    })
+    .finally(() => {
+      console.log('Health check completed');
     });
 
   return (

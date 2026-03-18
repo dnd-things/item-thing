@@ -24,7 +24,7 @@ export const health = query({
       try {
         // lightweight DB interaction (no schema required)
         // This ensures indexes + storage layer are working
-        await ctx.db.query('_scheduled_functions').take(1);
+        await ctx.db.system.query('_scheduled_functions').take(1);
         dbCheck = 'ok';
       } catch {
         dbCheck = 'error';
