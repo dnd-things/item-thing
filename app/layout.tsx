@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Figtree, Geist, Geist_Mono } from 'next/font/google';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
+import { Analytics } from '@vercel/analytics/next';
 import { cn } from '@/lib/utils';
 
 const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
@@ -47,6 +48,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
