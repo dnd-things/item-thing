@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "concurrently -n web,convex -c blue,magenta \"pnpm dev:web\" \"pnpm dev:convex\"",
+    "dev:web": "next dev --turbopack",
+    "dev:convex": "convex dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -34,6 +36,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
