@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "allowJs": false,
     "skipLibCheck": false,
     "strict": true,
@@ -34,9 +30,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./*"
-      ]
+      "@/*": ["./*"]
     },
     "noEmit": true
   },
@@ -48,7 +42,5 @@
     "types/**/*.d.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
