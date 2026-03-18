@@ -43,7 +43,7 @@ export default async function RootLayout({
     });
 
   return (
-    <html lang="en" className={cn('font-sans', figtree.variable)}>
+    <html lang="en" className={cn('font-sans dark', figtree.variable)}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
