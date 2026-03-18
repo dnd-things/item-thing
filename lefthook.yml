@@ -1,0 +1,11 @@
+# lefthook.yml
+
+pre-commit:
+  parallel: true
+  jobs:
+    - run: pnpm exec biome format --write --staged
+      stage_fixed: true
+
+pre-push:
+  jobs:
+    - run: pnpm run lint && pnpm run typecheck
