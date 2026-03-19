@@ -70,6 +70,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   imageAspectRatio: 'based-on-image',
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
+  imageBorder: 'none',
   imageFileName: '',
   imagePreviewUrl: '',
   itemName: '',

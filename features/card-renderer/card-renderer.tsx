@@ -9,6 +9,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getImageBorderStyle,
   isCardStyleSupported,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
@@ -78,6 +79,7 @@ export function CardRenderer({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
+  imageBorder,
   imageSize,
   imageFileName,
   imagePreviewUrl,
@@ -155,6 +157,7 @@ export function CardRenderer({
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
+          border: getImageBorderStyle(imageBorder),
           shapeOutside: `url("${imagePreviewUrl}")`,
         }}
       />
@@ -165,6 +168,7 @@ export function CardRenderer({
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
+          border: getImageBorderStyle(imageBorder),
         }}
       >
         {mediaSlot}
@@ -186,6 +190,7 @@ export function CardRenderer({
         imageAspectRatio={imageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
+        imageBorder={imageBorder}
         imageSize={imageSize}
         renderSideMediaColumn={!isSideLayout || !shouldUseWrappedSideLayout}
         mediaSlot={mediaSlot}

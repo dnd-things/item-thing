@@ -6,6 +6,7 @@ export type CardStyleOption = 'print' | 'minimal' | 'classic';
 
 export type CardBorderRadiusOption = 'none' | 'small' | 'large';
 export type SideLayoutFlowOption = 'fixed' | 'fluid';
+export type ImageBorderOption = 'none' | 'thin' | 'thick';
 
 export type ImageAspectRatioOption =
   | 'based-on-image'
@@ -26,6 +27,7 @@ export interface MagicItemCardRendererProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
+  imageBorder: ImageBorderOption;
   imageFileName: string;
   imagePreviewUrl: string;
   itemName: string;
@@ -46,6 +48,17 @@ export const imageBorderRadiusRange = {
   max: 100,
   step: 10,
 } as const;
+
+export function getImageBorderStyle(imageBorder: ImageBorderOption): string {
+  switch (imageBorder) {
+    case 'thin':
+      return '2px solid #000';
+    case 'thick':
+      return '5px solid #000';
+    default:
+      return '';
+  }
+}
 
 export function getCardSurfaceBorderRadius(
   cardBorderRadius: CardBorderRadiusOption,

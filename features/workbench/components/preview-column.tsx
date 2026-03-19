@@ -1,6 +1,8 @@
 'use client';
 
 import {
+  BorderAll02Icon,
+  BorderNone01Icon,
   CircleIcon,
   Settings01Icon,
   SquareIcon,
@@ -125,6 +127,7 @@ export function PreviewColumn({
                     'imageBorderRadius',
                     imageBorderRadiusRange.max,
                   );
+                  setWorkbenchField('imageAspectRatio', 'square');
                 }
               }}
             >
@@ -133,6 +136,34 @@ export function PreviewColumn({
               </ToggleGroupItem>
               <ToggleGroupItem value="circle" aria-label="Circle image">
                 <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-none text-foreground">
+              Border
+            </span>
+            <ToggleGroup
+              value={[workbenchState.imageBorder]}
+              variant="outline"
+              onValueChange={(nextValues) => {
+                const nextValue = nextValues[nextValues.length - 1];
+                if (nextValue) {
+                  setWorkbenchField(
+                    'imageBorder',
+                    nextValue as MagicItemWorkbenchState['imageBorder'],
+                  );
+                }
+              }}
+            >
+              <ToggleGroupItem value="none" aria-label="No image border">
+                <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="thin" aria-label="Thin image border">
+                <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={1.5} />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="thick" aria-label="Thick image border">
+                <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={3} />
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
