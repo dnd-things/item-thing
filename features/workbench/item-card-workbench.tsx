@@ -6,8 +6,7 @@ import { useForm } from 'react-hook-form';
 import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
 import { DownloadControlsCard } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
-import { ItemPreviewPanel } from './components/item-preview-panel';
-import { WorkbenchControlsPanel } from './components/workbench-controls-panel';
+import { PreviewColumn } from './components/preview-column';
 import {
   type WorkbenchItemDetailsFormValues,
   workbenchItemDetailsSchema,
@@ -162,13 +161,6 @@ export function ItemCardWorkbench() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div data-print-hide>
-        <WorkbenchControlsPanel
-          setWorkbenchField={setWorkbenchField}
-          workbenchState={workbenchState}
-        />
-      </div>
-
       <div className="grid auto-rows-fr gap-6 xl:grid-cols-2">
         <div data-print-hide>
           <ItemDetailsForm
@@ -177,7 +169,11 @@ export function ItemCardWorkbench() {
             trigger={form.trigger}
           />
         </div>
-        <ItemPreviewPanel cardRef={cardRef} workbenchState={previewState} />
+        <PreviewColumn
+          cardRef={cardRef}
+          workbenchState={previewState}
+          setWorkbenchField={setWorkbenchField}
+        />
       </div>
 
       <div data-print-hide>

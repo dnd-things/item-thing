@@ -8,8 +8,6 @@ import type {
   MagicItemCardRendererProps,
   SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
-
 export interface SelectionOption<TValue extends string> {
   label: string;
   value: TValue;
@@ -68,10 +66,10 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   sideLayoutFlow: 'fixed',
   cardStyle: 'print',
   cardBorderRadius: 'small',
-  imageSize: 68,
+  imageSize: 100,
   imageAspectRatio: 'based-on-image',
   resolvedImageAspectRatio: 1,
-  imageBorderRadius: imageBorderRadiusRange.max / 2,
+  imageBorderRadius: 0,
   imageFileName: '',
   imagePreviewUrl: '',
   itemName: '',
