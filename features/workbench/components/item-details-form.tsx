@@ -23,24 +23,25 @@ import { Textarea } from '@/components/ui/textarea';
 
 import type { WorkbenchItemDetailsFormValues } from '../lib/workbench-form-schema';
 
-interface ItemDetailsFormProps {
-  control: Control<WorkbenchItemDetailsFormValues>;
-  formErrors: FieldErrors<WorkbenchItemDetailsFormValues>;
-  trigger: (name?: keyof WorkbenchItemDetailsFormValues) => Promise<boolean>;
+export interface ItemDetailsFormPersistenceProps {
   onPersistSave: () => void;
   onPersistLoad: () => void | Promise<void>;
   isPersistenceLoadPending: boolean;
   persistSaveButtonTitle?: string | undefined;
 }
 
+interface ItemDetailsFormProps {
+  control: Control<WorkbenchItemDetailsFormValues>;
+  formErrors: FieldErrors<WorkbenchItemDetailsFormValues>;
+  trigger: (name?: keyof WorkbenchItemDetailsFormValues) => Promise<boolean>;
+  persistence: ItemDetailsFormPersistenceProps | undefined;
+}
+
 export function ItemDetailsForm({
   control,
   formErrors,
   trigger,
-  onPersistSave,
-  onPersistLoad,
-  isPersistenceLoadPending,
-  persistSaveButtonTitle,
+  persistence,
 }: ItemDetailsFormProps) {
   return (
     <Card className="h-full">
@@ -51,29 +52,31 @@ export function ItemDetailsForm({
           </CardTitle>
           <div className="mt-2 h-px w-full bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
         </div>
-        <CardAction className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onPersistSave}
-            title={persistSaveButtonTitle}
-          >
-            Save
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isPersistenceLoadPending}
-            aria-busy={isPersistenceLoadPending}
-            onClick={() => {
-              void onPersistLoad();
-            }}
-          >
-            Load
-          </Button>
-        </CardAction>
+        {persistence ? (
+          <CardAction className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={persistence.onPersistSave}
+              title={persistence.persistSaveButtonTitle}
+            >
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={persistence.isPersistenceLoadPending}
+              aria-busy={persistence.isPersistenceLoadPending}
+              onClick={() => {
+                void persistence.onPersistLoad();
+              }}
+            >
+              Load
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent>
         <FieldGroup>

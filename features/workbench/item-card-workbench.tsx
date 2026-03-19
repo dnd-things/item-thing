@@ -7,6 +7,7 @@ import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer
 import { DownloadControlsCard } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import { useWorkbenchPersistenceControlsVisible } from './lib/use-workbench-persistence-controls-visible';
 import {
   type WorkbenchItemDetailsFormValues,
   workbenchItemDetailsSchema,
@@ -98,6 +99,7 @@ export function ItemCardWorkbench() {
   >(undefined);
   const [isPersistenceLoadPending, setIsPersistenceLoadPending] =
     useState(false);
+  const persistenceControlsVisible = useWorkbenchPersistenceControlsVisible();
   const imageReadRequestIdRef = useRef(0);
   const isApplyingPersistenceLoadRef = useRef(false);
   const previewStateRef = useRef<MagicItemWorkbenchState>(
@@ -241,10 +243,16 @@ export function ItemCardWorkbench() {
             control={form.control}
             formErrors={form.formState.errors}
             trigger={form.trigger}
-            onPersistSave={handlePersistSave}
-            onPersistLoad={handlePersistLoad}
-            isPersistenceLoadPending={isPersistenceLoadPending}
-            persistSaveButtonTitle={persistSaveButtonTitle}
+            persistence={
+              persistenceControlsVisible
+                ? {
+                    onPersistSave: handlePersistSave,
+                    onPersistLoad: handlePersistLoad,
+                    isPersistenceLoadPending,
+                    persistSaveButtonTitle,
+                  }
+                : undefined
+            }
           />
         </div>
         <div className="animate-entrance animate-entrance-delay-1">
