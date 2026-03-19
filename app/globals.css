@@ -295,16 +295,41 @@ body > * {
 
 /* ── Preview crucible surface ── */
 
+@keyframes crucibleGlow {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
 .preview-crucible {
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  background: oklch(0.08 0.006 60 / 0.7);
-  border: 1px solid oklch(1 0 0 / 0.04);
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 50% 45%,
+      oklch(0.14 0.016 58 / 0.85) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 120% 80% at 50% 105%,
+      oklch(0.06 0.008 50 / 0.6) 0%,
+      transparent 50%
+    ),
+    linear-gradient(180deg, oklch(0.1 0.008 58) 0%, oklch(0.07 0.006 54) 100%);
+  border: 1px solid oklch(1 0.02 60 / 0.06);
   box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.04),
-    inset 0 -1px 0 0 oklch(0 0 0 / 0.25),
-    0 4px 24px oklch(0 0 0 / 0.25);
+    inset 0 0 120px oklch(0 0 0 / 0.3),
+    inset 0 1px 0 0 oklch(1 0.02 60 / 0.07),
+    inset 0 -1px 0 0 oklch(0 0 0 / 0.4),
+    0 8px 40px oklch(0 0 0 / 0.4),
+    0 2px 8px oklch(0 0 0 / 0.15);
 }
 
 .preview-crucible::before {
@@ -312,15 +337,18 @@ body > * {
   position: absolute;
   inset: 0;
   z-index: 0;
-  opacity: 0.08;
-  background-image:
-    linear-gradient(oklch(1 0 0 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(1 0 0 / 0.05) 1px, transparent 1px);
-  background-size: 36px 36px;
+  background-image: radial-gradient(
+    circle,
+    oklch(1 0.02 60 / 0.15) 0.75px,
+    transparent 0.75px
+  );
+  background-size: 20px 20px;
+  background-position: 10px 10px;
   mask-image: radial-gradient(
-    ellipse 80% 70% at 50% 50%,
-    black 10%,
-    transparent 65%
+    ellipse 75% 65% at 50% 50%,
+    black 0%,
+    oklch(0 0 0 / 0.35) 40%,
+    transparent 70%
   );
   pointer-events: none;
 }
@@ -330,18 +358,58 @@ body > * {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100%;
-  height: 90%;
+  width: 65%;
+  height: 70%;
   transform: translate(-50%, -50%);
   z-index: 0;
   background: radial-gradient(
     ellipse at center,
-    oklch(0.75 0.1 65 / 0.18) 0%,
-    oklch(0.65 0.08 55 / 0.08) 30%,
-    transparent 60%
+    oklch(0.78 0.14 58 / 0.28) 0%,
+    oklch(0.68 0.11 55 / 0.16) 20%,
+    oklch(0.55 0.07 50 / 0.06) 42%,
+    transparent 65%
   );
   pointer-events: none;
-  filter: blur(35px);
+  filter: blur(50px);
+  animation: crucibleGlow 8s ease-in-out infinite;
+}
+
+/* Corner bracket accents */
+.preview-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.preview-corner--tl {
+  top: 14px;
+  left: 14px;
+  border-top: 1.5px solid oklch(0.8 0.08 60);
+  border-left: 1.5px solid oklch(0.8 0.08 60);
+}
+
+.preview-corner--tr {
+  top: 14px;
+  right: 14px;
+  border-top: 1.5px solid oklch(0.8 0.08 60);
+  border-right: 1.5px solid oklch(0.8 0.08 60);
+}
+
+.preview-corner--bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 1.5px solid oklch(0.8 0.08 60);
+  border-left: 1.5px solid oklch(0.8 0.08 60);
+}
+
+.preview-corner--br {
+  bottom: 14px;
+  right: 14px;
+  border-bottom: 1.5px solid oklch(0.8 0.08 60);
+  border-right: 1.5px solid oklch(0.8 0.08 60);
 }
 
 /* ── Card-edge highlight ── */
@@ -366,15 +434,6 @@ body > * {
 
 /* ── Export dock ── */
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 .export-dock {
   position: relative;
   overflow: hidden;
@@ -395,26 +454,6 @@ body > * {
     oklch(0.75 0.12 65 / 0.4) 70%,
     transparent
   );
-}
-
-.export-dock::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    105deg,
-    transparent 40%,
-    oklch(1 0 0 / 0.02) 45%,
-    oklch(1 0 0 / 0.04) 50%,
-    oklch(1 0 0 / 0.02) 55%,
-    transparent 60%
-  );
-  animation: shimmer 6s ease-in-out infinite;
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 @keyframes exportPulse {

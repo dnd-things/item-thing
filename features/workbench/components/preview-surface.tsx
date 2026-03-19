@@ -33,6 +33,10 @@ export function PreviewSurface({
 
   return (
     <div className="preview-crucible flex h-full min-h-[520px] items-center justify-center p-8">
+      <div data-print-hide className="preview-corner preview-corner--tl" />
+      <div data-print-hide className="preview-corner preview-corner--tr" />
+      <div data-print-hide className="preview-corner preview-corner--bl" />
+      <div data-print-hide className="preview-corner preview-corner--br" />
       <div data-print-card ref={cardRef} className="relative z-[1]">
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer {...workbenchState} />
