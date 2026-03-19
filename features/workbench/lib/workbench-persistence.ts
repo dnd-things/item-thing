@@ -39,6 +39,7 @@ const magicItemWorkbenchPartialStateSchema = z
     resolvedImageAspectRatio: z.number().optional(),
     imageBorderRadius: z.number().optional(),
     imageBorder: imageBorderSchema.optional(),
+    imageRightVerticalPosition: z.number().int().min(-4).max(16).optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
     itemName: z.string().optional(),

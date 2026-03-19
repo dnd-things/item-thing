@@ -5,6 +5,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getImageRightImageMarginTopRem,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
@@ -29,6 +30,7 @@ export function PrintMagicItemCard({
   resolvedImageAspectRatio,
   imageBorderRadius,
   imageBorder,
+  imageRightVerticalPosition,
   imageSize,
   imageFileName,
   imagePreviewUrl,
@@ -49,12 +51,17 @@ export function PrintMagicItemCard({
     imageBorderRadius,
   );
 
+  const sideImageMarginTopRem = isSideLayout
+    ? getImageRightImageMarginTopRem(imageRightVerticalPosition)
+    : 0;
+
   const slots = buildMagicItemPrintCardSlots({
     isSideLayout,
     shouldUseWrappedSideLayout,
     shouldStackMetadata,
     cardImageDimensions,
     imageBorder,
+    sideImageMarginTopRem,
     imagePreviewUrl,
     imageFileName,
     itemName,
@@ -135,6 +142,9 @@ export function PrintMagicItemCard({
                 printCardClassNames.mediaColumn,
                 printCardClassNames.sideMediaColumn,
               )}
+              mediaColumnStyle={{
+                marginTop: `${sideImageMarginTopRem}rem`,
+              }}
               mediaFrameClassName={printCardClassNames.sideMediaFrame}
             >
               {slots.mediaSlot}

@@ -28,6 +28,8 @@ export interface MagicItemCardRendererProps {
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
   imageBorder: ImageBorderOption;
+  /** −4–16; maps to image margin-top in rem as `value - 2` (image-right layout only). */
+  imageRightVerticalPosition: number;
   imageFileName: string;
   imagePreviewUrl: string;
   itemName: string;
@@ -48,6 +50,17 @@ export const imageBorderRadiusRange = {
   max: 100,
   step: 10,
 } as const;
+
+export const imageRightVerticalPositionRange = {
+  min: -4,
+  max: 16,
+  step: 1,
+  default: 2,
+} as const;
+
+export function getImageRightImageMarginTopRem(position: number): number {
+  return position - 2;
+}
 
 export function getImageBorderStyle(imageBorder: ImageBorderOption): string {
   switch (imageBorder) {

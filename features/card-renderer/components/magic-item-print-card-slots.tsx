@@ -66,6 +66,7 @@ export interface MagicItemPrintCardSlotsParams {
   shouldStackMetadata: boolean;
   cardImageDimensions: CardImageDimensions;
   imageBorder: ImageBorderOption;
+  sideImageMarginTopRem: number;
   imagePreviewUrl: string;
   imageFileName: string;
   itemName: string;
@@ -96,6 +97,7 @@ export function buildMagicItemPrintCardSlots(
     shouldStackMetadata,
     cardImageDimensions,
     imageBorder,
+    sideImageMarginTopRem,
     imagePreviewUrl,
     imageFileName,
     itemName,
@@ -149,6 +151,7 @@ export function buildMagicItemPrintCardSlots(
         <div
           className={cn('relative mb-2', fluidSideImageClassName)}
           style={{
+            marginTop: `${sideImageMarginTopRem}rem`,
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
@@ -177,6 +180,7 @@ export function buildMagicItemPrintCardSlots(
           height={Math.round(cardImageDimensions.height)}
           sizes="(max-width: 768px) 50vw, 220px"
           style={{
+            marginTop: `${sideImageMarginTopRem}rem`,
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
@@ -190,6 +194,7 @@ export function buildMagicItemPrintCardSlots(
       <div
         className={cn('relative mb-2', fluidSideImageClassName)}
         style={{
+          marginTop: `${sideImageMarginTopRem}rem`,
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,

@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  AlignVerticalCenterIcon,
   BorderAll02Icon,
   BorderNone01Icon,
   CircleIcon,
@@ -19,9 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
+import {
+  imageBorderRadiusRange,
+  imageRightVerticalPositionRange,
+} from '@/features/card-renderer/lib/card-renderer-options';
 
 import {
   cardStyleOptions,
@@ -203,6 +208,39 @@ export function PreviewColumn({
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
         </Button>
       </div>
+
+      {workbenchState.cardLayout === 'image-right' ? (
+        <div
+          data-print-hide
+          className="flex h-9 items-center gap-3 rounded-xl border border-primary/8 bg-input/10 px-4"
+        >
+          <HugeiconsIcon
+            icon={AlignVerticalCenterIcon}
+            strokeWidth={1.5}
+            className="size-5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          <Slider
+            aria-label="Artwork vertical position"
+            id="preview-image-vertical-position"
+            value={[workbenchState.imageRightVerticalPosition]}
+            min={imageRightVerticalPositionRange.min}
+            max={imageRightVerticalPositionRange.max}
+            step={imageRightVerticalPositionRange.step}
+            onValueChange={(nextValue) => {
+              const nextPosition = Array.isArray(nextValue)
+                ? nextValue[0]
+                : nextValue;
+              if (typeof nextPosition === 'number') {
+                setWorkbenchField('imageRightVerticalPosition', nextPosition);
+              }
+            }}
+          />
+          <span className="min-w-10 text-right text-sm font-medium text-muted-foreground tabular-nums">
+            {workbenchState.imageRightVerticalPosition}
+          </span>
+        </div>
+      ) : null}
 
       <ItemPreviewPanel cardRef={cardRef} workbenchState={workbenchState} />
 
