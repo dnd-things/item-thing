@@ -2,20 +2,21 @@ import { fetchQuery } from 'convex/nextjs';
 import type { Metadata } from 'next';
 import {
   Cormorant_Garamond,
-  Figtree,
-  Geist,
+  DM_Sans,
   Geist_Mono,
+  Instrument_Serif,
 } from 'next/font/google';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
 import { cn } from '@/lib/utils';
 
-const figtree = Figtree({ subsets: ['latin'], variable: '--font-sans' });
+const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' });
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const instrumentSerif = Instrument_Serif({
+  weight: '400',
   subsets: ['latin'],
+  variable: '--font-display',
 });
 
 const geistMono = Geist_Mono({
@@ -30,8 +31,8 @@ const cormorantGaramond = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: 'Item thing',
-  description: 'Small tool for creating and managing magic item cards',
+  title: 'Item Thing',
+  description: 'Forge beautiful magic item cards for your tabletop adventures',
 };
 
 export default async function RootLayout({
@@ -58,8 +59,8 @@ export default async function RootLayout({
       lang="en"
       className={cn(
         'font-sans dark',
-        figtree.variable,
-        geistSans.variable,
+        dmSans.variable,
+        instrumentSerif.variable,
         geistMono.variable,
         cormorantGaramond.variable,
       )}

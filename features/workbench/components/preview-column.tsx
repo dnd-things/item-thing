@@ -11,6 +11,14 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import type { RefObject } from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
@@ -21,7 +29,6 @@ import {
   type WorkbenchFieldSetter,
 } from '../lib/workbench-options';
 import { ItemPreviewPanel } from './item-preview-panel';
-import { ToolbarSelectField } from './workbench-field-controls';
 import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
 
 type QuickLayoutValue = 'stacked' | 'compact';
@@ -78,19 +85,38 @@ export function PreviewColumn({
     <div className="flex h-full flex-col gap-3">
       <div data-print-hide className="flex items-end gap-3">
         <div className="flex flex-1 items-end gap-3">
-          <div className="w-36 shrink-0">
-            <ToolbarSelectField
-              fieldLabel="Style"
-              options={cardStyleOptions}
-              triggerId="quick-card-style"
+          <div className="flex w-36 shrink-0 flex-col gap-1.5">
+            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
+              Style
+            </span>
+            <Select
+              items={cardStyleOptions}
               value={workbenchState.cardStyle}
-              onValueChange={(value) => {
-                setWorkbenchField('cardStyle', value);
+              onValueChange={(nextValue) => {
+                if (nextValue) {
+                  setWorkbenchField(
+                    'cardStyle',
+                    nextValue as MagicItemWorkbenchState['cardStyle'],
+                  );
+                }
               }}
-            />
+            >
+              <SelectTrigger id="quick-card-style" className="w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {cardStyleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-none text-foreground">
+            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
               Layout
             </span>
             <ToggleGroup
@@ -112,7 +138,7 @@ export function PreviewColumn({
             </ToggleGroup>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-none text-foreground">
+            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
               Shape
             </span>
             <ToggleGroup
@@ -140,7 +166,7 @@ export function PreviewColumn({
             </ToggleGroup>
           </div>
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-none text-foreground">
+            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
               Border
             </span>
             <ToggleGroup

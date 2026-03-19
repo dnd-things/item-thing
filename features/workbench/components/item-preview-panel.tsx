@@ -16,7 +16,7 @@ export function ItemPreviewPanel({
   workbenchState,
 }: ItemPreviewPanelProps) {
   return (
-    <Card className="h-full border border-border/60 bg-card/65 backdrop-blur-sm">
+    <Card className="h-full">
       <CardContent className="h-full">
         <PreviewSurface cardRef={cardRef} workbenchState={workbenchState} />
       </CardContent>
