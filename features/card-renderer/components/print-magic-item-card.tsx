@@ -9,11 +9,12 @@ import {
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
 } from '../lib/card-renderer-options';
-import { CardLayout } from './card-layout';
 import {
   buildMagicItemPrintCardSlots,
   printCardClassNames,
 } from './magic-item-print-card-slots';
+import { MagicItemSidePrintLayout } from './magic-item-side-print-layout';
+import { MagicItemVerticalPrintLayout } from './magic-item-vertical-print-layout';
 
 export interface PrintMagicItemCardProps extends MagicItemCardRendererProps {
   className?: string;
@@ -63,66 +64,125 @@ export function PrintMagicItemCard({
     mechanicalDescription,
   });
 
+  const attunementInlineSlot = shouldStackMetadata
+    ? null
+    : slots.attunementBadge;
+  const bottomMetadataSlot =
+    shouldStackMetadata && slots.attunementBadge ? (
+      <div className="flex justify-center">{slots.attunementBadge}</div>
+    ) : null;
+
+  const surfaceClassName = cn(printCardClassNames.surface, className);
+  const surfaceStyle = {
+    maxWidth: getCardWidth(cardLayout),
+    ...(cardLayout === 'vertical' && { minWidth: 300 }),
+    borderRadius: surfaceBorderRadius,
+  };
+
+  if (!isSideLayout) {
+    return (
+      <div className={surfaceClassName} style={surfaceStyle}>
+        <MagicItemVerticalPrintLayout.Root
+          imageAspectRatio={imageAspectRatio}
+          resolvedImageAspectRatio={resolvedImageAspectRatio}
+          imageBorderRadius={imageBorderRadius}
+          imageBorder={imageBorder}
+          imageSize={imageSize}
+        >
+          <MagicItemVerticalPrintLayout.Media
+            mediaColumnClassName={printCardClassNames.mediaColumn}
+            mediaFrameClassName={printCardClassNames.mediaFrame}
+          >
+            {slots.mediaSlot}
+          </MagicItemVerticalPrintLayout.Media>
+          <MagicItemVerticalPrintLayout.Content>
+            <div
+              className={cn(
+                'flex min-h-6 flex-wrap items-center gap-x-3 gap-y-2',
+                'justify-center',
+              )}
+            >
+              {slots.classificationSlot}
+              {attunementInlineSlot}
+            </div>
+            <div className={cn('flex flex-col gap-2', 'justify-center')}>
+              {slots.titleSlot}
+              {slots.flavorDescriptionSlot}
+            </div>
+            {slots.bodySlot}
+            {bottomMetadataSlot}
+          </MagicItemVerticalPrintLayout.Content>
+        </MagicItemVerticalPrintLayout.Root>
+      </div>
+    );
+  }
+
+  const showSideMediaColumn = !shouldUseWrappedSideLayout;
+
   return (
-    <div
-      className={cn(printCardClassNames.surface, className)}
-      style={{
-        maxWidth: getCardWidth(cardLayout),
-        ...(cardLayout === 'vertical' && { minWidth: 300 }),
-        borderRadius: surfaceBorderRadius,
-      }}
-    >
-      <CardLayout
-        cardLayout={cardLayout}
+    <div className={surfaceClassName} style={surfaceStyle}>
+      <MagicItemSidePrintLayout.Root
         imageAspectRatio={imageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageBorder={imageBorder}
         imageSize={imageSize}
-        renderSideMediaColumn={!isSideLayout || !shouldUseWrappedSideLayout}
-        mediaSlot={slots.mediaSlot}
-        classificationSlot={slots.classificationSlot}
-        attunementSlot={shouldStackMetadata ? null : slots.attunementBadge}
-        titleSlot={slots.titleSlot}
-        flavorSlot={
-          shouldUseWrappedSideLayout ? null : slots.flavorDescriptionSlot
-        }
-        bodySlot={slots.bodySlot}
-        bottomMetadataSlot={
-          shouldStackMetadata && slots.attunementBadge ? (
-            <div className="flex justify-center">{slots.attunementBadge}</div>
-          ) : null
-        }
-        mediaColumnClassName={cn(
-          printCardClassNames.mediaColumn,
-          isSideLayout && printCardClassNames.sideMediaColumn,
-        )}
-        mediaFrameClassName={
-          isSideLayout
-            ? printCardClassNames.sideMediaFrame
-            : printCardClassNames.mediaFrame
-        }
-        contentClassName={cn(isSideLayout && printCardClassNames.sideContent)}
-        topRowClassName={
-          isSideLayout
-            ? printCardClassNames.sideClassificationSection
-            : 'justify-center'
-        }
-        titleSectionClassName={
-          isSideLayout ? printCardClassNames.sideTitleSection : 'justify-center'
-        }
-        flavorSectionClassName={
-          isSideLayout
-            ? printCardClassNames.sideFlavorSection
-            : 'justify-center'
-        }
-        bodySectionClassName={
-          isSideLayout ? printCardClassNames.sideBodySection : 'justify-start'
-        }
-        bottomSectionClassName={
-          isSideLayout ? printCardClassNames.sideBottomSection : ''
-        }
-      />
+      >
+        <MagicItemSidePrintLayout.MainRow>
+          {showSideMediaColumn ? (
+            <MagicItemSidePrintLayout.Media
+              mediaColumnClassName={cn(
+                printCardClassNames.mediaColumn,
+                printCardClassNames.sideMediaColumn,
+              )}
+              mediaFrameClassName={printCardClassNames.sideMediaFrame}
+            >
+              {slots.mediaSlot}
+            </MagicItemSidePrintLayout.Media>
+          ) : null}
+          <MagicItemSidePrintLayout.Content
+            className={cn(
+              !showSideMediaColumn && 'w-full',
+              printCardClassNames.sideContent,
+            )}
+          >
+            <div
+              className={cn(
+                'flex items-center',
+                printCardClassNames.sideClassificationSection,
+              )}
+            >
+              {slots.classificationSlot}
+            </div>
+            <div
+              className={cn(
+                'flex items-center',
+                printCardClassNames.sideTitleSection,
+              )}
+            >
+              {slots.titleSlot}
+            </div>
+            {!shouldUseWrappedSideLayout && slots.flavorDescriptionSlot ? (
+              <div
+                className={cn('flex', printCardClassNames.sideFlavorSection)}
+              >
+                {slots.flavorDescriptionSlot}
+              </div>
+            ) : null}
+            <div className={cn('flex', printCardClassNames.sideBodySection)}>
+              {slots.bodySlot}
+            </div>
+          </MagicItemSidePrintLayout.Content>
+        </MagicItemSidePrintLayout.MainRow>
+        {attunementInlineSlot || bottomMetadataSlot ? (
+          <MagicItemSidePrintLayout.Bottom
+            className={printCardClassNames.sideBottomSection}
+          >
+            {attunementInlineSlot}
+            {bottomMetadataSlot}
+          </MagicItemSidePrintLayout.Bottom>
+        ) : null}
+      </MagicItemSidePrintLayout.Root>
     </div>
   );
 }
