@@ -1,7 +1,14 @@
 'use client';
 
 import { type Control, Controller, type FieldErrors } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
@@ -16,24 +23,60 @@ import { Textarea } from '@/components/ui/textarea';
 
 import type { WorkbenchItemDetailsFormValues } from '../lib/workbench-form-schema';
 
+export interface ItemDetailsFormPersistenceProps {
+  onPersistSave: () => void;
+  onPersistLoad: () => void | Promise<void>;
+  isPersistenceLoadPending: boolean;
+  persistSaveButtonTitle?: string | undefined;
+}
+
 interface ItemDetailsFormProps {
   control: Control<WorkbenchItemDetailsFormValues>;
   formErrors: FieldErrors<WorkbenchItemDetailsFormValues>;
   trigger: (name?: keyof WorkbenchItemDetailsFormValues) => Promise<boolean>;
+  persistence: ItemDetailsFormPersistenceProps | undefined;
 }
 
 export function ItemDetailsForm({
   control,
   formErrors,
   trigger,
+  persistence,
 }: ItemDetailsFormProps) {
   return (
     <Card className="h-full">
       <CardHeader>
-        <CardTitle className="font-display text-lg tracking-wide text-foreground/70">
-          Item Details
-        </CardTitle>
-        <div className="mt-2 h-px w-full bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
+        <div className="min-w-0">
+          <CardTitle className="font-display text-lg tracking-wide text-foreground/70">
+            Item Details
+          </CardTitle>
+          <div className="mt-2 h-px w-full bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
+        </div>
+        {persistence ? (
+          <CardAction className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={persistence.onPersistSave}
+              title={persistence.persistSaveButtonTitle}
+            >
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={persistence.isPersistenceLoadPending}
+              aria-busy={persistence.isPersistenceLoadPending}
+              onClick={() => {
+                void persistence.onPersistLoad();
+              }}
+            >
+              Load
+            </Button>
+          </CardAction>
+        ) : null}
       </CardHeader>
       <CardContent>
         <FieldGroup>

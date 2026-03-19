@@ -7,6 +7,7 @@ import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer
 import { DownloadControlsCard } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import { useWorkbenchPersistenceControlsVisible } from './lib/use-workbench-persistence-controls-visible';
 import {
   type WorkbenchItemDetailsFormValues,
   workbenchItemDetailsSchema,
@@ -15,6 +16,11 @@ import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
 } from './lib/workbench-options';
+import {
+  dataUrlToFile,
+  loadMagicItemWorkbenchStateFromLocalStorage,
+  saveMagicItemWorkbenchStateToLocalStorage,
+} from './lib/workbench-persistence';
 
 interface ImagePreviewData {
   previewUrl: string;
@@ -88,7 +94,17 @@ export function ItemCardWorkbench() {
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
+  const [persistSaveButtonTitle, setPersistSaveButtonTitle] = useState<
+    string | undefined
+  >(undefined);
+  const [isPersistenceLoadPending, setIsPersistenceLoadPending] =
+    useState(false);
+  const persistenceControlsVisible = useWorkbenchPersistenceControlsVisible();
   const imageReadRequestIdRef = useRef(0);
+  const isApplyingPersistenceLoadRef = useRef(false);
+  const previewStateRef = useRef<MagicItemWorkbenchState>(
+    defaultMagicItemWorkbenchState,
+  );
   const cardRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<WorkbenchItemDetailsFormValues>({
@@ -101,6 +117,10 @@ export function ItemCardWorkbench() {
 
   useEffect(() => {
     if (!imageFile) {
+      if (isApplyingPersistenceLoadRef.current) {
+        isApplyingPersistenceLoadRef.current = false;
+        return;
+      }
       setWorkbenchState((previousState) => ({
         ...previousState,
         imageFileName: '',
@@ -108,6 +128,8 @@ export function ItemCardWorkbench() {
       }));
       return;
     }
+
+    isApplyingPersistenceLoadRef.current = false;
 
     const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
     imageReadRequestIdRef.current = nextImageReadRequestId;
@@ -139,6 +161,8 @@ export function ItemCardWorkbench() {
     ...formValuesForPreview,
   };
 
+  previewStateRef.current = previewState;
+
   const setWorkbenchField = useCallback(
     <TKey extends keyof MagicItemWorkbenchState>(
       fieldName: TKey,
@@ -159,6 +183,58 @@ export function ItemCardWorkbench() {
     return formValid;
   }, [form]);
 
+  const handlePersistSave = useCallback(() => {
+    const result = saveMagicItemWorkbenchStateToLocalStorage(
+      previewStateRef.current,
+    );
+    if (!result.success) {
+      setPersistSaveButtonTitle(
+        result.reason === 'quota'
+          ? 'Not enough browser storage for this snapshot.'
+          : 'Could not save to browser storage.',
+      );
+      return;
+    }
+    setPersistSaveButtonTitle(undefined);
+  }, []);
+
+  const handlePersistLoad = useCallback(async () => {
+    setIsPersistenceLoadPending(true);
+    try {
+      const loaded = loadMagicItemWorkbenchStateFromLocalStorage();
+      if (!loaded) {
+        return;
+      }
+
+      isApplyingPersistenceLoadRef.current = true;
+
+      let imageFile: File | undefined;
+      if (loaded.imagePreviewUrl.trim() !== '') {
+        try {
+          imageFile = await dataUrlToFile(
+            loaded.imagePreviewUrl,
+            loaded.imageFileName,
+          );
+        } catch {
+          imageFile = undefined;
+        }
+      }
+
+      form.reset({
+        itemName: loaded.itemName,
+        classificationAndRarity: loaded.classificationAndRarity,
+        requiresAttunement: loaded.requiresAttunement,
+        flavorDescription: loaded.flavorDescription,
+        mechanicalDescription: loaded.mechanicalDescription,
+        imageFile,
+      });
+      setWorkbenchState(loaded);
+      setPersistSaveButtonTitle(undefined);
+    } finally {
+      setIsPersistenceLoadPending(false);
+    }
+  }, [form]);
+
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="grid auto-rows-fr gap-6 xl:grid-cols-[minmax(340px,2fr)_3fr]">
@@ -167,6 +243,16 @@ export function ItemCardWorkbench() {
             control={form.control}
             formErrors={form.formState.errors}
             trigger={form.trigger}
+            persistence={
+              persistenceControlsVisible
+                ? {
+                    onPersistSave: handlePersistSave,
+                    onPersistLoad: handlePersistLoad,
+                    isPersistenceLoadPending,
+                    persistSaveButtonTitle,
+                  }
+                : undefined
+            }
           />
         </div>
         <div className="animate-entrance animate-entrance-delay-1">
