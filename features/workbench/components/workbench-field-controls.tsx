@@ -27,6 +27,7 @@ interface ToggleFieldProps<TValue extends string> {
   fieldLabel: string;
   options: ReadonlyArray<SelectionOption<TValue>>;
   value: TValue;
+  disabled?: boolean;
   onValueChange: (value: TValue) => void;
 }
 
@@ -75,6 +76,7 @@ export function ToggleField<TValue extends string>({
   fieldLabel,
   options,
   value,
+  disabled = false,
   onValueChange,
 }: ToggleFieldProps<TValue>) {
   return (
@@ -88,6 +90,10 @@ export function ToggleField<TValue extends string>({
         value={[value]}
         variant="outline"
         onValueChange={(nextValue) => {
+          if (disabled) {
+            return;
+          }
+
           const nextSelectedValue = nextValue[0];
 
           if (nextSelectedValue) {
@@ -101,6 +107,7 @@ export function ToggleField<TValue extends string>({
             value={option.value}
             aria-label={option.label}
             className="flex-1"
+            disabled={disabled}
           >
             {option.label}
           </ToggleGroupItem>

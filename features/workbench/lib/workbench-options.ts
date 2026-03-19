@@ -26,7 +26,6 @@ export const cardLayoutOptions: ReadonlyArray<
   SelectionOption<CardLayoutOption>
 > = [
   { label: 'Top', value: 'vertical' },
-  { label: 'Left', value: 'image-left' },
   { label: 'Right', value: 'image-right' },
 ];
 
