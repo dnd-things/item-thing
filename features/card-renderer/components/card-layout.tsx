@@ -10,7 +10,9 @@ import {
   getCardLayoutClassName,
   getCardMediaColumnClassName,
   getCardSurfaceMinHeightClassName,
+  getImageBorderStyle,
   type ImageAspectRatioOption,
+  type ImageBorderOption,
   isSideImageCardLayout,
 } from '../lib/card-renderer-options';
 
@@ -19,6 +21,7 @@ interface CardLayoutProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
+  imageBorder: ImageBorderOption;
   imageSize: number;
   renderSideMediaColumn?: boolean;
   mediaSlot?: React.ReactNode;
@@ -45,6 +48,7 @@ export function CardLayout({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
+  imageBorder,
   imageSize,
   renderSideMediaColumn = true,
   mediaSlot,
@@ -105,6 +109,7 @@ export function CardLayout({
                   width: cardImageDimensions.width,
                   height: cardImageDimensions.height,
                   borderRadius: cardImageDimensions.borderRadius,
+                  border: getImageBorderStyle(imageBorder),
                 }}
               >
                 {mediaSlot}
@@ -179,6 +184,7 @@ export function CardLayout({
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
+            border: getImageBorderStyle(imageBorder),
           }}
         >
           {mediaSlot}

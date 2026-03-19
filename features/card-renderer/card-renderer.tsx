@@ -9,6 +9,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getImageBorderStyle,
   isCardStyleSupported,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
@@ -17,7 +18,7 @@ import {
 
 const printCardClassNames = {
   surface:
-    'w-full overflow-hidden border border-slate-200 bg-white text-slate-950 shadow-[0_18px_48px_rgba(15,23,42,0.08)]',
+    'w-full overflow-hidden border-2 border-slate-200 bg-white text-slate-950 shadow-[0_18px_48px_rgba(15,23,42,0.08)]',
   mediaColumn: 'p-4',
   sideMediaColumn: 'self-center',
   mediaFrame: 'relative bg-white text-center',
@@ -78,6 +79,7 @@ export function CardRenderer({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
+  imageBorder,
   imageSize,
   imageFileName,
   imagePreviewUrl,
@@ -135,36 +137,61 @@ export function CardRenderer({
     </p>
   ) : null;
   const fluidSideImageClassName = 'float-right ml-4';
-  const fluidSideImageShapeClassName =
-    '[shape-image-threshold:0.6] [shape-margin:1rem]';
+  const hasBorder = imageBorder !== 'none';
   const sideWrappedMediaSlot = shouldUseWrappedSideLayout ? (
     imagePreviewUrl ? (
-      <Image
-        alt={mediaAltText}
-        className={cn(
-          'mb-2 block object-contain',
-          fluidSideImageClassName,
-          fluidSideImageShapeClassName,
-        )}
-        src={imagePreviewUrl}
-        unoptimized
-        width={Math.round(cardImageDimensions.width)}
-        height={Math.round(cardImageDimensions.height)}
-        sizes="(max-width: 768px) 50vw, 220px"
-        style={{
-          width: cardImageDimensions.width,
-          height: cardImageDimensions.height,
-          borderRadius: cardImageDimensions.borderRadius,
-          shapeOutside: `url("${imagePreviewUrl}")`,
-        }}
-      />
+      hasBorder ? (
+        <div
+          className={cn('relative mb-2', fluidSideImageClassName)}
+          style={{
+            width: cardImageDimensions.width,
+            height: cardImageDimensions.height,
+            borderRadius: cardImageDimensions.borderRadius,
+            border: getImageBorderStyle(imageBorder),
+            overflow: 'hidden' as const,
+            shapeOutside: 'border-box' as const,
+            shapeMargin: '1rem',
+          }}
+        >
+          <Image
+            alt={mediaAltText}
+            className="object-contain"
+            src={imagePreviewUrl}
+            unoptimized
+            fill
+            sizes="(max-width: 768px) 50vw, 220px"
+          />
+        </div>
+      ) : (
+        <Image
+          alt={mediaAltText}
+          className={cn('mb-2 block object-contain', fluidSideImageClassName)}
+          src={imagePreviewUrl}
+          unoptimized
+          width={Math.round(cardImageDimensions.width)}
+          height={Math.round(cardImageDimensions.height)}
+          sizes="(max-width: 768px) 50vw, 220px"
+          style={{
+            width: cardImageDimensions.width,
+            height: cardImageDimensions.height,
+            borderRadius: cardImageDimensions.borderRadius,
+            shapeOutside: `url("${imagePreviewUrl}")`,
+            shapeImageThreshold: 0.6,
+            shapeMargin: '1rem',
+          }}
+        />
+      )
     ) : (
       <div
-        className={cn('relative mb-2 overflow-hidden', fluidSideImageClassName)}
+        className={cn('relative mb-2', fluidSideImageClassName)}
         style={{
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
+          border: getImageBorderStyle(imageBorder) || undefined,
+          overflow: 'hidden' as const,
+          shapeOutside: 'border-box' as const,
+          shapeMargin: '1rem',
         }}
       >
         {mediaSlot}
@@ -186,6 +213,7 @@ export function CardRenderer({
         imageAspectRatio={imageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
+        imageBorder={imageBorder}
         imageSize={imageSize}
         renderSideMediaColumn={!isSideLayout || !shouldUseWrappedSideLayout}
         mediaSlot={mediaSlot}
