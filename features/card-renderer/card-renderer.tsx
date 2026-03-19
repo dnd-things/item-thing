@@ -18,7 +18,7 @@ import {
 
 const printCardClassNames = {
   surface:
-    'w-full overflow-hidden border border-slate-200 bg-white text-slate-950 shadow-[0_18px_48px_rgba(15,23,42,0.08)]',
+    'w-full overflow-hidden border-2 border-slate-200 bg-white text-slate-950 shadow-[0_18px_48px_rgba(15,23,42,0.08)]',
   mediaColumn: 'p-4',
   sideMediaColumn: 'self-center',
   mediaFrame: 'relative bg-white text-center',
