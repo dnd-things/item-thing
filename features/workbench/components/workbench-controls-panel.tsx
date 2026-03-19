@@ -25,6 +25,8 @@ export function WorkbenchControlsPanel({
   setWorkbenchField,
   workbenchState,
 }: WorkbenchControlsPanelProps) {
+  const isTopImageLayout = workbenchState.cardLayout === 'vertical';
+
   return (
     <Card className="border border-border/60 bg-card/65 backdrop-blur-sm">
       <CardContent>
@@ -52,12 +54,16 @@ export function WorkbenchControlsPanel({
             value={workbenchState.cardLayout}
             onValueChange={(value) => {
               setWorkbenchField('cardLayout', value);
+              if (value === 'vertical') {
+                setWorkbenchField('sideLayoutFlow', 'fixed');
+              }
             }}
           />
           <ToggleField
             fieldLabel="Layout"
             options={sideLayoutFlowOptions}
             value={workbenchState.sideLayoutFlow}
+            disabled={isTopImageLayout}
             onValueChange={(value) => {
               setWorkbenchField('sideLayoutFlow', value);
             }}

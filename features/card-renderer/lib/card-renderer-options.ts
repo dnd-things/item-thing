@@ -1,6 +1,6 @@
 'use client';
 
-export type CardLayoutOption = 'vertical' | 'image-left' | 'image-right';
+export type CardLayoutOption = 'vertical' | 'image-right';
 
 export type CardStyleOption = 'print' | 'minimal' | 'classic';
 
@@ -74,7 +74,6 @@ export function getCardWidth(cardLayout: CardLayoutOption): number {
   switch (cardLayout) {
     case 'vertical':
       return 430;
-    case 'image-left':
     case 'image-right':
       return 600;
     default:
@@ -146,8 +145,6 @@ export function getCardImageDimensions(
 
 export function getCardLayoutClassName(cardLayout: CardLayoutOption): string {
   switch (cardLayout) {
-    case 'image-left':
-      return 'flex-row';
     case 'image-right':
       return 'flex-row-reverse';
     default:
@@ -159,7 +156,6 @@ export function getCardMediaColumnClassName(
   cardLayout: CardLayoutOption,
 ): string {
   switch (cardLayout) {
-    case 'image-left':
     case 'image-right':
       return 'shrink-0';
     default:

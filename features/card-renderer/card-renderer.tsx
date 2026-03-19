@@ -92,7 +92,7 @@ export function CardRenderer({
   }
 
   const isSideLayout = isSideImageCardLayout(cardLayout);
-  const shouldUseFluidSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
+  const shouldUseWrappedSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
   const shouldStackMetadata = shouldStackVerticalCardMetadata(cardLayout);
   const surfaceBorderRadius = getCardSurfaceBorderRadius(cardBorderRadius);
   const cardImageDimensions = getCardImageDimensions(
@@ -102,6 +102,7 @@ export function CardRenderer({
     imageBorderRadius,
   );
   const hasFlavorDescription = flavorDescription.trim().length > 0;
+  const mediaAltText = itemName || imageFileName || 'Magic item artwork';
   const attunementBadge = requiresAttunement ? (
     <span className={printCardClassNames.attunementBadge}>
       Requires attunement
@@ -109,7 +110,7 @@ export function CardRenderer({
   ) : null;
   const mediaSlot = imagePreviewUrl ? (
     <Image
-      alt={itemName || imageFileName || 'Magic item artwork'}
+      alt={mediaAltText}
       className={printCardClassNames.mediaImage}
       fill
       sizes="(max-width: 768px) 50vw, 220px"
@@ -133,20 +134,42 @@ export function CardRenderer({
       {flavorDescription}
     </p>
   ) : null;
-  const sideWrappedMediaSlot = shouldUseFluidSideLayout ? (
-    <div
-      className={cn(
-        'relative mb-2 overflow-hidden',
-        cardLayout === 'image-left' ? 'float-left mr-4' : 'float-right ml-4',
-      )}
-      style={{
-        width: cardImageDimensions.width,
-        height: cardImageDimensions.height,
-        borderRadius: cardImageDimensions.borderRadius,
-      }}
-    >
-      {mediaSlot}
-    </div>
+  const fluidSideImageClassName = 'float-right ml-4';
+  const fluidSideImageShapeClassName =
+    '[shape-image-threshold:0.6] [shape-margin:1rem]';
+  const sideWrappedMediaSlot = shouldUseWrappedSideLayout ? (
+    imagePreviewUrl ? (
+      <Image
+        alt={mediaAltText}
+        className={cn(
+          'mb-2 block object-contain',
+          fluidSideImageClassName,
+          fluidSideImageShapeClassName,
+        )}
+        src={imagePreviewUrl}
+        unoptimized
+        width={Math.round(cardImageDimensions.width)}
+        height={Math.round(cardImageDimensions.height)}
+        sizes="(max-width: 768px) 50vw, 220px"
+        style={{
+          width: cardImageDimensions.width,
+          height: cardImageDimensions.height,
+          borderRadius: cardImageDimensions.borderRadius,
+          shapeOutside: `url("${imagePreviewUrl}")`,
+        }}
+      />
+    ) : (
+      <div
+        className={cn('relative mb-2 overflow-hidden', fluidSideImageClassName)}
+        style={{
+          width: cardImageDimensions.width,
+          height: cardImageDimensions.height,
+          borderRadius: cardImageDimensions.borderRadius,
+        }}
+      >
+        {mediaSlot}
+      </div>
+    )
   ) : null;
 
   return (
@@ -164,7 +187,7 @@ export function CardRenderer({
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageSize={imageSize}
-        renderSideMediaColumn={!isSideLayout || !shouldUseFluidSideLayout}
+        renderSideMediaColumn={!isSideLayout || !shouldUseWrappedSideLayout}
         mediaSlot={mediaSlot}
         classificationSlot={
           <span
@@ -191,19 +214,19 @@ export function CardRenderer({
             {itemName}
           </h3>
         }
-        flavorSlot={shouldUseFluidSideLayout ? null : flavorDescriptionSlot}
+        flavorSlot={shouldUseWrappedSideLayout ? null : flavorDescriptionSlot}
         bodySlot={
           <div
             className={cn(
               printCardClassNames.body,
               printCardClassNames.bodyMarkdown,
               'w-full text-left',
-              shouldUseFluidSideLayout &&
+              shouldUseWrappedSideLayout &&
                 "after:block after:clear-both after:content-['']",
             )}
           >
-            {shouldUseFluidSideLayout ? sideWrappedMediaSlot : null}
-            {shouldUseFluidSideLayout ? flavorDescriptionSlot : null}
+            {shouldUseWrappedSideLayout ? sideWrappedMediaSlot : null}
+            {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
             <Markdown
               components={{
                 h1: BodyHeading,
