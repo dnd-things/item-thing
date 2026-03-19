@@ -76,11 +76,11 @@ export function DownloadControlsCard({
   }, [onBeforeDownload, handleDownload]);
 
   return (
-    <div className="export-dock relative overflow-hidden rounded-2xl border border-primary/[0.08] bg-[oklch(0.15_0.008_65/0.85)] px-5 py-4 shadow-[inset_0_1px_0_0_oklch(1_0_0/0.05)] ring-1 ring-foreground/[0.04] backdrop-blur-2xl sm:px-6">
-      <div className="relative flex flex-wrap items-center justify-center gap-4 sm:justify-between sm:gap-6">
+    <div className="export-dock rounded-2xl border border-primary/[0.1] bg-[oklch(0.14_0.008_65/0.9)] px-5 py-4 shadow-[inset_0_1px_0_0_oklch(1_0_0/0.06),0_4px_24px_oklch(0_0_0/0.2)] ring-1 ring-foreground/[0.04] backdrop-blur-2xl sm:px-6">
+      <div className="relative z-[1] flex flex-wrap items-center justify-center gap-4 sm:justify-between sm:gap-6">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground/60">
+            <span className="text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground/50">
               Format
             </span>
             <ToggleGroup
@@ -112,7 +112,7 @@ export function DownloadControlsCard({
           />
 
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground/60">
+            <span className="text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground/50">
               Scale
             </span>
             <ToggleGroup

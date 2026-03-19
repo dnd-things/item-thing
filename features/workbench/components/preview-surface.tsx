@@ -32,13 +32,13 @@ export function PreviewSurface({
   );
 
   return (
-    <div className="flex h-full min-h-[520px] items-center justify-center rounded-2xl border border-dashed border-primary/[0.06] bg-[oklch(0.12_0.004_65/0.35)] p-5 shadow-[inset_0_2px_4px_0_oklch(0_0_0/0.06)]">
-      <div data-print-card ref={cardRef}>
+    <div className="preview-crucible flex h-full min-h-[520px] items-center justify-center p-8">
+      <div data-print-card ref={cardRef} className="relative z-[1]">
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer {...workbenchState} />
         ) : (
           <div
-            className="flex w-full flex-col items-center gap-4 border border-dashed border-primary/8 bg-card/50 px-8 py-10 text-center backdrop-blur-sm"
+            className="flex w-full flex-col items-center gap-4 border border-primary/8 bg-card/60 px-8 py-10 text-center backdrop-blur-md"
             style={{
               maxWidth: selectedCardWidth,
               borderRadius: selectedCardBorderRadius,

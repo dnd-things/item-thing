@@ -29,10 +29,11 @@ export function ItemDetailsForm({
 }: ItemDetailsFormProps) {
   return (
     <Card className="h-full">
-      <CardHeader className="border-b border-primary/[0.06]">
-        <CardTitle className="font-display text-xl text-foreground/80">
+      <CardHeader>
+        <CardTitle className="font-display text-lg tracking-wide text-foreground/70">
           Item Details
         </CardTitle>
+        <div className="mt-2 h-px w-full bg-gradient-to-r from-primary/20 via-primary/8 to-transparent" />
       </CardHeader>
       <CardContent>
         <FieldGroup>

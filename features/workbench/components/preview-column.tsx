@@ -83,12 +83,12 @@ export function PreviewColumn({
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div data-print-hide className="flex items-end gap-3">
-        <div className="flex flex-1 items-end gap-3">
-          <div className="flex w-36 shrink-0 flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-              Style
-            </span>
+      <div
+        data-print-hide
+        className="flex items-center gap-2 rounded-xl border border-primary/[0.06] bg-card/40 px-3 py-2 backdrop-blur-lg"
+      >
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          <div className="flex w-32 shrink-0 items-center">
             <Select
               items={cardStyleOptions}
               value={workbenchState.cardStyle}
@@ -115,89 +115,89 @@ export function PreviewColumn({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-              Layout
-            </span>
-            <ToggleGroup
-              value={quickLayout ? [quickLayout] : []}
-              variant="outline"
-              onValueChange={(nextValues) => {
-                const nextValue = nextValues[nextValues.length - 1];
-                if (nextValue) {
-                  handleQuickLayoutChange(nextValue);
-                }
-              }}
-            >
-              <ToggleGroupItem value="stacked" aria-label="Stacked layout">
-                Stacked
-              </ToggleGroupItem>
-              <ToggleGroupItem value="compact" aria-label="Compact layout">
-                Compact
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-              Shape
-            </span>
-            <ToggleGroup
-              value={quickImageShape ? [quickImageShape] : []}
-              variant="outline"
-              onValueChange={(nextValues) => {
-                const nextValue = nextValues[nextValues.length - 1];
-                if (nextValue === 'rect') {
-                  setWorkbenchField('imageBorderRadius', 0);
-                } else if (nextValue === 'circle') {
-                  setWorkbenchField(
-                    'imageBorderRadius',
-                    imageBorderRadiusRange.max,
-                  );
-                  setWorkbenchField('imageAspectRatio', 'square');
-                }
-              }}
-            >
-              <ToggleGroupItem value="rect" aria-label="Rectangle image">
-                <HugeiconsIcon icon={SquareIcon} strokeWidth={1.5} />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="circle" aria-label="Circle image">
-                <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium tracking-wide uppercase text-muted-foreground">
-              Border
-            </span>
-            <ToggleGroup
-              value={[workbenchState.imageBorder]}
-              variant="outline"
-              onValueChange={(nextValues) => {
-                const nextValue = nextValues[nextValues.length - 1];
-                if (nextValue) {
-                  setWorkbenchField(
-                    'imageBorder',
-                    nextValue as MagicItemWorkbenchState['imageBorder'],
-                  );
-                }
-              }}
-            >
-              <ToggleGroupItem value="none" aria-label="No image border">
-                <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="thin" aria-label="Thin image border">
-                <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={1.5} />
-              </ToggleGroupItem>
-              <ToggleGroupItem value="thick" aria-label="Thick image border">
-                <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={3} />
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+
+          <div
+            aria-hidden
+            className="hidden h-5 w-px bg-gradient-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
+          />
+
+          <ToggleGroup
+            value={quickLayout ? [quickLayout] : []}
+            variant="outline"
+            onValueChange={(nextValues) => {
+              const nextValue = nextValues[nextValues.length - 1];
+              if (nextValue) {
+                handleQuickLayoutChange(nextValue);
+              }
+            }}
+          >
+            <ToggleGroupItem value="stacked" aria-label="Stacked layout">
+              Stacked
+            </ToggleGroupItem>
+            <ToggleGroupItem value="compact" aria-label="Compact layout">
+              Compact
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          <div
+            aria-hidden
+            className="hidden h-5 w-px bg-gradient-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
+          />
+
+          <ToggleGroup
+            value={quickImageShape ? [quickImageShape] : []}
+            variant="outline"
+            onValueChange={(nextValues) => {
+              const nextValue = nextValues[nextValues.length - 1];
+              if (nextValue === 'rect') {
+                setWorkbenchField('imageBorderRadius', 0);
+              } else if (nextValue === 'circle') {
+                setWorkbenchField(
+                  'imageBorderRadius',
+                  imageBorderRadiusRange.max,
+                );
+                setWorkbenchField('imageAspectRatio', 'square');
+              }
+            }}
+          >
+            <ToggleGroupItem value="rect" aria-label="Rectangle image">
+              <HugeiconsIcon icon={SquareIcon} strokeWidth={1.5} />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="circle" aria-label="Circle image">
+              <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          <ToggleGroup
+            value={[workbenchState.imageBorder]}
+            variant="outline"
+            onValueChange={(nextValues) => {
+              const nextValue = nextValues[nextValues.length - 1];
+              if (nextValue) {
+                setWorkbenchField(
+                  'imageBorder',
+                  nextValue as MagicItemWorkbenchState['imageBorder'],
+                );
+              }
+            }}
+          >
+            <ToggleGroupItem value="none" aria-label="No image border">
+              <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="thin" aria-label="Thin image border">
+              <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={1.5} />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="thick" aria-label="Thick image border">
+              <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={3} />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
+
         <Button
-          variant="outline"
-          size="icon"
+          variant="ghost"
+          size="icon-sm"
           aria-label="Open card settings"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
           onClick={() => setIsDrawerOpen(true)}
         >
           <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
