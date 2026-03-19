@@ -8,6 +8,7 @@ export type CardBorderRadiusOption = 'none' | 'small' | 'large';
 export type SideLayoutFlowOption = 'fixed' | 'fluid';
 
 export type ImageAspectRatioOption =
+  | 'based-on-image'
   | 'square'
   | 'portrait'
   | 'portrait-3-4'
@@ -23,6 +24,7 @@ export interface MagicItemCardRendererProps {
   cardBorderRadius: CardBorderRadiusOption;
   imageSize: number;
   imageAspectRatio: ImageAspectRatioOption;
+  resolvedImageAspectRatio: number;
   imageBorderRadius: number;
   imageFileName: string;
   imagePreviewUrl: string;
@@ -92,8 +94,11 @@ export function isSideImageCardLayout(cardLayout: CardLayoutOption): boolean {
 
 export function getImageAspectRatioValue(
   imageAspectRatio: ImageAspectRatioOption,
+  resolvedImageAspectRatio: number = 1,
 ): number {
   switch (imageAspectRatio) {
+    case 'based-on-image':
+      return resolvedImageAspectRatio > 0 ? resolvedImageAspectRatio : 1;
     case 'portrait':
       return 4 / 5;
     case 'portrait-3-4':
@@ -114,11 +119,15 @@ export function getImageAspectRatioValue(
 export function getCardImageDimensions(
   imageSize: number,
   imageAspectRatio: ImageAspectRatioOption,
+  resolvedImageAspectRatio: number,
   imageBorderRadius: number,
 ): CardImageDimensions {
   const normalizedScale = imageSize / 100;
   const baseWidth = 96 + normalizedScale * 96;
-  const imageAspectRatioValue = getImageAspectRatioValue(imageAspectRatio);
+  const imageAspectRatioValue = getImageAspectRatioValue(
+    imageAspectRatio,
+    resolvedImageAspectRatio,
+  );
   const imageHeight = baseWidth / imageAspectRatioValue;
   const maxPossibleBorderRadius = Math.min(baseWidth / 2, imageHeight / 2);
   const normalizedBorderRadius =

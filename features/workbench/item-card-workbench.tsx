@@ -17,6 +17,11 @@ import {
   type MagicItemWorkbenchState,
 } from './lib/workbench-options';
 
+interface ImagePreviewData {
+  previewUrl: string;
+  aspectRatio: number;
+}
+
 async function readFileAsDataUrl(imageFile: File): Promise<string> {
   return await new Promise((resolve, reject) => {
     const fileReader = new FileReader();
@@ -36,6 +41,38 @@ async function readFileAsDataUrl(imageFile: File): Promise<string> {
 
     fileReader.readAsDataURL(imageFile);
   });
+}
+
+async function readImageAspectRatio(previewUrl: string): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const image = new Image();
+
+    image.onerror = () => {
+      reject(new Error('Failed to read image dimensions.'));
+    };
+
+    image.onload = () => {
+      const hasValidDimensions =
+        image.naturalWidth > 0 && image.naturalHeight > 0;
+
+      if (!hasValidDimensions) {
+        reject(new Error('Image dimensions are invalid.'));
+        return;
+      }
+
+      resolve(image.naturalWidth / image.naturalHeight);
+    };
+
+    image.src = previewUrl;
+  });
+}
+
+async function readImagePreviewData(
+  imageFile: File,
+): Promise<ImagePreviewData> {
+  const previewUrl = await readFileAsDataUrl(imageFile);
+  const aspectRatio = await readImageAspectRatio(previewUrl);
+  return { previewUrl, aspectRatio };
 }
 
 const formDefaultValues: WorkbenchItemDetailsFormValues = {
@@ -76,13 +113,14 @@ export function ItemCardWorkbench() {
     const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
     imageReadRequestIdRef.current = nextImageReadRequestId;
 
-    void readFileAsDataUrl(imageFile).then(
-      (nextImagePreviewUrl) => {
+    void readImagePreviewData(imageFile).then(
+      ({ previewUrl, aspectRatio }) => {
         if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
         setWorkbenchState((previousState) => ({
           ...previousState,
           imageFileName: imageFile.name,
-          imagePreviewUrl: nextImagePreviewUrl,
+          imagePreviewUrl: previewUrl,
+          resolvedImageAspectRatio: aspectRatio,
         }));
       },
       () => {

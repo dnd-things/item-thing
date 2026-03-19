@@ -76,6 +76,7 @@ export function CardRenderer({
   cardStyle,
   cardBorderRadius,
   imageAspectRatio,
+  resolvedImageAspectRatio,
   imageBorderRadius,
   imageSize,
   imageFileName,
@@ -97,6 +98,7 @@ export function CardRenderer({
   const cardImageDimensions = getCardImageDimensions(
     imageSize,
     imageAspectRatio,
+    resolvedImageAspectRatio,
     imageBorderRadius,
   );
   const hasFlavorDescription = flavorDescription.trim().length > 0;
@@ -159,6 +161,7 @@ export function CardRenderer({
       <CardLayout
         cardLayout={cardLayout}
         imageAspectRatio={imageAspectRatio}
+        resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageSize={imageSize}
         renderSideMediaColumn={!isSideLayout || !shouldUseFluidSideLayout}

@@ -17,6 +17,7 @@ import {
 interface CardLayoutProps {
   cardLayout: CardLayoutOption;
   imageAspectRatio: ImageAspectRatioOption;
+  resolvedImageAspectRatio: number;
   imageBorderRadius: number;
   imageSize: number;
   renderSideMediaColumn?: boolean;
@@ -42,6 +43,7 @@ interface CardLayoutProps {
 export function CardLayout({
   cardLayout,
   imageAspectRatio,
+  resolvedImageAspectRatio,
   imageBorderRadius,
   imageSize,
   renderSideMediaColumn = true,
@@ -66,6 +68,7 @@ export function CardLayout({
   const cardImageDimensions = getCardImageDimensions(
     imageSize,
     imageAspectRatio,
+    resolvedImageAspectRatio,
     imageBorderRadius,
   );
   const isSideLayout = isSideImageCardLayout(cardLayout);
