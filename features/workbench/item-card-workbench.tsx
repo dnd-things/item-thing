@@ -1,9 +1,17 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
+import { DownloadControlsCard } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { ItemPreviewPanel } from './components/item-preview-panel';
 import { WorkbenchControlsPanel } from './components/workbench-controls-panel';
+import {
+  type WorkbenchItemDetailsFormValues,
+  workbenchItemDetailsSchema,
+} from './lib/workbench-form-schema';
 import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
@@ -30,11 +38,69 @@ async function readFileAsDataUrl(imageFile: File): Promise<string> {
   });
 }
 
+const formDefaultValues: WorkbenchItemDetailsFormValues = {
+  itemName: defaultMagicItemWorkbenchState.itemName,
+  imageFile: undefined,
+  classificationAndRarity:
+    defaultMagicItemWorkbenchState.classificationAndRarity,
+  requiresAttunement: defaultMagicItemWorkbenchState.requiresAttunement,
+  flavorDescription: defaultMagicItemWorkbenchState.flavorDescription,
+  mechanicalDescription: defaultMagicItemWorkbenchState.mechanicalDescription,
+};
+
 export function ItemCardWorkbench() {
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
   const imageReadRequestIdRef = useRef(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const form = useForm<WorkbenchItemDetailsFormValues>({
+    resolver: zodResolver(workbenchItemDetailsSchema),
+    defaultValues: formDefaultValues,
+  });
+
+  const formValues = form.watch();
+  const imageFile = formValues.imageFile;
+
+  useEffect(() => {
+    if (!imageFile) {
+      setWorkbenchState((previousState) => ({
+        ...previousState,
+        imageFileName: '',
+        imagePreviewUrl: '',
+      }));
+      return;
+    }
+
+    const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
+    imageReadRequestIdRef.current = nextImageReadRequestId;
+
+    void readFileAsDataUrl(imageFile).then(
+      (nextImagePreviewUrl) => {
+        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
+        setWorkbenchState((previousState) => ({
+          ...previousState,
+          imageFileName: imageFile.name,
+          imagePreviewUrl: nextImagePreviewUrl,
+        }));
+      },
+      () => {
+        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
+        setWorkbenchState((previousState) => ({
+          ...previousState,
+          imageFileName: imageFile.name,
+          imagePreviewUrl: '',
+        }));
+      },
+    );
+  }, [imageFile]);
+
+  const { imageFile: _imageFile, ...formValuesForPreview } = formValues;
+  const previewState: MagicItemWorkbenchState = {
+    ...workbenchState,
+    ...formValuesForPreview,
+  };
 
   const setWorkbenchField = useCallback(
     <TKey extends keyof MagicItemWorkbenchState>(
@@ -49,43 +115,12 @@ export function ItemCardWorkbench() {
     [],
   );
 
-  const setImageFile = useCallback(async (imageFile: File | null) => {
-    const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
-    imageReadRequestIdRef.current = nextImageReadRequestId;
+  const canDownload = isCardStyleSupported(workbenchState.cardStyle);
 
-    if (!imageFile) {
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      }));
-      return;
-    }
-
-    try {
-      const nextImagePreviewUrl = await readFileAsDataUrl(imageFile);
-
-      if (imageReadRequestIdRef.current !== nextImageReadRequestId) {
-        return;
-      }
-
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: imageFile.name,
-        imagePreviewUrl: nextImagePreviewUrl,
-      }));
-    } catch {
-      if (imageReadRequestIdRef.current !== nextImageReadRequestId) {
-        return;
-      }
-
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: imageFile.name,
-        imagePreviewUrl: '',
-      }));
-    }
-  }, []);
+  const handleBeforeDownload = useCallback(async () => {
+    const formValid = await form.trigger();
+    return formValid;
+  }, [form]);
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -96,12 +131,19 @@ export function ItemCardWorkbench() {
 
       <div className="grid auto-rows-fr gap-6 xl:grid-cols-2">
         <ItemDetailsForm
-          setImageFile={setImageFile}
-          setWorkbenchField={setWorkbenchField}
-          workbenchState={workbenchState}
+          control={form.control}
+          formErrors={form.formState.errors}
+          trigger={form.trigger}
         />
-        <ItemPreviewPanel workbenchState={workbenchState} />
+        <ItemPreviewPanel cardRef={cardRef} workbenchState={previewState} />
       </div>
+
+      <DownloadControlsCard
+        cardRef={cardRef}
+        getItemName={() => form.getValues('itemName')}
+        disabled={!canDownload}
+        onBeforeDownload={handleBeforeDownload}
+      />
     </div>
   );
 }

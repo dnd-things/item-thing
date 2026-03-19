@@ -19,9 +19,8 @@ const printCardClassNames = {
   mediaColumn: 'p-4',
   sideMediaColumn: 'self-center',
   mediaFrame: 'relative bg-white text-center',
-  sideMediaFrame:
-    'relative border border-slate-200 bg-slate-50 text-center shadow-[0_10px_24px_rgba(15,23,42,0.06)]',
-  mediaImage: 'object-cover',
+  sideMediaFrame: 'relative text-center',
+  mediaImage: 'object-contain',
   mediaPlaceholder:
     'flex h-full w-full items-center justify-center rounded-[inherit] bg-slate-50/80',
   mediaText:
@@ -29,15 +28,16 @@ const printCardClassNames = {
   classification:
     'min-w-0 flex-1 text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-500',
   sideClassification:
-    'w-full text-left text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-500',
+    'min-w-0 w-full overflow-hidden text-left text-ellipsis text-[11px] font-semibold tracking-[0.18em] uppercase text-slate-500 whitespace-nowrap',
   attunementBadge:
     'inline-flex shrink-0 items-center rounded-full border border-slate-300 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase text-slate-700',
   title:
-    'min-h-[2.75rem] text-[1.75rem] leading-tight font-semibold tracking-tight',
+    'min-h-[2.75rem] text-[1.75rem] leading-tight font-semibold tracking-tight [font-family:var(--font-cormorant-garamond)]',
   sideTitle:
-    'w-full text-left text-[1.375rem] leading-tight font-semibold tracking-tight text-balance',
+    'w-full text-left text-[1.375rem] leading-tight font-semibold tracking-tight text-balance [font-family:var(--font-cormorant-garamond)]',
   centeredText: 'w-full text-center',
-  flavor: 'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic',
+  flavor:
+    'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic [font-family:var(--font-cormorant-garamond)]',
   body: 'text-sm leading-6 text-slate-700 whitespace-pre-wrap',
   sideContent: 'gap-3',
   sideClassificationSection: 'justify-start px-2 py-1 text-left',
@@ -86,6 +86,7 @@ export function CardRenderer({
       className={cn(printCardClassNames.surface, className)}
       style={{
         maxWidth: getCardWidth(cardLayout),
+        ...(cardLayout === 'vertical' && { minWidth: 300 }),
         borderRadius: surfaceBorderRadius,
       }}
     >
