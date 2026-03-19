@@ -162,26 +162,32 @@ export function ItemCardWorkbench() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <WorkbenchControlsPanel
-        setWorkbenchField={setWorkbenchField}
-        workbenchState={workbenchState}
-      />
+      <div data-print-hide>
+        <WorkbenchControlsPanel
+          setWorkbenchField={setWorkbenchField}
+          workbenchState={workbenchState}
+        />
+      </div>
 
       <div className="grid auto-rows-fr gap-6 xl:grid-cols-2">
-        <ItemDetailsForm
-          control={form.control}
-          formErrors={form.formState.errors}
-          trigger={form.trigger}
-        />
+        <div data-print-hide>
+          <ItemDetailsForm
+            control={form.control}
+            formErrors={form.formState.errors}
+            trigger={form.trigger}
+          />
+        </div>
         <ItemPreviewPanel cardRef={cardRef} workbenchState={previewState} />
       </div>
 
-      <DownloadControlsCard
-        cardRef={cardRef}
-        getItemName={() => form.getValues('itemName')}
-        disabled={!canDownload}
-        onBeforeDownload={handleBeforeDownload}
-      />
+      <div data-print-hide>
+        <DownloadControlsCard
+          cardRef={cardRef}
+          getItemName={() => form.getValues('itemName')}
+          disabled={!canDownload}
+          onBeforeDownload={handleBeforeDownload}
+        />
+      </div>
     </div>
   );
 }
