@@ -16,6 +16,7 @@ import type { SelectionOption } from '../lib/workbench-options';
 interface ToolbarSelectFieldProps<TValue extends string> {
   fieldDescription?: string;
   fieldLabel: string;
+  labelClassName?: string;
   options: ReadonlyArray<SelectionOption<TValue>>;
   triggerId: string;
   value: TValue;
@@ -34,6 +35,7 @@ interface ToggleFieldProps<TValue extends string> {
 export function ToolbarSelectField<TValue extends string>({
   fieldDescription,
   fieldLabel,
+  labelClassName,
   options,
   triggerId,
   value,
@@ -41,7 +43,9 @@ export function ToolbarSelectField<TValue extends string>({
 }: ToolbarSelectFieldProps<TValue>) {
   return (
     <Field>
-      <FieldLabel htmlFor={triggerId}>{fieldLabel}</FieldLabel>
+      <FieldLabel htmlFor={triggerId} className={labelClassName}>
+        {fieldLabel}
+      </FieldLabel>
       {fieldDescription ? (
         <FieldDescription>{fieldDescription}</FieldDescription>
       ) : null}

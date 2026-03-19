@@ -1,7 +1,6 @@
 'use client';
 
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Separator } from '@/components/ui/separator';
 import {
   Sheet,
   SheetContent,
@@ -45,10 +44,12 @@ export function WorkbenchSettingsDrawer({
           className="flex w-80 flex-col overflow-y-auto"
         >
           <SheetHeader>
-            <SheetTitle>Card settings</SheetTitle>
+            <SheetTitle className="font-display text-lg font-medium tracking-wide text-foreground/80">
+              Card Settings
+            </SheetTitle>
           </SheetHeader>
-          <Separator />
-          <FieldGroup className="flex flex-col gap-5 px-6 py-4">
+          <div className="mx-6 h-px bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
+          <FieldGroup className="flex flex-col gap-6 px-6 py-5">
             <ToolbarSelectField
               fieldLabel="Style"
               options={cardStyleOptions}
@@ -97,7 +98,7 @@ export function WorkbenchSettingsDrawer({
             />
             <Field>
               <FieldLabel htmlFor="drawer-image-size">Image size</FieldLabel>
-              <div className="flex h-9 items-center gap-3 rounded-[24px] border border-border/70 bg-input/15 px-4">
+              <div className="flex h-9 items-center gap-3 rounded-xl border border-primary/8 bg-input/10 px-4">
                 <Slider
                   id="drawer-image-size"
                   value={[workbenchState.imageSize]}
@@ -122,7 +123,7 @@ export function WorkbenchSettingsDrawer({
               <FieldLabel htmlFor="drawer-image-border-radius">
                 Image roundness
               </FieldLabel>
-              <div className="flex h-9 items-center gap-3 rounded-[24px] border border-border/70 bg-input/15 px-4">
+              <div className="flex h-9 items-center gap-3 rounded-xl border border-primary/8 bg-input/10 px-4">
                 <Slider
                   id="drawer-image-border-radius"
                   value={[workbenchState.imageBorderRadius]}

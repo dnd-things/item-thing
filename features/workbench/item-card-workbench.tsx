@@ -161,22 +161,27 @@ export function ItemCardWorkbench() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="grid auto-rows-fr gap-6 xl:grid-cols-2">
-        <div data-print-hide>
+      <div className="grid auto-rows-fr gap-6 xl:grid-cols-[minmax(340px,2fr)_3fr]">
+        <div data-print-hide className="animate-entrance">
           <ItemDetailsForm
             control={form.control}
             formErrors={form.formState.errors}
             trigger={form.trigger}
           />
         </div>
-        <PreviewColumn
-          cardRef={cardRef}
-          workbenchState={previewState}
-          setWorkbenchField={setWorkbenchField}
-        />
+        <div className="animate-entrance animate-entrance-delay-1">
+          <PreviewColumn
+            cardRef={cardRef}
+            workbenchState={previewState}
+            setWorkbenchField={setWorkbenchField}
+          />
+        </div>
       </div>
 
-      <div data-print-hide>
+      <div
+        data-print-hide
+        className="animate-entrance animate-entrance-delay-2"
+      >
         <DownloadControlsCard
           cardRef={cardRef}
           getItemName={() => form.getValues('itemName')}

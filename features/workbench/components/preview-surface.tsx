@@ -32,19 +32,23 @@ export function PreviewSurface({
   );
 
   return (
-    <div className="flex h-full min-h-[520px] items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-muted/20 p-5">
-      <div data-print-card ref={cardRef}>
+    <div className="preview-crucible flex h-full min-h-[520px] items-center justify-center p-8">
+      <div data-print-hide className="preview-corner preview-corner--tl" />
+      <div data-print-hide className="preview-corner preview-corner--tr" />
+      <div data-print-hide className="preview-corner preview-corner--bl" />
+      <div data-print-hide className="preview-corner preview-corner--br" />
+      <div data-print-card ref={cardRef} className="relative z-1">
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer {...workbenchState} />
         ) : (
           <div
-            className="flex w-full flex-col items-center gap-4 border border-dashed border-border/70 bg-background/90 px-8 py-10 text-center"
+            className="flex w-full flex-col items-center gap-4 border border-primary/8 bg-card/60 px-8 py-10 text-center backdrop-blur-md"
             style={{
               maxWidth: selectedCardWidth,
               borderRadius: selectedCardBorderRadius,
             }}
           >
-            <span className="rounded-full border border-border/70 px-3 py-1 text-[11px] font-medium tracking-[0.16em] uppercase text-muted-foreground">
+            <span className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-[11px] font-medium tracking-[0.16em] uppercase text-primary/70">
               {selectedCardStyleLabel}
             </span>
             <div className="space-y-2">

@@ -1,0 +1,187 @@
+'use client';
+
+import { createContext, type ReactNode, use, useMemo } from 'react';
+
+import { cn } from '@/lib/utils';
+
+import {
+  type CardImageDimensions,
+  getCardImageDimensions,
+  getCardLayoutClassName,
+  getCardMediaColumnClassName,
+  getCardSurfaceMinHeightClassName,
+  getImageBorderStyle,
+  type ImageAspectRatioOption,
+  type ImageBorderOption,
+} from '../lib/card-renderer-options';
+
+const SIDE_CARD_LAYOUT = 'image-right' as const;
+
+interface MagicItemSidePrintLayoutContextValue {
+  cardImageDimensions: CardImageDimensions;
+  imageBorder: ImageBorderOption;
+}
+
+const MagicItemSidePrintLayoutContext =
+  createContext<MagicItemSidePrintLayoutContextValue | null>(null);
+
+function useMagicItemSidePrintLayoutContext(): MagicItemSidePrintLayoutContextValue {
+  const value = use(MagicItemSidePrintLayoutContext);
+  if (!value) {
+    throw new Error(
+      'MagicItemSidePrintLayout subcomponents must be used within Root',
+    );
+  }
+  return value;
+}
+
+interface MagicItemSidePrintLayoutRootProps {
+  children: ReactNode;
+  className?: string;
+  imageAspectRatio: ImageAspectRatioOption;
+  resolvedImageAspectRatio: number;
+  imageBorderRadius: number;
+  imageBorder: ImageBorderOption;
+  imageSize: number;
+}
+
+function MagicItemSidePrintLayoutRoot({
+  children,
+  className,
+  imageAspectRatio,
+  resolvedImageAspectRatio,
+  imageBorderRadius,
+  imageBorder,
+  imageSize,
+}: MagicItemSidePrintLayoutRootProps) {
+  const cardImageDimensions = useMemo(
+    () =>
+      getCardImageDimensions(
+        imageSize,
+        imageAspectRatio,
+        resolvedImageAspectRatio,
+        imageBorderRadius,
+      ),
+    [imageSize, imageAspectRatio, resolvedImageAspectRatio, imageBorderRadius],
+  );
+  const contextValue = useMemo(
+    (): MagicItemSidePrintLayoutContextValue => ({
+      cardImageDimensions,
+      imageBorder,
+    }),
+    [cardImageDimensions, imageBorder],
+  );
+
+  return (
+    <MagicItemSidePrintLayoutContext.Provider value={contextValue}>
+      <div
+        className={cn(
+          'flex flex-col gap-5 p-6',
+          getCardSurfaceMinHeightClassName(SIDE_CARD_LAYOUT),
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </MagicItemSidePrintLayoutContext.Provider>
+  );
+}
+
+interface MagicItemSidePrintLayoutMainRowProps {
+  children: ReactNode;
+}
+
+function MagicItemSidePrintLayoutMainRow({
+  children,
+}: MagicItemSidePrintLayoutMainRowProps) {
+  return (
+    <div
+      className={cn(
+        'flex flex-1 gap-5',
+        getCardLayoutClassName(SIDE_CARD_LAYOUT),
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+interface MagicItemSidePrintLayoutMediaProps {
+  children: ReactNode;
+  mediaColumnClassName?: string;
+  mediaFrameClassName?: string;
+}
+
+function MagicItemSidePrintLayoutMedia({
+  children,
+  mediaColumnClassName,
+  mediaFrameClassName,
+}: MagicItemSidePrintLayoutMediaProps) {
+  const { cardImageDimensions, imageBorder } =
+    useMagicItemSidePrintLayoutContext();
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center',
+        getCardMediaColumnClassName(SIDE_CARD_LAYOUT),
+        mediaColumnClassName,
+      )}
+    >
+      <div
+        className={cn(
+          'flex items-center justify-center overflow-hidden',
+          mediaFrameClassName,
+        )}
+        style={{
+          width: cardImageDimensions.width,
+          height: cardImageDimensions.height,
+          borderRadius: cardImageDimensions.borderRadius,
+          border: getImageBorderStyle(imageBorder),
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface MagicItemSidePrintLayoutContentProps {
+  children: ReactNode;
+  className?: string;
+}
+
+function MagicItemSidePrintLayoutContent({
+  children,
+  className,
+}: MagicItemSidePrintLayoutContentProps) {
+  return (
+    <div className={cn('flex min-w-0 flex-1 flex-col gap-4', className)}>
+      {children}
+    </div>
+  );
+}
+
+interface MagicItemSidePrintLayoutBottomProps {
+  children: ReactNode;
+  className?: string;
+}
+
+function MagicItemSidePrintLayoutBottom({
+  children,
+  className,
+}: MagicItemSidePrintLayoutBottomProps) {
+  return (
+    <div className={cn('flex items-center justify-center', className)}>
+      {children}
+    </div>
+  );
+}
+
+export const MagicItemSidePrintLayout = {
+  Root: MagicItemSidePrintLayoutRoot,
+  MainRow: MagicItemSidePrintLayoutMainRow,
+  Media: MagicItemSidePrintLayoutMedia,
+  Content: MagicItemSidePrintLayoutContent,
+  Bottom: MagicItemSidePrintLayoutBottom,
+};

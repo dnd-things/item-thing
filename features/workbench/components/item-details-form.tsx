@@ -1,7 +1,7 @@
 'use client';
 
 import { type Control, Controller, type FieldErrors } from 'react-hook-form';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
@@ -28,7 +28,13 @@ export function ItemDetailsForm({
   trigger,
 }: ItemDetailsFormProps) {
   return (
-    <Card className="h-full border border-border/60 bg-card/65 backdrop-blur-sm">
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle className="font-display text-lg tracking-wide text-foreground/70">
+          Item Details
+        </CardTitle>
+        <div className="mt-2 h-px w-full bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
+      </CardHeader>
       <CardContent>
         <FieldGroup>
           <FieldSet>
