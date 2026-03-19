@@ -135,12 +135,12 @@
   }
 
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
 
   [data-print-card],
   [data-print-card] * {
-    visibility: visible;
+    visibility: visible !important;
   }
 
   [data-print-card] {
@@ -159,6 +159,6 @@
   }
 
   [data-print-hide] {
-    display: none;
+    display: none !important;
   }
 }
