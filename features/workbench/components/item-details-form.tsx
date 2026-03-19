@@ -33,7 +33,7 @@ export function ItemDetailsForm({
         <CardTitle className="font-display text-lg tracking-wide text-foreground/70">
           Item Details
         </CardTitle>
-        <div className="mt-2 h-px w-full bg-gradient-to-r from-primary/20 via-primary/8 to-transparent" />
+        <div className="mt-2 h-px w-full bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
       </CardHeader>
       <CardContent>
         <FieldGroup>

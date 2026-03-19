@@ -85,7 +85,7 @@ export function PreviewColumn({
     <div className="flex h-full flex-col gap-3">
       <div
         data-print-hide
-        className="flex items-center gap-2 rounded-xl border border-primary/[0.06] bg-card/40 px-3 py-2 backdrop-blur-lg"
+        className="flex items-center gap-2 rounded-xl border border-primary/6 bg-card/40 px-3 py-2 backdrop-blur-lg"
       >
         <div className="flex flex-1 flex-wrap items-center gap-2">
           <div className="flex w-32 shrink-0 items-center">
@@ -118,7 +118,7 @@ export function PreviewColumn({
 
           <div
             aria-hidden
-            className="hidden h-5 w-px bg-gradient-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
+            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
           />
 
           <ToggleGroup
@@ -141,7 +141,7 @@ export function PreviewColumn({
 
           <div
             aria-hidden
-            className="hidden h-5 w-px bg-gradient-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
+            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
           />
 
           <ToggleGroup

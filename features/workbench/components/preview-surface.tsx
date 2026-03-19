@@ -37,7 +37,7 @@ export function PreviewSurface({
       <div data-print-hide className="preview-corner preview-corner--tr" />
       <div data-print-hide className="preview-corner preview-corner--bl" />
       <div data-print-hide className="preview-corner preview-corner--br" />
-      <div data-print-card ref={cardRef} className="relative z-[1]">
+      <div data-print-card ref={cardRef} className="relative z-1">
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer {...workbenchState} />
         ) : (

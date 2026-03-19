@@ -44,11 +44,11 @@ export function WorkbenchSettingsDrawer({
           className="flex w-80 flex-col overflow-y-auto"
         >
           <SheetHeader>
-            <SheetTitle className="font-display text-lg tracking-wide text-foreground/80">
+            <SheetTitle className="font-display text-lg font-medium tracking-wide text-foreground/80">
               Card Settings
             </SheetTitle>
           </SheetHeader>
-          <div className="mx-6 h-px bg-gradient-to-r from-primary/20 via-primary/8 to-transparent" />
+          <div className="mx-6 h-px bg-linear-to-r from-primary/20 via-primary/8 to-transparent" />
           <FieldGroup className="flex flex-col gap-6 px-6 py-5">
             <ToolbarSelectField
               fieldLabel="Style"

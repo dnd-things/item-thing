@@ -4,7 +4,7 @@ import {
   Cormorant_Garamond,
   DM_Sans,
   Geist_Mono,
-  Instrument_Serif,
+  Outfit,
 } from 'next/font/google';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
@@ -13,8 +13,7 @@ import { cn } from '@/lib/utils';
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' });
 
-const instrumentSerif = Instrument_Serif({
-  weight: '400',
+const outfit = Outfit({
   subsets: ['latin'],
   variable: '--font-display',
 });
@@ -60,7 +59,7 @@ export default async function RootLayout({
       className={cn(
         'font-sans dark',
         dmSans.variable,
-        instrumentSerif.variable,
+        outfit.variable,
         geistMono.variable,
         cormorantGaramond.variable,
       )}

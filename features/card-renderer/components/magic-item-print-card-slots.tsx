@@ -29,9 +29,9 @@ export const printCardClassNames = {
   attunementBadge:
     'inline-flex shrink-0 items-center rounded-full border border-slate-300 px-3 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase text-slate-700',
   title:
-    'min-h-[2.75rem] text-[1.75rem] leading-tight font-semibold tracking-tight [font-family:var(--font-cormorant-garamond)]',
+    'min-h-[2.75rem] text-[2rem] leading-tight font-semibold tracking-tight [font-family:var(--font-cormorant-garamond)]',
   sideTitle:
-    'w-full text-left text-[1.375rem] leading-tight font-semibold tracking-tight text-balance [font-family:var(--font-cormorant-garamond)]',
+    'w-full text-left text-[2rem] leading-tight font-semibold tracking-tight text-balance [font-family:var(--font-cormorant-garamond)]',
   centeredText: 'w-full text-center',
   flavor:
     'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic [font-family:var(--font-cormorant-garamond)]',
