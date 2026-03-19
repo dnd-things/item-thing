@@ -19,19 +19,13 @@ import type { WorkbenchItemDetailsFormValues } from '../lib/workbench-form-schem
 interface ItemDetailsFormProps {
   control: Control<WorkbenchItemDetailsFormValues>;
   formErrors: FieldErrors<WorkbenchItemDetailsFormValues>;
-  dirtyFields: Partial<Record<keyof WorkbenchItemDetailsFormValues, boolean>>;
-  setImageFile: (imageFile: File | null) => Promise<void> | void;
-  imageDirty: boolean;
-  imageError: string | null;
+  trigger: (name?: keyof WorkbenchItemDetailsFormValues) => Promise<boolean>;
 }
 
 export function ItemDetailsForm({
   control,
   formErrors,
-  dirtyFields,
-  setImageFile,
-  imageDirty,
-  imageError,
+  trigger,
 }: ItemDetailsFormProps) {
   return (
     <Card className="h-full border border-border/60 bg-card/65 backdrop-blur-sm">
@@ -54,28 +48,27 @@ export function ItemDetailsForm({
                     />
                   )}
                 />
-                {dirtyFields.itemName && formErrors.itemName?.message ? (
-                  <p className="text-sm text-destructive">
-                    {formErrors.itemName.message}
-                  </p>
-                ) : null}
               </Field>
               <Field>
                 <FieldLabel htmlFor="item-image">Image *</FieldLabel>
-                <Input
-                  id="item-image"
-                  type="file"
-                  accept="image/*"
-                  aria-invalid={Boolean(imageError)}
-                  aria-required
-                  onChange={(event) => {
-                    const nextImageFile = event.target.files?.[0] ?? null;
-                    void setImageFile(nextImageFile);
-                  }}
+                <Controller
+                  control={control}
+                  name="imageFile"
+                  render={({ field }) => (
+                    <Input
+                      id="item-image"
+                      type="file"
+                      accept="image/*"
+                      aria-invalid={Boolean(formErrors.imageFile)}
+                      aria-required
+                      onChange={(event) => {
+                        const nextFile = event.target.files?.[0] ?? undefined;
+                        field.onChange(nextFile);
+                        void trigger('imageFile');
+                      }}
+                    />
+                  )}
                 />
-                {imageDirty && imageError ? (
-                  <p className="text-sm text-destructive">{imageError}</p>
-                ) : null}
                 <FieldDescription>
                   Source artwork for the exported card.
                 </FieldDescription>
@@ -97,12 +90,6 @@ export function ItemDetailsForm({
                     />
                   )}
                 />
-                {dirtyFields.classificationAndRarity &&
-                formErrors.classificationAndRarity?.message ? (
-                  <p className="text-sm text-destructive">
-                    {formErrors.classificationAndRarity.message}
-                  </p>
-                ) : null}
               </Field>
               <Field orientation="horizontal">
                 <Controller
@@ -162,12 +149,6 @@ export function ItemDetailsForm({
                     />
                   )}
                 />
-                {dirtyFields.mechanicalDescription &&
-                formErrors.mechanicalDescription?.message ? (
-                  <p className="text-sm text-destructive">
-                    {formErrors.mechanicalDescription.message}
-                  </p>
-                ) : null}
               </Field>
             </FieldGroup>
           </FieldSet>

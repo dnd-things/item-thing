@@ -15,7 +15,7 @@ export function slugFromItemName(itemName: string): string {
 
 const FILENAME_PREFIX = 'item-thing';
 
-export type DownloadExtension = 'png' | 'jpg' | 'svg';
+export type DownloadExtension = 'png' | 'jpg';
 
 /**
  * Returns download filename: item-thing-{{slug}}.{{ext}}, or item-thing.{{ext}} when slug is empty.
@@ -24,8 +24,7 @@ export function getCardDownloadFilename(
   itemName: string,
   extension: DownloadExtension = 'png',
 ): string {
-  const ext =
-    extension === 'jpg' ? '.jpg' : extension === 'svg' ? '.svg' : '.png';
+  const ext = extension === 'jpg' ? '.jpg' : '.png';
   const slug = slugFromItemName(itemName);
   if (slug === '') {
     return `${FILENAME_PREFIX}${ext}`;

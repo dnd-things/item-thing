@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
 import { DownloadControlsCard } from './components/download-controls-card';
@@ -40,6 +40,7 @@ async function readFileAsDataUrl(imageFile: File): Promise<string> {
 
 const formDefaultValues: WorkbenchItemDetailsFormValues = {
   itemName: defaultMagicItemWorkbenchState.itemName,
+  imageFile: undefined,
   classificationAndRarity:
     defaultMagicItemWorkbenchState.classificationAndRarity,
   requiresAttunement: defaultMagicItemWorkbenchState.requiresAttunement,
@@ -47,14 +48,10 @@ const formDefaultValues: WorkbenchItemDetailsFormValues = {
   mechanicalDescription: defaultMagicItemWorkbenchState.mechanicalDescription,
 };
 
-const imageRequiredError = 'Image is required';
-
 export function ItemCardWorkbench() {
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
-  const [imageDirty, setImageDirty] = useState(false);
-  const [imageError, setImageError] = useState<string | null>(null);
   const imageReadRequestIdRef = useRef(0);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -64,9 +61,45 @@ export function ItemCardWorkbench() {
   });
 
   const formValues = form.watch();
+  const imageFile = formValues.imageFile;
+
+  useEffect(() => {
+    if (!imageFile) {
+      setWorkbenchState((previousState) => ({
+        ...previousState,
+        imageFileName: '',
+        imagePreviewUrl: '',
+      }));
+      return;
+    }
+
+    const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
+    imageReadRequestIdRef.current = nextImageReadRequestId;
+
+    void readFileAsDataUrl(imageFile).then(
+      (nextImagePreviewUrl) => {
+        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
+        setWorkbenchState((previousState) => ({
+          ...previousState,
+          imageFileName: imageFile.name,
+          imagePreviewUrl: nextImagePreviewUrl,
+        }));
+      },
+      () => {
+        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
+        setWorkbenchState((previousState) => ({
+          ...previousState,
+          imageFileName: imageFile.name,
+          imagePreviewUrl: '',
+        }));
+      },
+    );
+  }, [imageFile]);
+
+  const { imageFile: _imageFile, ...formValuesForPreview } = formValues;
   const previewState: MagicItemWorkbenchState = {
     ...workbenchState,
-    ...formValues,
+    ...formValuesForPreview,
   };
 
   const setWorkbenchField = useCallback(
@@ -82,60 +115,12 @@ export function ItemCardWorkbench() {
     [],
   );
 
-  const setImageFile = useCallback(async (imageFile: File | null) => {
-    setImageDirty(true);
-    if (imageFile) setImageError(null);
-
-    const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
-    imageReadRequestIdRef.current = nextImageReadRequestId;
-
-    if (!imageFile) {
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      }));
-      return;
-    }
-
-    try {
-      const nextImagePreviewUrl = await readFileAsDataUrl(imageFile);
-
-      if (imageReadRequestIdRef.current !== nextImageReadRequestId) {
-        return;
-      }
-
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: imageFile.name,
-        imagePreviewUrl: nextImagePreviewUrl,
-      }));
-    } catch {
-      if (imageReadRequestIdRef.current !== nextImageReadRequestId) {
-        return;
-      }
-
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: imageFile.name,
-        imagePreviewUrl: '',
-      }));
-    }
-  }, []);
-
   const canDownload = isCardStyleSupported(workbenchState.cardStyle);
 
   const handleBeforeDownload = useCallback(async () => {
     const formValid = await form.trigger();
-    if (!formValid) return false;
-    if (!workbenchState.imagePreviewUrl) {
-      setImageError(imageRequiredError);
-      setImageDirty(true);
-      return false;
-    }
-    setImageError(null);
-    return true;
-  }, [form, workbenchState.imagePreviewUrl]);
+    return formValid;
+  }, [form]);
 
   return (
     <div className="flex w-full flex-col gap-6">
@@ -148,10 +133,7 @@ export function ItemCardWorkbench() {
         <ItemDetailsForm
           control={form.control}
           formErrors={form.formState.errors}
-          dirtyFields={form.formState.dirtyFields}
-          setImageFile={setImageFile}
-          imageDirty={imageDirty}
-          imageError={imageError}
+          trigger={form.trigger}
         />
         <ItemPreviewPanel cardRef={cardRef} workbenchState={previewState} />
       </div>

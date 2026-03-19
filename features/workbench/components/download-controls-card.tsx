@@ -1,6 +1,6 @@
 'use client';
 
-import { toJpeg, toPng, toSvg } from 'html-to-image';
+import { toJpeg, toPng } from 'html-to-image';
 import type { RefObject } from 'react';
 import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ const exportFormatOptions: ReadonlyArray<{
 }> = [
   { value: 'png', label: 'PNG' },
   { value: 'jpg', label: 'JPG' },
-  { value: 'svg', label: 'SVG' },
 ];
 
 const resolutionOptions: ReadonlyArray<{ value: '1' | '2'; label: string }> = [
@@ -65,18 +64,6 @@ export function DownloadControlsCard({
         link.download = filename;
         link.href = dataUrl;
         link.click();
-        return;
-      }
-      if (exportFormat === 'svg') {
-        const svgString = await toSvg(node);
-        const blob = new Blob([svgString], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        const filename = getCardDownloadFilename(itemName, 'svg');
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
       }
     } catch {
       // TODO: surface error to user
@@ -88,11 +75,9 @@ export function DownloadControlsCard({
     await handleDownload();
   }, [onBeforeDownload, handleDownload]);
 
-  const isResolutionDisabled = exportFormat === 'svg';
-
   return (
     <Card className="mx-auto w-fit border border-border/60 bg-card/65 backdrop-blur-sm">
-      <CardContent className="flex flex-nowrap items-center gap-10 py-4">
+      <CardContent className="flex flex-nowrap items-center gap-10 py-0">
         <div className="flex flex-nowrap items-center gap-4">
           <Field className="flex items-center gap-2 border-0 p-0">
             <FieldLabel className="mb-0 shrink-0 text-sm">Export as</FieldLabel>
@@ -102,7 +87,7 @@ export function DownloadControlsCard({
               variant="outline"
               onValueChange={(nextValue) => {
                 const next = nextValue[0];
-                if (next === 'png' || next === 'jpg' || next === 'svg') {
+                if (next === 'png' || next === 'jpg') {
                   setExportFormat(next);
                 }
               }}
@@ -121,17 +106,11 @@ export function DownloadControlsCard({
           <Field className="flex items-center gap-2 border-0 p-0">
             <FieldLabel className="mb-0 shrink-0 text-sm">
               Resolution
-              {isResolutionDisabled ? (
-                <span className="ml-1 font-normal text-muted-foreground">
-                  (N/A for vector)
-                </span>
-              ) : null}
             </FieldLabel>
             <ToggleGroup
               className="w-fit flex-nowrap"
               value={[String(resolution)]}
               variant="outline"
-              disabled={isResolutionDisabled}
               onValueChange={(nextValue) => {
                 const next = nextValue[0];
                 if (next === '1' || next === '2') {
@@ -152,11 +131,11 @@ export function DownloadControlsCard({
           </Field>
         </div>
         <Button
-          size="lg"
+          size="xxl"
           disabled={disabled}
           onClick={() => void handleDownloadClick()}
           aria-disabled={disabled}
-          className="shrink-0"
+          className="shrink-0 min-w-60"
         >
           Download
         </Button>
