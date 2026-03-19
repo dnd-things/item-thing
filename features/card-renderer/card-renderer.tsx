@@ -137,38 +137,61 @@ export function CardRenderer({
     </p>
   ) : null;
   const fluidSideImageClassName = 'float-right ml-4';
-  const fluidSideImageShapeClassName =
-    '[shape-image-threshold:0.6] [shape-margin:1rem]';
+  const hasBorder = imageBorder !== 'none';
   const sideWrappedMediaSlot = shouldUseWrappedSideLayout ? (
     imagePreviewUrl ? (
-      <Image
-        alt={mediaAltText}
-        className={cn(
-          'mb-2 block object-contain',
-          fluidSideImageClassName,
-          fluidSideImageShapeClassName,
-        )}
-        src={imagePreviewUrl}
-        unoptimized
-        width={Math.round(cardImageDimensions.width)}
-        height={Math.round(cardImageDimensions.height)}
-        sizes="(max-width: 768px) 50vw, 220px"
-        style={{
-          width: cardImageDimensions.width,
-          height: cardImageDimensions.height,
-          borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorder),
-          shapeOutside: `url("${imagePreviewUrl}")`,
-        }}
-      />
+      hasBorder ? (
+        <div
+          className={cn('relative mb-2', fluidSideImageClassName)}
+          style={{
+            width: cardImageDimensions.width,
+            height: cardImageDimensions.height,
+            borderRadius: cardImageDimensions.borderRadius,
+            border: getImageBorderStyle(imageBorder),
+            overflow: 'hidden' as const,
+            shapeOutside: 'border-box' as const,
+            shapeMargin: '1rem',
+          }}
+        >
+          <Image
+            alt={mediaAltText}
+            className="object-contain"
+            src={imagePreviewUrl}
+            unoptimized
+            fill
+            sizes="(max-width: 768px) 50vw, 220px"
+          />
+        </div>
+      ) : (
+        <Image
+          alt={mediaAltText}
+          className={cn('mb-2 block object-contain', fluidSideImageClassName)}
+          src={imagePreviewUrl}
+          unoptimized
+          width={Math.round(cardImageDimensions.width)}
+          height={Math.round(cardImageDimensions.height)}
+          sizes="(max-width: 768px) 50vw, 220px"
+          style={{
+            width: cardImageDimensions.width,
+            height: cardImageDimensions.height,
+            borderRadius: cardImageDimensions.borderRadius,
+            shapeOutside: `url("${imagePreviewUrl}")`,
+            shapeImageThreshold: 0.6,
+            shapeMargin: '1rem',
+          }}
+        />
+      )
     ) : (
       <div
-        className={cn('relative mb-2 overflow-hidden', fluidSideImageClassName)}
+        className={cn('relative mb-2', fluidSideImageClassName)}
         style={{
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorder),
+          border: getImageBorderStyle(imageBorder) || undefined,
+          overflow: 'hidden' as const,
+          shapeOutside: 'border-box' as const,
+          shapeMargin: '1rem',
         }}
       >
         {mediaSlot}
