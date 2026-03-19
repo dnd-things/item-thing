@@ -11,6 +11,7 @@ import {
   cardStyleOptions,
   imageAspectRatioOptions,
   type MagicItemWorkbenchState,
+  sideLayoutFlowOptions,
   type WorkbenchFieldSetter,
 } from '../lib/workbench-options';
 import { ToggleField, ToolbarSelectField } from './workbench-field-controls';
@@ -27,7 +28,7 @@ export function WorkbenchControlsPanel({
   return (
     <Card className="border border-border/60 bg-card/65 backdrop-blur-sm">
       <CardContent>
-        <FieldGroup className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <FieldGroup className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-7">
           <ToolbarSelectField
             fieldLabel="Style"
             options={cardStyleOptions}
@@ -51,6 +52,14 @@ export function WorkbenchControlsPanel({
             value={workbenchState.cardLayout}
             onValueChange={(value) => {
               setWorkbenchField('cardLayout', value);
+            }}
+          />
+          <ToggleField
+            fieldLabel="Layout"
+            options={sideLayoutFlowOptions}
+            value={workbenchState.sideLayoutFlow}
+            onValueChange={(value) => {
+              setWorkbenchField('sideLayoutFlow', value);
             }}
           />
           <ToolbarSelectField

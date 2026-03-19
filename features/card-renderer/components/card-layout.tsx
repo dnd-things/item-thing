@@ -19,6 +19,7 @@ interface CardLayoutProps {
   imageAspectRatio: ImageAspectRatioOption;
   imageBorderRadius: number;
   imageSize: number;
+  renderSideMediaColumn?: boolean;
   mediaSlot?: React.ReactNode;
   classificationSlot?: React.ReactNode;
   attunementSlot?: React.ReactNode;
@@ -43,6 +44,7 @@ export function CardLayout({
   imageAspectRatio,
   imageBorderRadius,
   imageSize,
+  renderSideMediaColumn = true,
   mediaSlot,
   classificationSlot,
   attunementSlot,
@@ -83,31 +85,34 @@ export function CardLayout({
             getCardLayoutClassName(cardLayout),
           )}
         >
-          <div
-            className={cn(
-              'flex items-center justify-center',
-              getCardMediaColumnClassName(cardLayout),
-              mediaColumnClassName,
-            )}
-          >
+          {renderSideMediaColumn ? (
             <div
               className={cn(
-                'flex items-center justify-center overflow-hidden',
-                mediaFrameClassName,
+                'flex items-center justify-center',
+                getCardMediaColumnClassName(cardLayout),
+                mediaColumnClassName,
               )}
-              style={{
-                width: cardImageDimensions.width,
-                height: cardImageDimensions.height,
-                borderRadius: cardImageDimensions.borderRadius,
-              }}
             >
-              {mediaSlot}
+              <div
+                className={cn(
+                  'flex items-center justify-center overflow-hidden',
+                  mediaFrameClassName,
+                )}
+                style={{
+                  width: cardImageDimensions.width,
+                  height: cardImageDimensions.height,
+                  borderRadius: cardImageDimensions.borderRadius,
+                }}
+              >
+                {mediaSlot}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div
             className={cn(
               'flex min-w-0 flex-1 flex-col gap-4',
+              !renderSideMediaColumn && 'w-full',
               contentClassName,
             )}
           >
@@ -119,9 +124,11 @@ export function CardLayout({
               {titleSlot}
             </div>
 
-            <div className={cn('flex', flavorSectionClassName)}>
-              {flavorSlot}
-            </div>
+            {flavorSlot ? (
+              <div className={cn('flex', flavorSectionClassName)}>
+                {flavorSlot}
+              </div>
+            ) : null}
 
             {dividerSlot}
 
