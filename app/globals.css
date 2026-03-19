@@ -413,6 +413,7 @@ body > * {
     transparent 60%
   );
   animation: shimmer 6s ease-in-out infinite;
+  opacity: 0.5;
   pointer-events: none;
 }
 
