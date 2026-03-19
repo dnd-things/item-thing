@@ -1,6 +1,11 @@
 import { fetchQuery } from 'convex/nextjs';
 import type { Metadata } from 'next';
-import { Figtree, Geist, Geist_Mono } from 'next/font/google';
+import {
+  Cormorant_Garamond,
+  Figtree,
+  Geist,
+  Geist_Mono,
+} from 'next/font/google';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
@@ -16,6 +21,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+});
+
+const cormorantGaramond = Cormorant_Garamond({
+  weight: ['400', '600'],
+  subsets: ['latin'],
+  variable: '--font-cormorant-garamond',
 });
 
 export const metadata: Metadata = {
@@ -43,10 +54,17 @@ export default async function RootLayout({
     });
 
   return (
-    <html lang="en" className={cn('font-sans dark', figtree.variable)}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html
+      lang="en"
+      className={cn(
+        'font-sans dark',
+        figtree.variable,
+        geistSans.variable,
+        geistMono.variable,
+        cormorantGaramond.variable,
+      )}
+    >
+      <body className="antialiased">
         {children}
         <Analytics />
       </body>

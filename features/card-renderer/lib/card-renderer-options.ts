@@ -70,6 +70,9 @@ export function getCardWidth(cardLayout: CardLayoutOption): number {
   switch (cardLayout) {
     case 'vertical':
       return 430;
+    case 'image-left':
+    case 'image-right':
+      return 600;
     default:
       return 560;
   }
