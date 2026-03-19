@@ -128,3 +128,37 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-card],
+  [data-print-card] * {
+    visibility: visible;
+  }
+
+  [data-print-card] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  [data-print-card] > * {
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  [data-print-hide] {
+    display: none;
+  }
+}

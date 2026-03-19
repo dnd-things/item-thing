@@ -33,7 +33,7 @@ export function PreviewSurface({
 
   return (
     <div className="flex h-full min-h-[520px] items-center justify-center rounded-[28px] border border-dashed border-border/70 bg-muted/20 p-5">
-      <div ref={cardRef}>
+      <div data-print-card ref={cardRef}>
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer {...workbenchState} />
         ) : (
