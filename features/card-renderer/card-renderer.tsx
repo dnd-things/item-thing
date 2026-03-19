@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Markdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
 import { CardLayout } from './components/card-layout';
@@ -38,7 +39,11 @@ const printCardClassNames = {
   centeredText: 'w-full text-center',
   flavor:
     'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic [font-family:var(--font-cormorant-garamond)]',
-  body: 'text-sm leading-6 text-slate-700 whitespace-pre-wrap',
+  body: 'text-sm leading-6 text-slate-700',
+  bodyMarkdown:
+    '[&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs',
+  bodyHeading:
+    'mt-3 mb-1 text-base font-semibold leading-6 text-slate-700 first:mt-0',
   sideContent: 'gap-3',
   sideClassificationSection: 'justify-start px-2 py-1 text-left',
   sideTitleSection: 'justify-start px-2 py-1 text-left',
@@ -46,6 +51,18 @@ const printCardClassNames = {
   sideBodySection: 'px-2 py-2 text-left',
   sideBottomSection: 'px-5 py-3 text-center',
 } as const;
+
+function BodyHeading({
+  node: _node,
+  children,
+  ...rest
+}: React.ComponentPropsWithoutRef<'div'> & { node?: unknown }) {
+  return (
+    <div className={printCardClassNames.bodyHeading} {...rest}>
+      {children}
+    </div>
+  );
+}
 
 export interface CardRendererProps extends MagicItemCardRendererProps {
   className?: string;
@@ -153,14 +170,26 @@ export function CardRenderer({
           ) : null
         }
         bodySlot={
-          <p
+          <div
             className={cn(
               printCardClassNames.body,
-              !isSideLayout && printCardClassNames.centeredText,
+              printCardClassNames.bodyMarkdown,
+              'w-full text-left',
             )}
           >
-            {mechanicalDescription}
-          </p>
+            <Markdown
+              components={{
+                h1: BodyHeading,
+                h2: BodyHeading,
+                h3: BodyHeading,
+                h4: BodyHeading,
+                h5: BodyHeading,
+                h6: BodyHeading,
+              }}
+            >
+              {mechanicalDescription}
+            </Markdown>
+          </div>
         }
         bottomMetadataSlot={
           shouldStackMetadata && attunementBadge ? (
@@ -191,7 +220,7 @@ export function CardRenderer({
             : 'justify-center'
         }
         bodySectionClassName={
-          isSideLayout ? printCardClassNames.sideBodySection : 'justify-center'
+          isSideLayout ? printCardClassNames.sideBodySection : 'justify-start'
         }
         bottomSectionClassName={
           isSideLayout ? printCardClassNames.sideBottomSection : ''
