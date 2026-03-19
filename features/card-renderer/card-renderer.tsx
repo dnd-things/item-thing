@@ -1,10 +1,12 @@
 'use client';
 
 import Image from 'next/image';
+import Markdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
 import { CardLayout } from './components/card-layout';
 import {
+  getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
   isCardStyleSupported,
@@ -38,7 +40,11 @@ const printCardClassNames = {
   centeredText: 'w-full text-center',
   flavor:
     'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic [font-family:var(--font-cormorant-garamond)]',
-  body: 'text-sm leading-6 text-slate-700 whitespace-pre-wrap',
+  body: 'text-sm leading-6 text-slate-700',
+  bodyMarkdown:
+    '[&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs',
+  bodyHeading:
+    'mt-3 mb-1 text-base font-semibold leading-6 text-slate-700 first:mt-0',
   sideContent: 'gap-3',
   sideClassificationSection: 'justify-start px-2 py-1 text-left',
   sideTitleSection: 'justify-start px-2 py-1 text-left',
@@ -47,6 +53,18 @@ const printCardClassNames = {
   sideBottomSection: 'px-5 py-3 text-center',
 } as const;
 
+function BodyHeading({
+  node: _node,
+  children,
+  ...rest
+}: React.ComponentPropsWithoutRef<'div'> & { node?: unknown }) {
+  return (
+    <div className={printCardClassNames.bodyHeading} {...rest}>
+      {children}
+    </div>
+  );
+}
+
 export interface CardRendererProps extends MagicItemCardRendererProps {
   className?: string;
 }
@@ -54,6 +72,7 @@ export interface CardRendererProps extends MagicItemCardRendererProps {
 export function CardRenderer({
   className,
   cardLayout,
+  sideLayoutFlow,
   cardStyle,
   cardBorderRadius,
   imageAspectRatio,
@@ -72,13 +91,60 @@ export function CardRenderer({
   }
 
   const isSideLayout = isSideImageCardLayout(cardLayout);
+  const shouldUseFluidSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
   const shouldStackMetadata = shouldStackVerticalCardMetadata(cardLayout);
   const surfaceBorderRadius = getCardSurfaceBorderRadius(cardBorderRadius);
+  const cardImageDimensions = getCardImageDimensions(
+    imageSize,
+    imageAspectRatio,
+    imageBorderRadius,
+  );
   const hasFlavorDescription = flavorDescription.trim().length > 0;
   const attunementBadge = requiresAttunement ? (
     <span className={printCardClassNames.attunementBadge}>
       Requires attunement
     </span>
+  ) : null;
+  const mediaSlot = imagePreviewUrl ? (
+    <Image
+      alt={itemName || imageFileName || 'Magic item artwork'}
+      className={printCardClassNames.mediaImage}
+      fill
+      sizes="(max-width: 768px) 50vw, 220px"
+      src={imagePreviewUrl}
+      unoptimized
+    />
+  ) : imageFileName ? (
+    <span className={printCardClassNames.mediaText}>{imageFileName}</span>
+  ) : (
+    <span className={printCardClassNames.mediaPlaceholder}>
+      <span className={printCardClassNames.mediaText}>Add artwork</span>
+    </span>
+  );
+  const flavorDescriptionSlot = hasFlavorDescription ? (
+    <p
+      className={cn(
+        printCardClassNames.flavor,
+        !isSideLayout && printCardClassNames.centeredText,
+      )}
+    >
+      {flavorDescription}
+    </p>
+  ) : null;
+  const sideWrappedMediaSlot = shouldUseFluidSideLayout ? (
+    <div
+      className={cn(
+        'relative mb-2 overflow-hidden',
+        cardLayout === 'image-left' ? 'float-left mr-4' : 'float-right ml-4',
+      )}
+      style={{
+        width: cardImageDimensions.width,
+        height: cardImageDimensions.height,
+        borderRadius: cardImageDimensions.borderRadius,
+      }}
+    >
+      {mediaSlot}
+    </div>
   ) : null;
 
   return (
@@ -95,26 +161,8 @@ export function CardRenderer({
         imageAspectRatio={imageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageSize={imageSize}
-        mediaSlot={
-          imagePreviewUrl ? (
-            <Image
-              alt={itemName || imageFileName || 'Magic item artwork'}
-              className={printCardClassNames.mediaImage}
-              fill
-              sizes="(max-width: 768px) 50vw, 220px"
-              src={imagePreviewUrl}
-              unoptimized
-            />
-          ) : imageFileName ? (
-            <span className={printCardClassNames.mediaText}>
-              {imageFileName}
-            </span>
-          ) : (
-            <span className={printCardClassNames.mediaPlaceholder}>
-              <span className={printCardClassNames.mediaText}>Add artwork</span>
-            </span>
-          )
-        }
+        renderSideMediaColumn={!isSideLayout || !shouldUseFluidSideLayout}
+        mediaSlot={mediaSlot}
         classificationSlot={
           <span
             className={cn(
@@ -140,27 +188,32 @@ export function CardRenderer({
             {itemName}
           </h3>
         }
-        flavorSlot={
-          hasFlavorDescription ? (
-            <p
-              className={cn(
-                printCardClassNames.flavor,
-                !isSideLayout && printCardClassNames.centeredText,
-              )}
-            >
-              {flavorDescription}
-            </p>
-          ) : null
-        }
+        flavorSlot={shouldUseFluidSideLayout ? null : flavorDescriptionSlot}
         bodySlot={
-          <p
+          <div
             className={cn(
               printCardClassNames.body,
-              !isSideLayout && printCardClassNames.centeredText,
+              printCardClassNames.bodyMarkdown,
+              'w-full text-left',
+              shouldUseFluidSideLayout &&
+                "after:block after:clear-both after:content-['']",
             )}
           >
-            {mechanicalDescription}
-          </p>
+            {shouldUseFluidSideLayout ? sideWrappedMediaSlot : null}
+            {shouldUseFluidSideLayout ? flavorDescriptionSlot : null}
+            <Markdown
+              components={{
+                h1: BodyHeading,
+                h2: BodyHeading,
+                h3: BodyHeading,
+                h4: BodyHeading,
+                h5: BodyHeading,
+                h6: BodyHeading,
+              }}
+            >
+              {mechanicalDescription}
+            </Markdown>
+          </div>
         }
         bottomMetadataSlot={
           shouldStackMetadata && attunementBadge ? (
@@ -191,7 +244,7 @@ export function CardRenderer({
             : 'justify-center'
         }
         bodySectionClassName={
-          isSideLayout ? printCardClassNames.sideBodySection : 'justify-center'
+          isSideLayout ? printCardClassNames.sideBodySection : 'justify-start'
         }
         bottomSectionClassName={
           isSideLayout ? printCardClassNames.sideBottomSection : ''

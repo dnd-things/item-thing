@@ -6,6 +6,7 @@ import type {
   CardStyleOption,
   ImageAspectRatioOption,
   MagicItemCardRendererProps,
+  SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
 
@@ -27,6 +28,13 @@ export const cardLayoutOptions: ReadonlyArray<
   { label: 'Top', value: 'vertical' },
   { label: 'Left', value: 'image-left' },
   { label: 'Right', value: 'image-right' },
+];
+
+export const sideLayoutFlowOptions: ReadonlyArray<
+  SelectionOption<SideLayoutFlowOption>
+> = [
+  { label: 'Fixed', value: 'fixed' },
+  { label: 'Fluid', value: 'fluid' },
 ];
 
 export const cardStyleOptions: ReadonlyArray<SelectionOption<CardStyleOption>> =
@@ -57,6 +65,7 @@ export const imageAspectRatioOptions: ReadonlyArray<
 
 export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   cardLayout: 'vertical',
+  sideLayoutFlow: 'fixed',
   cardStyle: 'print',
   cardBorderRadius: 'small',
   imageSize: 68,

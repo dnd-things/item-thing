@@ -5,6 +5,7 @@ export type CardLayoutOption = 'vertical' | 'image-left' | 'image-right';
 export type CardStyleOption = 'print' | 'minimal' | 'classic';
 
 export type CardBorderRadiusOption = 'none' | 'small' | 'large';
+export type SideLayoutFlowOption = 'fixed' | 'fluid';
 
 export type ImageAspectRatioOption =
   | 'square'
@@ -17,6 +18,7 @@ export type ImageAspectRatioOption =
 
 export interface MagicItemCardRendererProps {
   cardLayout: CardLayoutOption;
+  sideLayoutFlow: SideLayoutFlowOption;
   cardStyle: CardStyleOption;
   cardBorderRadius: CardBorderRadiusOption;
   imageSize: number;
