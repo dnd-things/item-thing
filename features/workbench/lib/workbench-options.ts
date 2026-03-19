@@ -54,6 +54,7 @@ export const cardBorderRadiusOptions: ReadonlyArray<
 export const imageAspectRatioOptions: ReadonlyArray<
   SelectionOption<ImageAspectRatioOption>
 > = [
+  { label: 'Based on image', value: 'based-on-image' },
   { label: '1:1', value: 'square' },
   { label: '4:5', value: 'portrait' },
   { label: '3:4', value: 'portrait-3-4' },
@@ -69,7 +70,8 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   cardStyle: 'print',
   cardBorderRadius: 'small',
   imageSize: 68,
-  imageAspectRatio: 'square',
+  imageAspectRatio: 'based-on-image',
+  resolvedImageAspectRatio: 1,
   imageBorderRadius: imageBorderRadiusRange.max / 2,
   imageFileName: '',
   imagePreviewUrl: '',
