@@ -22,7 +22,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
-
+import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardStyleOptions,
   type MagicItemWorkbenchState,
@@ -67,6 +67,12 @@ export function PreviewColumn({
   setWorkbenchField,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
+    cardRef,
+    workbenchState,
+    setWorkbenchField,
+  );
 
   const quickLayout = deriveQuickLayout(workbenchState);
   const quickImageShape = deriveQuickImageShape(workbenchState);
@@ -204,11 +210,22 @@ export function PreviewColumn({
         </Button>
       </div>
 
-      <ItemPreviewPanel cardRef={cardRef} workbenchState={workbenchState} />
+      <ItemPreviewPanel
+        cardRef={cardRef}
+        workbenchState={workbenchState}
+        {...(workbenchState.cardLayout === 'image-right' &&
+        workbenchState.sideLayoutFlow === 'fixed'
+          ? {
+              cardPreviewSurfaceHeightPx:
+                imageRightVerticalPositionBounds.measuredCardSurfaceHeightPx,
+            }
+          : {})}
+      />
 
       <WorkbenchSettingsDrawer
         open={isDrawerOpen}
         onOpenChange={setIsDrawerOpen}
+        imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}
         setWorkbenchField={setWorkbenchField}
         workbenchState={workbenchState}
       />

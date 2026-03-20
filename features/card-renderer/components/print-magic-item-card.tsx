@@ -5,6 +5,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getImageRightImageMarginTopRem,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
@@ -18,6 +19,7 @@ import { MagicItemVerticalPrintLayout } from './magic-item-vertical-print-layout
 
 export interface PrintMagicItemCardProps extends MagicItemCardRendererProps {
   className?: string;
+  cardPreviewSurfaceHeightPx?: number;
 }
 
 export function PrintMagicItemCard({
@@ -29,6 +31,7 @@ export function PrintMagicItemCard({
   resolvedImageAspectRatio,
   imageBorderRadius,
   imageBorder,
+  imageRightVerticalPosition,
   imageSize,
   imageFileName,
   imagePreviewUrl,
@@ -37,6 +40,7 @@ export function PrintMagicItemCard({
   requiresAttunement,
   flavorDescription,
   mechanicalDescription,
+  cardPreviewSurfaceHeightPx,
 }: PrintMagicItemCardProps) {
   const isSideLayout = isSideImageCardLayout(cardLayout);
   const shouldUseWrappedSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
@@ -49,12 +53,22 @@ export function PrintMagicItemCard({
     imageBorderRadius,
   );
 
+  const sideImageMarginTopRem = isSideLayout
+    ? getImageRightImageMarginTopRem(
+        imageRightVerticalPosition,
+        sideLayoutFlow,
+        classificationAndRarity,
+        cardPreviewSurfaceHeightPx,
+      )
+    : 0;
+
   const slots = buildMagicItemPrintCardSlots({
     isSideLayout,
     shouldUseWrappedSideLayout,
     shouldStackMetadata,
     cardImageDimensions,
     imageBorder,
+    sideImageMarginTopRem,
     imagePreviewUrl,
     imageFileName,
     itemName,
@@ -135,6 +149,9 @@ export function PrintMagicItemCard({
                 printCardClassNames.mediaColumn,
                 printCardClassNames.sideMediaColumn,
               )}
+              mediaColumnStyle={{
+                marginTop: `${sideImageMarginTopRem}rem`,
+              }}
               mediaFrameClassName={printCardClassNames.sideMediaFrame}
             >
               {slots.mediaSlot}
@@ -154,14 +171,16 @@ export function PrintMagicItemCard({
             >
               {slots.classificationSlot}
             </div>
-            <div
-              className={cn(
-                'flex items-center',
-                printCardClassNames.sideTitleSection,
-              )}
-            >
-              {slots.titleSlot}
-            </div>
+            {!shouldUseWrappedSideLayout ? (
+              <div
+                className={cn(
+                  'flex items-center',
+                  printCardClassNames.sideTitleSection,
+                )}
+              >
+                {slots.titleSlot}
+              </div>
+            ) : null}
             {!shouldUseWrappedSideLayout && slots.flavorDescriptionSlot ? (
               <div
                 className={cn('flex', printCardClassNames.sideFlavorSection)}

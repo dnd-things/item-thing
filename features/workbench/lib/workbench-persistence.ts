@@ -10,7 +10,7 @@ import {
 export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
-const PERSISTENCE_VERSION = 1 as const;
+const PERSISTENCE_VERSION = 2 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -39,6 +39,7 @@ const magicItemWorkbenchPartialStateSchema = z
     resolvedImageAspectRatio: z.number().optional(),
     imageBorderRadius: z.number().optional(),
     imageBorder: imageBorderSchema.optional(),
+    imageRightVerticalPosition: z.number().int().min(-8).optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
     itemName: z.string().optional(),
@@ -50,7 +51,7 @@ const magicItemWorkbenchPartialStateSchema = z
   .strip();
 
 const workbenchPersistenceEnvelopeSchema = z.object({
-  version: z.literal(PERSISTENCE_VERSION),
+  version: z.union([z.literal(1), z.literal(PERSISTENCE_VERSION)]),
   state: z.unknown(),
 });
 
@@ -112,8 +113,21 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     return null;
   }
 
-  return {
+  const mergedState = {
     ...defaultMagicItemWorkbenchState,
     ...stateResult.data,
   } as MagicItemWorkbenchState;
+
+  if (
+    envelopeResult.data.version === 1 &&
+    typeof stateResult.data.imageRightVerticalPosition === 'number'
+  ) {
+    return {
+      ...mergedState,
+      imageRightVerticalPosition:
+        stateResult.data.imageRightVerticalPosition * 2,
+    };
+  }
+
+  return mergedState;
 }

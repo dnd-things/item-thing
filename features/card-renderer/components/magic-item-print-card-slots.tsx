@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { cloneElement } from 'react';
 import Markdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +67,7 @@ export interface MagicItemPrintCardSlotsParams {
   shouldStackMetadata: boolean;
   cardImageDimensions: CardImageDimensions;
   imageBorder: ImageBorderOption;
+  sideImageMarginTopRem: number;
   imagePreviewUrl: string;
   imageFileName: string;
   itemName: string;
@@ -96,6 +98,7 @@ export function buildMagicItemPrintCardSlots(
     shouldStackMetadata,
     cardImageDimensions,
     imageBorder,
+    sideImageMarginTopRem,
     imagePreviewUrl,
     imageFileName,
     itemName,
@@ -149,6 +152,7 @@ export function buildMagicItemPrintCardSlots(
         <div
           className={cn('relative mb-2', fluidSideImageClassName)}
           style={{
+            marginTop: `${sideImageMarginTopRem}rem`,
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
@@ -177,6 +181,7 @@ export function buildMagicItemPrintCardSlots(
           height={Math.round(cardImageDimensions.height)}
           sizes="(max-width: 768px) 50vw, 220px"
           style={{
+            marginTop: `${sideImageMarginTopRem}rem`,
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
@@ -190,6 +195,7 @@ export function buildMagicItemPrintCardSlots(
       <div
         className={cn('relative mb-2', fluidSideImageClassName)}
         style={{
+          marginTop: `${sideImageMarginTopRem}rem`,
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
@@ -241,6 +247,17 @@ export function buildMagicItemPrintCardSlots(
       )}
     >
       {shouldUseWrappedSideLayout ? sideWrappedMediaSlot : null}
+      {shouldUseWrappedSideLayout
+        ? cloneElement(titleSlot, {
+            className: cn(
+              isSideLayout
+                ? printCardClassNames.sideTitle
+                : printCardClassNames.title,
+              !isSideLayout && printCardClassNames.centeredText,
+              'mb-2',
+            ),
+          })
+        : null}
       {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
       <Markdown
         components={{

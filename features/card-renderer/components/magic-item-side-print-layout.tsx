@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, type ReactNode, use, useMemo } from 'react';
+import {
+  type CSSProperties,
+  createContext,
+  type ReactNode,
+  use,
+  useMemo,
+} from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -110,12 +116,14 @@ interface MagicItemSidePrintLayoutMediaProps {
   children: ReactNode;
   mediaColumnClassName?: string;
   mediaFrameClassName?: string;
+  mediaColumnStyle?: CSSProperties;
 }
 
 function MagicItemSidePrintLayoutMedia({
   children,
   mediaColumnClassName,
   mediaFrameClassName,
+  mediaColumnStyle,
 }: MagicItemSidePrintLayoutMediaProps) {
   const { cardImageDimensions, imageBorder } =
     useMagicItemSidePrintLayoutContext();
@@ -127,6 +135,7 @@ function MagicItemSidePrintLayoutMedia({
         getCardMediaColumnClassName(SIDE_CARD_LAYOUT),
         mediaColumnClassName,
       )}
+      style={mediaColumnStyle}
     >
       <div
         className={cn(

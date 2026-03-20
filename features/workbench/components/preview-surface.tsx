@@ -16,11 +16,13 @@ import {
 interface PreviewSurfaceProps {
   cardRef: RefObject<HTMLDivElement | null>;
   workbenchState: MagicItemWorkbenchState;
+  cardPreviewSurfaceHeightPx?: number;
 }
 
 export function PreviewSurface({
   cardRef,
   workbenchState,
+  cardPreviewSurfaceHeightPx,
 }: PreviewSurfaceProps) {
   const selectedCardStyleLabel = getOptionLabel(
     cardStyleOptions,
@@ -39,7 +41,12 @@ export function PreviewSurface({
       <div data-print-hide className="preview-corner preview-corner--br" />
       <div data-print-card ref={cardRef} className="relative z-1">
         {isCardStyleSupported(workbenchState.cardStyle) ? (
-          <CardRenderer {...workbenchState} />
+          <CardRenderer
+            {...workbenchState}
+            {...(cardPreviewSurfaceHeightPx !== undefined
+              ? { cardPreviewSurfaceHeightPx }
+              : {})}
+          />
         ) : (
           <div
             className="flex w-full flex-col items-center gap-4 border border-primary/8 bg-card/60 px-8 py-10 text-center backdrop-blur-md"

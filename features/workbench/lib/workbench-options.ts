@@ -1,12 +1,13 @@
 'use client';
 
-import type {
-  CardBorderRadiusOption,
-  CardLayoutOption,
-  CardStyleOption,
-  ImageAspectRatioOption,
-  MagicItemCardRendererProps,
-  SideLayoutFlowOption,
+import {
+  type CardBorderRadiusOption,
+  type CardLayoutOption,
+  type CardStyleOption,
+  type ImageAspectRatioOption,
+  imageRightVerticalPositionDefaultForFluidSideLayout,
+  type MagicItemCardRendererProps,
+  type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
 export interface SelectionOption<TValue extends string> {
   label: string;
@@ -71,6 +72,8 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
   imageBorder: 'none',
+  imageRightVerticalPosition:
+    imageRightVerticalPositionDefaultForFluidSideLayout,
   imageFileName: '',
   imagePreviewUrl: '',
   itemName: '',
