@@ -27,7 +27,7 @@ import {
   imageBorderRadiusRange,
   imageRightVerticalPositionRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
-
+import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardStyleOptions,
   type MagicItemWorkbenchState,
@@ -72,6 +72,12 @@ export function PreviewColumn({
   setWorkbenchField,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
+    cardRef,
+    workbenchState,
+    setWorkbenchField,
+  );
 
   const quickLayout = deriveQuickLayout(workbenchState);
   const quickImageShape = deriveQuickImageShape(workbenchState);
@@ -224,8 +230,8 @@ export function PreviewColumn({
             aria-label="Artwork vertical position"
             id="preview-image-vertical-position"
             value={[workbenchState.imageRightVerticalPosition]}
-            min={imageRightVerticalPositionRange.min}
-            max={imageRightVerticalPositionRange.max}
+            min={imageRightVerticalPositionBounds.min}
+            max={imageRightVerticalPositionBounds.max}
             step={imageRightVerticalPositionRange.step}
             onValueChange={(nextValue) => {
               const nextPosition = Array.isArray(nextValue)

@@ -28,7 +28,10 @@ export interface MagicItemCardRendererProps {
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
   imageBorder: ImageBorderOption;
-  /** −4–16; maps to image margin-top in rem as `value - 2` (image-right layout only). */
+  /**
+   * Integer step = **0.5rem** margin-top change. Min is `-4` with classification / `-2` without;
+   * max is `2 * floor(heightPx / 36)` from preview. Margin in rem: `value / 2 - 2` (image-right only).
+   */
   imageRightVerticalPosition: number;
   imageFileName: string;
   imagePreviewUrl: string;
@@ -52,14 +55,34 @@ export const imageBorderRadiusRange = {
 } as const;
 
 export const imageRightVerticalPositionRange = {
+  /** Tightest workbench minimum (with classification); without classification the min is −2. */
   min: -4,
-  max: 16,
+  /** Static ceiling for defaults and persistence fallback; workbench slider max is dynamic. */
+  max: 32,
   step: 1,
-  default: 2,
+  default: 0,
 } as const;
 
+/** Preview card height divisor for the image-right vertical position slider max (1 step per 16px). */
+export const IMAGE_RIGHT_VERTICAL_POSITION_CARD_HEIGHT_PX_PER_STEP =
+  16 as const;
+
+export function computeImageRightVerticalPositionMaxFromCardHeightPx(
+  heightPx: number,
+): number {
+  return Math.floor(
+    heightPx / IMAGE_RIGHT_VERTICAL_POSITION_CARD_HEIGHT_PX_PER_STEP,
+  );
+}
+
+export function getImageRightVerticalPositionMin(
+  classificationAndRarity: string,
+): number {
+  return classificationAndRarity.trim().length > 0 ? -6 : -4;
+}
+
 export function getImageRightImageMarginTopRem(position: number): number {
-  return position - 2;
+  return position / 2;
 }
 
 export function getImageBorderStyle(imageBorder: ImageBorderOption): string {
