@@ -29,8 +29,10 @@ export interface MagicItemCardRendererProps {
   imageBorderRadius: number;
   imageBorder: ImageBorderOption;
   /**
-   * Integer step = **0.5rem** margin-top change. Min is `-4` with classification / `-2` without;
-   * max is `2 * floor(heightPx / 36)` from preview. Margin in rem: `value / 2 - 2` (image-right only).
+   * Integer step = **0.5rem** margin-top on image-right layout (`value / 2` rem). Bounds from
+   * `getImageRightVerticalPositionMin` (−6 with classification / −4 without) up to
+   * `floor(previewHeightPx / 16)` (see `computeImageRightVerticalPositionMaxFromCardHeightPx`).
+   * Workbench shows a 0–100 slider mapped linearly across that range.
    */
   imageRightVerticalPosition: number;
   imageFileName: string;
@@ -55,12 +57,19 @@ export const imageBorderRadiusRange = {
 } as const;
 
 export const imageRightVerticalPositionRange = {
-  /** Tightest workbench minimum (with classification); without classification the min is −2. */
+  /** Static defaults / persistence fallback; live workbench min is from `getImageRightVerticalPositionMin`. */
   min: -4,
   /** Static ceiling for defaults and persistence fallback; workbench slider max is dynamic. */
   max: 32,
   step: 1,
   default: 0,
+} as const;
+
+/** Workbench slider domain for image-right vertical position (internal bounds mapped linearly). */
+export const imageRightVerticalPositionUserRange = {
+  min: 0,
+  max: 100,
+  step: 1,
 } as const;
 
 /** Preview card height divisor for the image-right vertical position slider max (1 step per 16px). */
@@ -83,6 +92,35 @@ export function getImageRightVerticalPositionMin(
 
 export function getImageRightImageMarginTopRem(position: number): number {
   return position / 2;
+}
+
+export function mapImageRightVerticalPositionToUserPercent(
+  position: number,
+  boundsMin: number,
+  boundsMax: number,
+): number {
+  if (boundsMax <= boundsMin) {
+    return 50;
+  }
+  const userPercent = Math.round(
+    (100 * (position - boundsMin)) / (boundsMax - boundsMin),
+  );
+  return Math.min(100, Math.max(0, userPercent));
+}
+
+export function mapUserPercentToImageRightVerticalPosition(
+  userPercent: number,
+  boundsMin: number,
+  boundsMax: number,
+): number {
+  if (boundsMax <= boundsMin) {
+    return boundsMin;
+  }
+  const clampedPercent = Math.min(100, Math.max(0, userPercent));
+  const position = Math.round(
+    boundsMin + (clampedPercent / 100) * (boundsMax - boundsMin),
+  );
+  return Math.min(boundsMax, Math.max(boundsMin, position));
 }
 
 export function getImageBorderStyle(imageBorder: ImageBorderOption): string {

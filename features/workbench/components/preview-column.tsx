@@ -25,7 +25,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 import {
   imageBorderRadiusRange,
-  imageRightVerticalPositionRange,
+  imageRightVerticalPositionUserRange,
+  mapImageRightVerticalPositionToUserPercent,
+  mapUserPercentToImageRightVerticalPosition,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
@@ -229,21 +231,38 @@ export function PreviewColumn({
           <Slider
             aria-label="Artwork vertical position"
             id="preview-image-vertical-position"
-            value={[workbenchState.imageRightVerticalPosition]}
-            min={imageRightVerticalPositionBounds.min}
-            max={imageRightVerticalPositionBounds.max}
-            step={imageRightVerticalPositionRange.step}
+            value={[
+              mapImageRightVerticalPositionToUserPercent(
+                workbenchState.imageRightVerticalPosition,
+                imageRightVerticalPositionBounds.min,
+                imageRightVerticalPositionBounds.max,
+              ),
+            ]}
+            min={imageRightVerticalPositionUserRange.min}
+            max={imageRightVerticalPositionUserRange.max}
+            step={imageRightVerticalPositionUserRange.step}
             onValueChange={(nextValue) => {
-              const nextPosition = Array.isArray(nextValue)
+              const nextPercent = Array.isArray(nextValue)
                 ? nextValue[0]
                 : nextValue;
-              if (typeof nextPosition === 'number') {
-                setWorkbenchField('imageRightVerticalPosition', nextPosition);
+              if (typeof nextPercent === 'number') {
+                setWorkbenchField(
+                  'imageRightVerticalPosition',
+                  mapUserPercentToImageRightVerticalPosition(
+                    nextPercent,
+                    imageRightVerticalPositionBounds.min,
+                    imageRightVerticalPositionBounds.max,
+                  ),
+                );
               }
             }}
           />
           <span className="min-w-10 text-right text-sm font-medium text-muted-foreground tabular-nums">
-            {workbenchState.imageRightVerticalPosition}
+            {mapImageRightVerticalPositionToUserPercent(
+              workbenchState.imageRightVerticalPosition,
+              imageRightVerticalPositionBounds.min,
+              imageRightVerticalPositionBounds.max,
+            )}
           </span>
         </div>
       ) : null}
