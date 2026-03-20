@@ -80,10 +80,6 @@ export function useImageRightVerticalPositionBounds(
 
     const heightPx = cardRef.current?.offsetHeight ?? 0;
 
-    if (workbenchState.sideLayoutFlow === 'fluid' && heightPx === 0) {
-      return;
-    }
-
     setMeasuredCardSurfaceHeightPx(heightPx);
 
     const nextMin = getImageRightVerticalPositionMin(

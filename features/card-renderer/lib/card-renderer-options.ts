@@ -96,9 +96,9 @@ export function computeImageRightVerticalPositionMaxFromCardHeightPx(
 }
 
 export function getImageRightVerticalPositionMin(
-  classificationAndRarity: string,
+  classificationAndRarity: string | undefined,
 ): number {
-  return classificationAndRarity.trim().length > 0 ? -6 : -4;
+  return (classificationAndRarity?.trim().length ?? 0) > 0 ? -6 : -4;
 }
 
 /** Default internal position when entering image-right + fluid (0rem margin-top). */

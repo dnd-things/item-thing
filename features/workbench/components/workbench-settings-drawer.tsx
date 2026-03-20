@@ -1,5 +1,7 @@
 'use client';
 
+import { AlignVerticalCenterIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import {
   Sheet,
@@ -8,8 +10,15 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
+import {
+  imageBorderRadiusRange,
+  imageRightVerticalPositionRange,
+  imageRightVerticalPositionUserRange,
+  mapImageRightVerticalPositionToUserPercent,
+  mapUserPercentToImageRightVerticalPosition,
+} from '@/features/card-renderer/lib/card-renderer-options';
 
+import type { ImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardBorderRadiusOptions,
   cardLayoutOptions,
@@ -26,6 +35,7 @@ interface WorkbenchSettingsDrawerProps {
   onOpenChange: (open: boolean) => void;
   setWorkbenchField: WorkbenchFieldSetter;
   workbenchState: MagicItemWorkbenchState;
+  imageRightVerticalPositionBounds?: ImageRightVerticalPositionBounds;
 }
 
 export function WorkbenchSettingsDrawer({
@@ -33,8 +43,17 @@ export function WorkbenchSettingsDrawer({
   onOpenChange,
   setWorkbenchField,
   workbenchState,
+  imageRightVerticalPositionBounds,
 }: WorkbenchSettingsDrawerProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
+  const isImageRightLayout = workbenchState.cardLayout === 'image-right';
+
+  const imageRightBoundsMin =
+    imageRightVerticalPositionBounds?.min ??
+    imageRightVerticalPositionRange.min;
+  const imageRightBoundsMax =
+    imageRightVerticalPositionBounds?.max ??
+    imageRightVerticalPositionRange.max;
 
   return (
     <div data-print-hide>
@@ -87,6 +106,57 @@ export function WorkbenchSettingsDrawer({
                 setWorkbenchField('sideLayoutFlow', value);
               }}
             />
+            {isImageRightLayout ? (
+              <Field>
+                <FieldLabel htmlFor="drawer-image-vertical-position">
+                  Artwork vertical position
+                </FieldLabel>
+                <div className="flex h-9 items-center gap-3 rounded-xl border border-primary/8 bg-input/10 px-4">
+                  <HugeiconsIcon
+                    icon={AlignVerticalCenterIcon}
+                    strokeWidth={1.5}
+                    className="size-5 shrink-0 text-muted-foreground"
+                    aria-hidden
+                  />
+                  <Slider
+                    aria-label="Artwork vertical position"
+                    id="drawer-image-vertical-position"
+                    value={[
+                      mapImageRightVerticalPositionToUserPercent(
+                        workbenchState.imageRightVerticalPosition,
+                        imageRightBoundsMin,
+                        imageRightBoundsMax,
+                      ),
+                    ]}
+                    min={imageRightVerticalPositionUserRange.min}
+                    max={imageRightVerticalPositionUserRange.max}
+                    step={imageRightVerticalPositionUserRange.step}
+                    onValueChange={(nextValue) => {
+                      const nextPercent = Array.isArray(nextValue)
+                        ? nextValue[0]
+                        : nextValue;
+                      if (typeof nextPercent === 'number') {
+                        setWorkbenchField(
+                          'imageRightVerticalPosition',
+                          mapUserPercentToImageRightVerticalPosition(
+                            nextPercent,
+                            imageRightBoundsMin,
+                            imageRightBoundsMax,
+                          ),
+                        );
+                      }
+                    }}
+                  />
+                  <span className="min-w-10 text-right text-sm font-medium text-muted-foreground tabular-nums">
+                    {mapImageRightVerticalPositionToUserPercent(
+                      workbenchState.imageRightVerticalPosition,
+                      imageRightBoundsMin,
+                      imageRightBoundsMax,
+                    )}
+                  </span>
+                </div>
+              </Field>
+            ) : null}
             <ToolbarSelectField
               fieldLabel="Image aspect ratio"
               options={imageAspectRatioOptions}
