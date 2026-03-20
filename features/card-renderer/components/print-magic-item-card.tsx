@@ -164,14 +164,16 @@ export function PrintMagicItemCard({
             >
               {slots.classificationSlot}
             </div>
-            <div
-              className={cn(
-                'flex items-center',
-                printCardClassNames.sideTitleSection,
-              )}
-            >
-              {slots.titleSlot}
-            </div>
+            {!shouldUseWrappedSideLayout ? (
+              <div
+                className={cn(
+                  'flex items-center',
+                  printCardClassNames.sideTitleSection,
+                )}
+              >
+                {slots.titleSlot}
+              </div>
+            ) : null}
             {!shouldUseWrappedSideLayout && slots.flavorDescriptionSlot ? (
               <div
                 className={cn('flex', printCardClassNames.sideFlavorSection)}

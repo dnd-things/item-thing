@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { cloneElement } from 'react';
 import Markdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 
@@ -246,6 +247,17 @@ export function buildMagicItemPrintCardSlots(
       )}
     >
       {shouldUseWrappedSideLayout ? sideWrappedMediaSlot : null}
+      {shouldUseWrappedSideLayout
+        ? cloneElement(titleSlot, {
+            className: cn(
+              isSideLayout
+                ? printCardClassNames.sideTitle
+                : printCardClassNames.title,
+              !isSideLayout && printCardClassNames.centeredText,
+              'mb-2',
+            ),
+          })
+        : null}
       {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
       <Markdown
         components={{
