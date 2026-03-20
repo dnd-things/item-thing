@@ -19,6 +19,7 @@ import { MagicItemVerticalPrintLayout } from './magic-item-vertical-print-layout
 
 export interface PrintMagicItemCardProps extends MagicItemCardRendererProps {
   className?: string;
+  cardPreviewSurfaceHeightPx?: number;
 }
 
 export function PrintMagicItemCard({
@@ -39,6 +40,7 @@ export function PrintMagicItemCard({
   requiresAttunement,
   flavorDescription,
   mechanicalDescription,
+  cardPreviewSurfaceHeightPx,
 }: PrintMagicItemCardProps) {
   const isSideLayout = isSideImageCardLayout(cardLayout);
   const shouldUseWrappedSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
@@ -52,7 +54,12 @@ export function PrintMagicItemCard({
   );
 
   const sideImageMarginTopRem = isSideLayout
-    ? getImageRightImageMarginTopRem(imageRightVerticalPosition)
+    ? getImageRightImageMarginTopRem(
+        imageRightVerticalPosition,
+        sideLayoutFlow,
+        classificationAndRarity,
+        cardPreviewSurfaceHeightPx,
+      )
     : 0;
 
   const slots = buildMagicItemPrintCardSlots({

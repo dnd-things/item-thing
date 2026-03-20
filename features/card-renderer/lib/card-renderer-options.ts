@@ -29,10 +29,11 @@ export interface MagicItemCardRendererProps {
   imageBorderRadius: number;
   imageBorder: ImageBorderOption;
   /**
-   * Integer step = **0.5rem** margin-top on image-right layout (`value / 2` rem). Bounds from
-   * `getImageRightVerticalPositionMin` (−6 with classification / −4 without) up to
-   * `floor(previewHeightPx / 16)` (see `computeImageRightVerticalPositionMaxFromCardHeightPx`).
-   * Workbench shows a 0–100 slider mapped linearly across that range.
+   * Image-right vertical offset; workbench maps 0–100 linearly across min…max internal integers.
+   * **Fluid**: margin-top = `value / 2` rem. **Fixed**: **50 → 0**, **0 / 100 → ∓X rem** where X scales
+   * with measured preview card height (see `IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX`).
+   * Bounds: `getImageRightVerticalPositionMin`; fluid max from preview height, fixed max
+   * `imageRightVerticalPositionRange.max`.
    */
   imageRightVerticalPosition: number;
   imageFileName: string;
@@ -59,7 +60,7 @@ export const imageBorderRadiusRange = {
 export const imageRightVerticalPositionRange = {
   /** Static defaults / persistence fallback; live workbench min is from `getImageRightVerticalPositionMin`. */
   min: -4,
-  /** Static ceiling for defaults and persistence fallback; workbench slider max is dynamic. */
+  /** Static ceiling for fixed flow, defaults, and persistence fallback; fluid workbench max is height-derived. */
   max: 32,
   step: 1,
   default: 0,
@@ -76,6 +77,16 @@ export const imageRightVerticalPositionUserRange = {
 export const IMAGE_RIGHT_VERTICAL_POSITION_CARD_HEIGHT_PX_PER_STEP =
   16 as const;
 
+/**
+ * Fixed image-right vertical slider: at this measured preview card height, slider **0** / **100**
+ * map to **∓30rem** margin-top (50 → 0). Shorter/taller cards scale linearly.
+ */
+export const IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX =
+  779 as const;
+
+export const IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_HALF_RANGE_REM_AT_REFERENCE =
+  30 as const;
+
 export function computeImageRightVerticalPositionMaxFromCardHeightPx(
   heightPx: number,
 ): number {
@@ -90,8 +101,51 @@ export function getImageRightVerticalPositionMin(
   return classificationAndRarity.trim().length > 0 ? -6 : -4;
 }
 
-export function getImageRightImageMarginTopRem(position: number): number {
-  return position / 2;
+/** Default internal position when entering image-right + fluid (0rem margin-top). */
+export const imageRightVerticalPositionDefaultForFluidSideLayout = 0 as const;
+
+export function computeImageRightFixedVerticalMarginHalfRangeRem(
+  cardPreviewSurfaceHeightPx: number,
+  boundsMin: number,
+  boundsMax: number,
+): number {
+  if (cardPreviewSurfaceHeightPx > 0) {
+    return (
+      (cardPreviewSurfaceHeightPx /
+        IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX) *
+      IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_HALF_RANGE_REM_AT_REFERENCE
+    );
+  }
+  const span = boundsMax - boundsMin;
+  return span / 4;
+}
+
+/**
+ * Image-right artwork `margin-top` in rem. **Fluid**: `position / 2`. **Fixed**: slider 50% → **0**;
+ * 0% / 100% → **∓X** with X from `computeImageRightFixedVerticalMarginHalfRangeRem` when
+ * `cardPreviewSurfaceHeightPx` is known, else static fallback `(boundsMax - boundsMin) / 4`.
+ */
+export function getImageRightImageMarginTopRem(
+  position: number,
+  sideLayoutFlow: SideLayoutFlowOption,
+  classificationAndRarity: string,
+  cardPreviewSurfaceHeightPx?: number,
+): number {
+  if (sideLayoutFlow === 'fluid') {
+    return position / 2;
+  }
+  const boundsMin = getImageRightVerticalPositionMin(classificationAndRarity);
+  const boundsMax = imageRightVerticalPositionRange.max;
+  const span = boundsMax - boundsMin;
+  if (span <= 0) {
+    return 0;
+  }
+  const halfRangeRem = computeImageRightFixedVerticalMarginHalfRangeRem(
+    cardPreviewSurfaceHeightPx ?? 0,
+    boundsMin,
+    boundsMax,
+  );
+  return ((2 * (position - boundsMin)) / span - 1) * halfRangeRem;
 }
 
 export function mapImageRightVerticalPositionToUserPercent(
@@ -121,6 +175,17 @@ export function mapUserPercentToImageRightVerticalPosition(
     boundsMin + (clampedPercent / 100) * (boundsMax - boundsMin),
   );
   return Math.min(boundsMax, Math.max(boundsMin, position));
+}
+
+export function getImageRightVerticalPositionDefaultForFixedSideLayout(
+  classificationAndRarity: string,
+): number {
+  const boundsMin = getImageRightVerticalPositionMin(classificationAndRarity);
+  return mapUserPercentToImageRightVerticalPosition(
+    50,
+    boundsMin,
+    imageRightVerticalPositionRange.max,
+  );
 }
 
 export function getImageBorderStyle(imageBorder: ImageBorderOption): string {

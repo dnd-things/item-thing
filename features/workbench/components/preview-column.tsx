@@ -267,7 +267,17 @@ export function PreviewColumn({
         </div>
       ) : null}
 
-      <ItemPreviewPanel cardRef={cardRef} workbenchState={workbenchState} />
+      <ItemPreviewPanel
+        cardRef={cardRef}
+        workbenchState={workbenchState}
+        {...(workbenchState.cardLayout === 'image-right' &&
+        workbenchState.sideLayoutFlow === 'fixed'
+          ? {
+              cardPreviewSurfaceHeightPx:
+                imageRightVerticalPositionBounds.measuredCardSurfaceHeightPx,
+            }
+          : {})}
+      />
 
       <WorkbenchSettingsDrawer
         open={isDrawerOpen}

@@ -3,7 +3,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
+import {
+  getImageRightVerticalPositionDefaultForFixedSideLayout,
+  imageRightVerticalPositionDefaultForFluidSideLayout,
+  isCardStyleSupported,
+} from '@/features/card-renderer/lib/card-renderer-options';
 import { DownloadControlsCard } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
@@ -168,10 +172,44 @@ export function ItemCardWorkbench() {
       fieldName: TKey,
       fieldValue: MagicItemWorkbenchState[TKey],
     ) => {
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        [fieldName]: fieldValue,
-      }));
+      setWorkbenchState((previousState) => {
+        const nextState: MagicItemWorkbenchState = {
+          ...previousState,
+          [fieldName]: fieldValue,
+        };
+
+        if (fieldName === 'cardLayout' && fieldValue === 'image-right') {
+          if (previousState.sideLayoutFlow === 'fixed') {
+            nextState.imageRightVerticalPosition =
+              getImageRightVerticalPositionDefaultForFixedSideLayout(
+                previousState.classificationAndRarity,
+              );
+          } else if (previousState.sideLayoutFlow === 'fluid') {
+            nextState.imageRightVerticalPosition =
+              imageRightVerticalPositionDefaultForFluidSideLayout;
+          }
+        }
+
+        if (fieldName === 'sideLayoutFlow') {
+          if (
+            fieldValue === 'fixed' &&
+            previousState.cardLayout === 'image-right'
+          ) {
+            nextState.imageRightVerticalPosition =
+              getImageRightVerticalPositionDefaultForFixedSideLayout(
+                previousState.classificationAndRarity,
+              );
+          } else if (
+            fieldValue === 'fluid' &&
+            previousState.cardLayout === 'image-right'
+          ) {
+            nextState.imageRightVerticalPosition =
+              imageRightVerticalPositionDefaultForFluidSideLayout;
+          }
+        }
+
+        return nextState;
+      });
     },
     [],
   );
