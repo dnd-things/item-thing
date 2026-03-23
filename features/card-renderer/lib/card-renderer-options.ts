@@ -36,6 +36,11 @@ export interface MagicItemCardRendererProps {
    * `imageRightVerticalPositionRange.max`.
    */
   imageRightVerticalPosition: number;
+  /**
+   * Clockwise rotation in degrees. Workbench uses 0–360 in 15° steps. Baked into the preview blob
+   * with flips so `shape-outside: url()` and `<Image src>` stay identical.
+   */
+  imageRotationDegrees: number;
   /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
   imageFlipHorizontal: boolean;
   imageFlipVertical: boolean;
@@ -244,6 +249,21 @@ export function shouldStackVerticalCardMetadata(
 
 export function isSideImageCardLayout(cardLayout: CardLayoutOption): boolean {
   return cardLayout !== 'vertical';
+}
+
+/**
+ * When the artwork is rotated, layout uses **1:1** so the slot matches the rotated canvas blob
+ * under `object-contain` more predictably.
+ */
+export function getEffectiveImageAspectRatioForLayout(
+  imageAspectRatio: ImageAspectRatioOption,
+  imageRotationDegrees: number,
+): ImageAspectRatioOption {
+  const norm = ((imageRotationDegrees % 360) + 360) % 360;
+  if (norm !== 0) {
+    return 'square';
+  }
+  return imageAspectRatio;
 }
 
 export function getImageAspectRatioValue(

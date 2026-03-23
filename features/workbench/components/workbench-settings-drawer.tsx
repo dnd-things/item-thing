@@ -34,6 +34,10 @@ import {
   sideLayoutFlowOptions,
   type WorkbenchFieldSetter,
 } from '../lib/workbench-options';
+import {
+  IMAGE_ROTATION_DEGREES_STEP,
+  normalizeImageRotationDegrees,
+} from '../lib/workbench-persistence';
 import { ToggleField, ToolbarSelectField } from './workbench-field-controls';
 
 interface WorkbenchSettingsDrawerProps {
@@ -220,6 +224,35 @@ export function WorkbenchSettingsDrawer({
                 />
                 <span className="min-w-11 text-right text-sm font-medium text-muted-foreground">
                   {workbenchState.imageBorderRadius}%
+                </span>
+              </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="drawer-image-rotation">
+                Image rotation
+              </FieldLabel>
+              <div className="flex h-9 items-center gap-3 rounded-xl border border-primary/8 bg-input/10 px-4">
+                <Slider
+                  id="drawer-image-rotation"
+                  aria-label="Image rotation"
+                  value={[workbenchState.imageRotationDegrees]}
+                  min={0}
+                  max={360}
+                  step={IMAGE_ROTATION_DEGREES_STEP}
+                  onValueChange={(nextValue) => {
+                    const nextDegrees = Array.isArray(nextValue)
+                      ? nextValue[0]
+                      : nextValue;
+                    if (typeof nextDegrees === 'number') {
+                      setWorkbenchField(
+                        'imageRotationDegrees',
+                        normalizeImageRotationDegrees(nextDegrees),
+                      );
+                    }
+                  }}
+                />
+                <span className="min-w-11 text-right text-sm font-medium text-muted-foreground tabular-nums">
+                  {workbenchState.imageRotationDegrees}°
                 </span>
               </div>
             </Field>

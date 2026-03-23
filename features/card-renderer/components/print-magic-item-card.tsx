@@ -5,6 +5,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getEffectiveImageAspectRatioForLayout,
   getImageRightImageMarginTopRem,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
@@ -36,6 +37,7 @@ export function PrintMagicItemCard({
   imageSize,
   imageFileName,
   imagePreviewUrl,
+  imageRotationDegrees,
   imageFlipHorizontal,
   imageFlipVertical,
   itemName,
@@ -47,8 +49,14 @@ export function PrintMagicItemCard({
 }: PrintMagicItemCardProps) {
   const renderImageUrl = useFlippedImagePreviewUrl(
     imagePreviewUrl,
+    imageRotationDegrees,
     imageFlipHorizontal,
     imageFlipVertical,
+  );
+
+  const layoutImageAspectRatio = getEffectiveImageAspectRatioForLayout(
+    imageAspectRatio,
+    imageRotationDegrees,
   );
 
   const isSideLayout = isSideImageCardLayout(cardLayout);
@@ -57,7 +65,7 @@ export function PrintMagicItemCard({
   const surfaceBorderRadius = getCardSurfaceBorderRadius(cardBorderRadius);
   const cardImageDimensions = getCardImageDimensions(
     imageSize,
-    imageAspectRatio,
+    layoutImageAspectRatio,
     resolvedImageAspectRatio,
     imageBorderRadius,
   );
@@ -106,7 +114,7 @@ export function PrintMagicItemCard({
     return (
       <div className={surfaceClassName} style={surfaceStyle}>
         <MagicItemVerticalPrintLayout.Root
-          imageAspectRatio={imageAspectRatio}
+          imageAspectRatio={layoutImageAspectRatio}
           resolvedImageAspectRatio={resolvedImageAspectRatio}
           imageBorderRadius={imageBorderRadius}
           imageBorder={imageBorder}
@@ -145,7 +153,7 @@ export function PrintMagicItemCard({
   return (
     <div className={surfaceClassName} style={surfaceStyle}>
       <MagicItemSidePrintLayout.Root
-        imageAspectRatio={imageAspectRatio}
+        imageAspectRatio={layoutImageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageBorder={imageBorder}
