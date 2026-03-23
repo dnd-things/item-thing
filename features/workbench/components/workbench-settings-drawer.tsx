@@ -1,6 +1,10 @@
 'use client';
 
-import { AlignVerticalCenterIcon } from '@hugeicons/core-free-icons';
+import {
+  AlignVerticalCenterIcon,
+  ImageFlipHorizontalIcon,
+  ImageFlipVerticalIcon,
+} from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import {
@@ -10,6 +14,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   imageBorderRadiusRange,
   imageRightVerticalPositionRange,
@@ -24,6 +29,7 @@ import {
   cardLayoutOptions,
   cardStyleOptions,
   imageAspectRatioOptions,
+  imageFlipToggleOptions,
   type MagicItemWorkbenchState,
   sideLayoutFlowOptions,
   type WorkbenchFieldSetter,
@@ -216,6 +222,78 @@ export function WorkbenchSettingsDrawer({
                   {workbenchState.imageBorderRadius}%
                 </span>
               </div>
+            </Field>
+            <Field>
+              <FieldLabel className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={ImageFlipHorizontalIcon}
+                  strokeWidth={1.5}
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                Flip horizontally
+              </FieldLabel>
+              <ToggleGroup
+                className="w-full flex-wrap"
+                variant="outline"
+                value={[workbenchState.imageFlipHorizontal ? 'on' : 'off']}
+                onValueChange={(nextValue) => {
+                  const nextSelected = nextValue[nextValue.length - 1];
+                  if (nextSelected === 'on' || nextSelected === 'off') {
+                    setWorkbenchField(
+                      'imageFlipHorizontal',
+                      nextSelected === 'on',
+                    );
+                  }
+                }}
+              >
+                {imageFlipToggleOptions.map((option) => (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    aria-label={`Flip horizontally ${option.label}`}
+                    className="flex-1"
+                  >
+                    {option.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </Field>
+            <Field>
+              <FieldLabel className="flex items-center gap-2">
+                <HugeiconsIcon
+                  icon={ImageFlipVerticalIcon}
+                  strokeWidth={1.5}
+                  className="size-5 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                Flip vertically
+              </FieldLabel>
+              <ToggleGroup
+                className="w-full flex-wrap"
+                variant="outline"
+                value={[workbenchState.imageFlipVertical ? 'on' : 'off']}
+                onValueChange={(nextValue) => {
+                  const nextSelected = nextValue[nextValue.length - 1];
+                  if (nextSelected === 'on' || nextSelected === 'off') {
+                    setWorkbenchField(
+                      'imageFlipVertical',
+                      nextSelected === 'on',
+                    );
+                  }
+                }}
+              >
+                {imageFlipToggleOptions.map((option) => (
+                  <ToggleGroupItem
+                    key={option.value}
+                    value={option.value}
+                    aria-label={`Flip vertically ${option.label}`}
+                    className="flex-1"
+                  >
+                    {option.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </Field>
           </FieldGroup>
         </SheetContent>

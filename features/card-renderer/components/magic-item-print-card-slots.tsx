@@ -68,7 +68,8 @@ export interface MagicItemPrintCardSlotsParams {
   cardImageDimensions: CardImageDimensions;
   imageBorder: ImageBorderOption;
   sideImageMarginTopRem: number;
-  imagePreviewUrl: string;
+  /** Display URL (mirrored via canvas when flips are on, so `shape-outside: url()` matches pixels). */
+  renderImageUrl: string;
   imageFileName: string;
   itemName: string;
   classificationAndRarity: string;
@@ -99,7 +100,7 @@ export function buildMagicItemPrintCardSlots(
     cardImageDimensions,
     imageBorder,
     sideImageMarginTopRem,
-    imagePreviewUrl,
+    renderImageUrl,
     imageFileName,
     itemName,
     classificationAndRarity,
@@ -118,13 +119,13 @@ export function buildMagicItemPrintCardSlots(
     </span>
   ) : null;
 
-  const mediaSlot = imagePreviewUrl ? (
+  const mediaSlot = renderImageUrl ? (
     <Image
       alt={mediaAltText}
       className={printCardClassNames.mediaImage}
       fill
       sizes="(max-width: 768px) 50vw, 220px"
-      src={imagePreviewUrl}
+      src={renderImageUrl}
       unoptimized
     />
   ) : imageFileName ? (
@@ -147,7 +148,7 @@ export function buildMagicItemPrintCardSlots(
   ) : null;
 
   const sideWrappedMediaSlot = shouldUseWrappedSideLayout ? (
-    imagePreviewUrl ? (
+    renderImageUrl ? (
       hasBorder ? (
         <div
           className={cn('relative mb-2', fluidSideImageClassName)}
@@ -165,7 +166,7 @@ export function buildMagicItemPrintCardSlots(
           <Image
             alt={mediaAltText}
             className="object-contain"
-            src={imagePreviewUrl}
+            src={renderImageUrl}
             unoptimized
             fill
             sizes="(max-width: 768px) 50vw, 220px"
@@ -175,7 +176,7 @@ export function buildMagicItemPrintCardSlots(
         <Image
           alt={mediaAltText}
           className={cn('mb-2 block object-contain', fluidSideImageClassName)}
-          src={imagePreviewUrl}
+          src={renderImageUrl}
           unoptimized
           width={Math.round(cardImageDimensions.width)}
           height={Math.round(cardImageDimensions.height)}
@@ -185,7 +186,7 @@ export function buildMagicItemPrintCardSlots(
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
-            shapeOutside: `url("${imagePreviewUrl}")`,
+            shapeOutside: `url("${renderImageUrl}")`,
             shapeImageThreshold: 0.6,
             shapeMargin: '1rem',
           }}
