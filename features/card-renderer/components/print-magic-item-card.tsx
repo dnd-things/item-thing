@@ -36,6 +36,7 @@ export function PrintMagicItemCard({
   imageSize,
   imageFileName,
   imagePreviewUrl,
+  imageRotationDegrees,
   imageFlipHorizontal,
   imageFlipVertical,
   itemName,
@@ -47,6 +48,7 @@ export function PrintMagicItemCard({
 }: PrintMagicItemCardProps) {
   const renderImageUrl = useFlippedImagePreviewUrl(
     imagePreviewUrl,
+    imageRotationDegrees,
     imageFlipHorizontal,
     imageFlipVertical,
   );

@@ -36,6 +36,11 @@ export interface MagicItemCardRendererProps {
    * `imageRightVerticalPositionRange.max`.
    */
   imageRightVerticalPosition: number;
+  /**
+   * Clockwise rotation in degrees. Workbench uses 0–360 in 15° steps; values are normalized for rendering.
+   * Baked into the preview blob with flips so `shape-outside: url()` matches the visible alpha.
+   */
+  imageRotationDegrees: number;
   /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
   imageFlipHorizontal: boolean;
   imageFlipVertical: boolean;

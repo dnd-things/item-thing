@@ -81,6 +81,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   imageBorder: 'none',
   imageRightVerticalPosition:
     imageRightVerticalPositionDefaultForFluidSideLayout,
+  imageRotationDegrees: 0,
   imageFlipHorizontal: false,
   imageFlipVertical: false,
   imageFileName: '',

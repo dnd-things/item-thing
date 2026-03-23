@@ -28,6 +28,17 @@ const imageAspectRatioSchema = z.enum([
 ]);
 const imageBorderSchema = z.enum(['none', 'thin', 'thick']);
 
+/** Workbench slider uses 15° steps; persisted values are rounded on load. */
+export const IMAGE_ROTATION_DEGREES_STEP = 15 as const;
+
+export function normalizeImageRotationDegrees(degrees: number): number {
+  const clamped = Math.min(360, Math.max(0, degrees));
+  const rounded =
+    Math.round(clamped / IMAGE_ROTATION_DEGREES_STEP) *
+    IMAGE_ROTATION_DEGREES_STEP;
+  return Math.min(360, Math.max(0, rounded));
+}
+
 const magicItemWorkbenchPartialStateSchema = z
   .object({
     cardLayout: cardLayoutSchema.optional(),
@@ -42,6 +53,7 @@ const magicItemWorkbenchPartialStateSchema = z
     imageRightVerticalPosition: z.number().int().min(-8).optional(),
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
+    imageRotationDegrees: z.number().min(0).max(360).optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
     itemName: z.string().optional(),
@@ -119,6 +131,10 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     ...defaultMagicItemWorkbenchState,
     ...stateResult.data,
   } as MagicItemWorkbenchState;
+
+  mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
+    mergedState.imageRotationDegrees,
+  );
 
   if (
     envelopeResult.data.version === 1 &&
