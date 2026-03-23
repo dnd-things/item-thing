@@ -36,6 +36,9 @@ export interface MagicItemCardRendererProps {
    * `imageRightVerticalPositionRange.max`.
    */
   imageRightVerticalPosition: number;
+  /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
+  imageFlipHorizontal: boolean;
+  imageFlipVertical: boolean;
   imageFileName: string;
   imagePreviewUrl: string;
   itemName: string;

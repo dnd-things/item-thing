@@ -10,6 +10,7 @@ import {
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
 } from '../lib/card-renderer-options';
+import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
 import {
   buildMagicItemPrintCardSlots,
   printCardClassNames,
@@ -35,6 +36,8 @@ export function PrintMagicItemCard({
   imageSize,
   imageFileName,
   imagePreviewUrl,
+  imageFlipHorizontal,
+  imageFlipVertical,
   itemName,
   classificationAndRarity,
   requiresAttunement,
@@ -42,6 +45,12 @@ export function PrintMagicItemCard({
   mechanicalDescription,
   cardPreviewSurfaceHeightPx,
 }: PrintMagicItemCardProps) {
+  const renderImageUrl = useFlippedImagePreviewUrl(
+    imagePreviewUrl,
+    imageFlipHorizontal,
+    imageFlipVertical,
+  );
+
   const isSideLayout = isSideImageCardLayout(cardLayout);
   const shouldUseWrappedSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
   const shouldStackMetadata = shouldStackVerticalCardMetadata(cardLayout);
@@ -69,7 +78,7 @@ export function PrintMagicItemCard({
     cardImageDimensions,
     imageBorder,
     sideImageMarginTopRem,
-    imagePreviewUrl,
+    renderImageUrl,
     imageFileName,
     itemName,
     classificationAndRarity,

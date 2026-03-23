@@ -49,6 +49,13 @@ export const cardBorderRadiusOptions: ReadonlyArray<
   { label: 'Round', value: 'small' },
 ];
 
+export const imageFlipToggleOptions: ReadonlyArray<
+  SelectionOption<'off' | 'on'>
+> = [
+  { label: 'Off', value: 'off' },
+  { label: 'On', value: 'on' },
+];
+
 export const imageAspectRatioOptions: ReadonlyArray<
   SelectionOption<ImageAspectRatioOption>
 > = [
@@ -74,6 +81,8 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   imageBorder: 'none',
   imageRightVerticalPosition:
     imageRightVerticalPositionDefaultForFluidSideLayout,
+  imageFlipHorizontal: false,
+  imageFlipVertical: false,
   imageFileName: '',
   imagePreviewUrl: '',
   itemName: '',

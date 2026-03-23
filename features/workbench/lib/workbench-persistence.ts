@@ -40,6 +40,8 @@ const magicItemWorkbenchPartialStateSchema = z
     imageBorderRadius: z.number().optional(),
     imageBorder: imageBorderSchema.optional(),
     imageRightVerticalPosition: z.number().int().min(-8).optional(),
+    imageFlipHorizontal: z.boolean().optional(),
+    imageFlipVertical: z.boolean().optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
     itemName: z.string().optional(),
