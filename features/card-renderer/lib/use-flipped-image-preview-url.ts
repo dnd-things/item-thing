@@ -3,9 +3,12 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * When rotation or horizontal/vertical flip is enabled, draws the source image to a canvas and
- * returns a `blob:` URL so `shape-outside: url(...)` uses the same alpha as the visible bitmap.
- * Rotation is applied first (clockwise), then flips.
+ * When rotation or flips are enabled, draws the source image to a canvas and returns a `blob:` URL.
+ * Use this **same** URL for both `<Image src>` and `shape-outside: url(...)` so text wrap follows the
+ * alpha. (Using the original `src` with CSS `transform` while `shape-outside` used a different
+ * bitmap breaks alignment: `object-contain` + `rotate()` is not equivalent to scaling a
+ * pre-rotated canvas to the same box.)
+ * Canvas order: rotate first, then flips.
  */
 
 function normalizeRotationForCanvas(degrees: number): number {
@@ -100,10 +103,9 @@ export function useFlippedImagePreviewUrl(
     }
 
     const normRot = normalizeRotationForCanvas(imageRotationDegrees);
-    const needsTransform =
-      normRot !== 0 || imageFlipHorizontal || imageFlipVertical;
+    const needsBlob = normRot !== 0 || imageFlipHorizontal || imageFlipVertical;
 
-    if (!needsTransform) {
+    if (!needsBlob) {
       revokeBlobUrl();
       setEffectiveUrl(imagePreviewUrl);
       return;

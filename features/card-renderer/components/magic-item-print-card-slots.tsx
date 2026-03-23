@@ -68,7 +68,10 @@ export interface MagicItemPrintCardSlotsParams {
   cardImageDimensions: CardImageDimensions;
   imageBorder: ImageBorderOption;
   sideImageMarginTopRem: number;
-  /** Display URL (mirrored via canvas when flips are on, so `shape-outside: url()` matches pixels). */
+  /**
+   * Image URL for `<Image src>` and `shape-outside: url()` — same canvas blob when rotated/flipped
+   * so wrap matches pixels.
+   */
   renderImageUrl: string;
   imageFileName: string;
   itemName: string;

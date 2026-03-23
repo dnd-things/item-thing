@@ -75,7 +75,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   cardStyle: 'print',
   cardBorderRadius: 'small',
   imageSize: 100,
-  imageAspectRatio: 'based-on-image',
+  imageAspectRatio: 'square',
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
   imageBorder: 'none',

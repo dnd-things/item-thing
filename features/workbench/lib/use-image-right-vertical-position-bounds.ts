@@ -34,6 +34,7 @@ function buildImageRightVerticalPositionMeasureKey(
     cardBorderRadius: workbenchState.cardBorderRadius,
     imageSize: workbenchState.imageSize,
     imageAspectRatio: workbenchState.imageAspectRatio,
+    imageRotationDegrees: workbenchState.imageRotationDegrees,
     resolvedImageAspectRatio: workbenchState.resolvedImageAspectRatio,
     imageBorderRadius: workbenchState.imageBorderRadius,
     imageBorder: workbenchState.imageBorder,

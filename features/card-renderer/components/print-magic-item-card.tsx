@@ -5,6 +5,7 @@ import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getCardWidth,
+  getEffectiveImageAspectRatioForLayout,
   getImageRightImageMarginTopRem,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
@@ -53,13 +54,18 @@ export function PrintMagicItemCard({
     imageFlipVertical,
   );
 
+  const layoutImageAspectRatio = getEffectiveImageAspectRatioForLayout(
+    imageAspectRatio,
+    imageRotationDegrees,
+  );
+
   const isSideLayout = isSideImageCardLayout(cardLayout);
   const shouldUseWrappedSideLayout = isSideLayout && sideLayoutFlow === 'fluid';
   const shouldStackMetadata = shouldStackVerticalCardMetadata(cardLayout);
   const surfaceBorderRadius = getCardSurfaceBorderRadius(cardBorderRadius);
   const cardImageDimensions = getCardImageDimensions(
     imageSize,
-    imageAspectRatio,
+    layoutImageAspectRatio,
     resolvedImageAspectRatio,
     imageBorderRadius,
   );
@@ -108,7 +114,7 @@ export function PrintMagicItemCard({
     return (
       <div className={surfaceClassName} style={surfaceStyle}>
         <MagicItemVerticalPrintLayout.Root
-          imageAspectRatio={imageAspectRatio}
+          imageAspectRatio={layoutImageAspectRatio}
           resolvedImageAspectRatio={resolvedImageAspectRatio}
           imageBorderRadius={imageBorderRadius}
           imageBorder={imageBorder}
@@ -147,7 +153,7 @@ export function PrintMagicItemCard({
   return (
     <div className={surfaceClassName} style={surfaceStyle}>
       <MagicItemSidePrintLayout.Root
-        imageAspectRatio={imageAspectRatio}
+        imageAspectRatio={layoutImageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageBorder={imageBorder}
