@@ -37,7 +37,7 @@ function buildImageRightVerticalPositionMeasureKey(
     imageRotationDegrees: workbenchState.imageRotationDegrees,
     resolvedImageAspectRatio: workbenchState.resolvedImageAspectRatio,
     imageBorderRadius: workbenchState.imageBorderRadius,
-    imageBorder: workbenchState.imageBorder,
+    imageBorderWidthPx: workbenchState.imageBorderWidthPx,
     imageFileName: workbenchState.imageFileName,
     imagePreviewByteLength: workbenchState.imagePreviewUrl.length,
     itemName: workbenchState.itemName,

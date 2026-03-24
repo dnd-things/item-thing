@@ -78,7 +78,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   imageAspectRatio: 'square',
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
-  imageBorder: 'none',
+  imageBorderWidthPx: 0,
   imageRightVerticalPosition:
     imageRightVerticalPositionDefaultForFluidSideLayout,
   imageRotationDegrees: 0,

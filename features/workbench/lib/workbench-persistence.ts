@@ -3,6 +3,11 @@
 import { z } from 'zod';
 
 import {
+  clampImageBorderWidthPx,
+  imageBorderWidthPxRange,
+} from '@/features/card-renderer/lib/card-renderer-options';
+
+import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
 } from './workbench-options';
@@ -10,7 +15,7 @@ import {
 export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
-const PERSISTENCE_VERSION = 2 as const;
+const PERSISTENCE_VERSION = 3 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -26,7 +31,6 @@ const imageAspectRatioSchema = z.enum([
   'landscape',
   'widescreen',
 ]);
-const imageBorderSchema = z.enum(['none', 'thin', 'thick']);
 
 /** Workbench slider uses 15° steps; persisted values are rounded on load. */
 export const IMAGE_ROTATION_DEGREES_STEP = 15 as const;
@@ -49,7 +53,12 @@ const magicItemWorkbenchPartialStateSchema = z
     imageAspectRatio: imageAspectRatioSchema.optional(),
     resolvedImageAspectRatio: z.number().optional(),
     imageBorderRadius: z.number().optional(),
-    imageBorder: imageBorderSchema.optional(),
+    imageBorderWidthPx: z
+      .number()
+      .int()
+      .min(imageBorderWidthPxRange.min)
+      .max(imageBorderWidthPxRange.max)
+      .optional(),
     imageRightVerticalPosition: z.number().int().min(-8).optional(),
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
@@ -65,7 +74,11 @@ const magicItemWorkbenchPartialStateSchema = z
   .strip();
 
 const workbenchPersistenceEnvelopeSchema = z.object({
-  version: z.union([z.literal(1), z.literal(PERSISTENCE_VERSION)]),
+  version: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(PERSISTENCE_VERSION),
+  ]),
   state: z.unknown(),
 });
 
@@ -134,6 +147,10 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
 
   mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
     mergedState.imageRotationDegrees,
+  );
+
+  mergedState.imageBorderWidthPx = clampImageBorderWidthPx(
+    mergedState.imageBorderWidthPx,
   );
 
   if (

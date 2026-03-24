@@ -18,14 +18,13 @@ import {
   getCardSurfaceMinHeightClassName,
   getImageBorderStyle,
   type ImageAspectRatioOption,
-  type ImageBorderOption,
 } from '../lib/card-renderer-options';
 
 const SIDE_CARD_LAYOUT = 'image-right' as const;
 
 interface MagicItemSidePrintLayoutContextValue {
   cardImageDimensions: CardImageDimensions;
-  imageBorder: ImageBorderOption;
+  imageBorderWidthPx: number;
 }
 
 const MagicItemSidePrintLayoutContext =
@@ -47,7 +46,7 @@ interface MagicItemSidePrintLayoutRootProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
-  imageBorder: ImageBorderOption;
+  imageBorderWidthPx: number;
   imageSize: number;
 }
 
@@ -57,7 +56,7 @@ function MagicItemSidePrintLayoutRoot({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
-  imageBorder,
+  imageBorderWidthPx,
   imageSize,
 }: MagicItemSidePrintLayoutRootProps) {
   const cardImageDimensions = useMemo(
@@ -73,9 +72,9 @@ function MagicItemSidePrintLayoutRoot({
   const contextValue = useMemo(
     (): MagicItemSidePrintLayoutContextValue => ({
       cardImageDimensions,
-      imageBorder,
+      imageBorderWidthPx,
     }),
-    [cardImageDimensions, imageBorder],
+    [cardImageDimensions, imageBorderWidthPx],
   );
 
   return (
@@ -125,7 +124,7 @@ function MagicItemSidePrintLayoutMedia({
   mediaFrameClassName,
   mediaColumnStyle,
 }: MagicItemSidePrintLayoutMediaProps) {
-  const { cardImageDimensions, imageBorder } =
+  const { cardImageDimensions, imageBorderWidthPx } =
     useMagicItemSidePrintLayoutContext();
 
   return (
@@ -146,7 +145,7 @@ function MagicItemSidePrintLayoutMedia({
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorder),
+          border: getImageBorderStyle(imageBorderWidthPx),
         }}
       >
         {children}

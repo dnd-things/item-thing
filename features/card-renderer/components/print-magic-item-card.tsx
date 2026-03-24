@@ -32,7 +32,7 @@ export function PrintMagicItemCard({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
-  imageBorder,
+  imageBorderWidthPx,
   imageRightVerticalPosition,
   imageSize,
   imageFileName,
@@ -84,7 +84,7 @@ export function PrintMagicItemCard({
     shouldUseWrappedSideLayout,
     shouldStackMetadata,
     cardImageDimensions,
-    imageBorder,
+    imageBorderWidthPx,
     sideImageMarginTopRem,
     renderImageUrl,
     imageFileName,
@@ -117,7 +117,7 @@ export function PrintMagicItemCard({
           imageAspectRatio={layoutImageAspectRatio}
           resolvedImageAspectRatio={resolvedImageAspectRatio}
           imageBorderRadius={imageBorderRadius}
-          imageBorder={imageBorder}
+          imageBorderWidthPx={imageBorderWidthPx}
           imageSize={imageSize}
         >
           <MagicItemVerticalPrintLayout.Media
@@ -156,7 +156,7 @@ export function PrintMagicItemCard({
         imageAspectRatio={layoutImageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
-        imageBorder={imageBorder}
+        imageBorderWidthPx={imageBorderWidthPx}
         imageSize={imageSize}
       >
         <MagicItemSidePrintLayout.MainRow>

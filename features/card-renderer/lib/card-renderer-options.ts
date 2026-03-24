@@ -6,7 +6,6 @@ export type CardStyleOption = 'print' | 'minimal' | 'classic';
 
 export type CardBorderRadiusOption = 'none' | 'small' | 'large';
 export type SideLayoutFlowOption = 'fixed' | 'fluid';
-export type ImageBorderOption = 'none' | 'thin' | 'thick';
 
 export type ImageAspectRatioOption =
   | 'based-on-image'
@@ -27,7 +26,8 @@ export interface MagicItemCardRendererProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
-  imageBorder: ImageBorderOption;
+  /** 0 = no border; otherwise CSS border width in pixels (solid #000). */
+  imageBorderWidthPx: number;
   /**
    * Image-right vertical offset; workbench maps 0–100 linearly across min…max internal integers.
    * **Fluid**: margin-top = `value / 2` rem. **Fixed**: **50 → 0**, **0 / 100 → ∓X rem** where X scales
@@ -64,6 +64,20 @@ export const imageBorderRadiusRange = {
   max: 100,
   step: 10,
 } as const;
+
+export const imageBorderWidthPxRange = {
+  min: 0,
+  max: 24,
+  step: 1,
+} as const;
+
+export function clampImageBorderWidthPx(value: number): number {
+  const rounded = Math.round(value);
+  return Math.min(
+    imageBorderWidthPxRange.max,
+    Math.max(imageBorderWidthPxRange.min, rounded),
+  );
+}
 
 export const imageRightVerticalPositionRange = {
   /** Static defaults / persistence fallback; live workbench min is from `getImageRightVerticalPositionMin`. */
@@ -196,15 +210,11 @@ export function getImageRightVerticalPositionDefaultForFixedSideLayout(
   );
 }
 
-export function getImageBorderStyle(imageBorder: ImageBorderOption): string {
-  switch (imageBorder) {
-    case 'thin':
-      return '2px solid #000';
-    case 'thick':
-      return '5px solid #000';
-    default:
-      return '';
+export function getImageBorderStyle(imageBorderWidthPx: number): string {
+  if (imageBorderWidthPx <= 0) {
+    return '';
   }
+  return `${imageBorderWidthPx}px solid #000`;
 }
 
 export function getCardSurfaceBorderRadius(
