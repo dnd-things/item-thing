@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { cloneElement } from 'react';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
 import {
@@ -38,7 +39,10 @@ export const printCardClassNames = {
     'text-sm leading-6 text-slate-600 whitespace-pre-wrap italic [font-family:var(--font-cormorant-garamond)]',
   body: 'text-sm leading-6 text-slate-700',
   bodyMarkdown:
-    '[&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs',
+    '[&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-xs [&_table]:w-full [&_table]:border-collapse [&_thead]:bg-slate-50/90 [&_thead]:text-slate-500 [&_tbody_tr:nth-child(even)]:bg-slate-50/50 [&_tr:not(:last-child)]:border-b [&_tr:not(:last-child)]:border-slate-200 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-semibold [&_th]:tracking-[0.08em] [&_th]:uppercase [&_th]:align-top [&_td]:px-3 [&_td]:py-2 [&_td]:text-sm [&_td]:leading-5 [&_td]:text-slate-700 [&_td]:align-top [&_th:not(:last-child)]:border-r [&_th:not(:last-child)]:border-slate-200 [&_td:not(:last-child)]:border-r [&_td:not(:last-child)]:border-slate-200',
+  bodyTableWrapper:
+    'my-3 w-full max-w-full overflow-x-auto rounded-md border border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.06)]',
+  bodyTable: 'min-w-full border-collapse',
   bodyHeading:
     'mt-3 mb-1 text-base font-semibold leading-6 text-slate-700 first:mt-0',
   sideContent: 'gap-3',
@@ -57,6 +61,21 @@ function BodyHeading({
   return (
     <div className={printCardClassNames.bodyHeading} {...rest}>
       {children}
+    </div>
+  );
+}
+
+function BodyTable({
+  node: _node,
+  className,
+  children,
+  ...rest
+}: React.ComponentPropsWithoutRef<'table'> & { node?: unknown }) {
+  return (
+    <div className={printCardClassNames.bodyTableWrapper}>
+      <table className={cn(printCardClassNames.bodyTable, className)} {...rest}>
+        {children}
+      </table>
     </div>
   );
 }
@@ -266,6 +285,7 @@ export function buildMagicItemPrintCardSlots(
         : null}
       {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
       <Markdown
+        remarkPlugins={[remarkGfm]}
         components={{
           h1: BodyHeading,
           h2: BodyHeading,
@@ -273,6 +293,7 @@ export function buildMagicItemPrintCardSlots(
           h4: BodyHeading,
           h5: BodyHeading,
           h6: BodyHeading,
+          table: BodyTable,
         }}
       >
         {mechanicalDescription}
