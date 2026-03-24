@@ -7,6 +7,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import {
   Sheet,
   SheetContent,
@@ -16,7 +17,9 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
+  clampImageBorderWidthPx,
   imageBorderRadiusRange,
+  imageBorderWidthPxRange,
   imageRightVerticalPositionRange,
   imageRightVerticalPositionUserRange,
   mapImageRightVerticalPositionToUserPercent,
@@ -224,6 +227,37 @@ export function WorkbenchSettingsDrawer({
                 />
                 <span className="min-w-11 text-right text-sm font-medium text-muted-foreground">
                   {workbenchState.imageBorderRadius}%
+                </span>
+              </div>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="drawer-image-border-width-px">
+                Image border width
+              </FieldLabel>
+              <div className="flex h-9 items-center gap-2 rounded-xl border border-primary/8 bg-input/10 px-4">
+                <Input
+                  id="drawer-image-border-width-px"
+                  type="number"
+                  inputMode="numeric"
+                  min={imageBorderWidthPxRange.min}
+                  max={imageBorderWidthPxRange.max}
+                  step={imageBorderWidthPxRange.step}
+                  className="h-8 min-w-0 flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                  value={workbenchState.imageBorderWidthPx}
+                  onChange={(event) => {
+                    const nextValue = Number.parseInt(event.target.value, 10);
+                    if (Number.isNaN(nextValue)) {
+                      setWorkbenchField('imageBorderWidthPx', 0);
+                      return;
+                    }
+                    setWorkbenchField(
+                      'imageBorderWidthPx',
+                      clampImageBorderWidthPx(nextValue),
+                    );
+                  }}
+                />
+                <span className="shrink-0 text-sm text-muted-foreground">
+                  px
                 </span>
               </div>
             </Field>

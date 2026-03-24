@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import {
   type CardImageDimensions,
   getImageBorderStyle,
-  type ImageBorderOption,
 } from '../lib/card-renderer-options';
 
 export const printCardClassNames = {
@@ -66,7 +65,7 @@ export interface MagicItemPrintCardSlotsParams {
   shouldUseWrappedSideLayout: boolean;
   shouldStackMetadata: boolean;
   cardImageDimensions: CardImageDimensions;
-  imageBorder: ImageBorderOption;
+  imageBorderWidthPx: number;
   sideImageMarginTopRem: number;
   /**
    * Image URL for `<Image src>` and `shape-outside: url()` — same canvas blob when rotated/flipped
@@ -101,7 +100,7 @@ export function buildMagicItemPrintCardSlots(
     shouldUseWrappedSideLayout,
     shouldStackMetadata,
     cardImageDimensions,
-    imageBorder,
+    imageBorderWidthPx,
     sideImageMarginTopRem,
     renderImageUrl,
     imageFileName,
@@ -114,7 +113,7 @@ export function buildMagicItemPrintCardSlots(
 
   const hasFlavorDescription = flavorDescription.trim().length > 0;
   const mediaAltText = itemName || imageFileName || 'Magic item artwork';
-  const hasBorder = imageBorder !== 'none';
+  const hasBorder = imageBorderWidthPx > 0;
 
   const attunementBadge = requiresAttunement ? (
     <span className={printCardClassNames.attunementBadge}>
@@ -160,7 +159,7 @@ export function buildMagicItemPrintCardSlots(
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
-            border: getImageBorderStyle(imageBorder),
+            border: getImageBorderStyle(imageBorderWidthPx),
             overflow: 'hidden' as const,
             shapeOutside: 'border-box' as const,
             shapeMargin: '1rem',
@@ -203,7 +202,7 @@ export function buildMagicItemPrintCardSlots(
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorder) || undefined,
+          border: getImageBorderStyle(imageBorderWidthPx) || undefined,
           overflow: 'hidden' as const,
           shapeOutside: 'border-box' as const,
           shapeMargin: '1rem',

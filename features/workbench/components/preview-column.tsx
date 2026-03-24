@@ -1,11 +1,9 @@
 'use client';
 
 import {
-  BorderAll02Icon,
   BorderNone01Icon,
   CircleIcon,
   Settings01Icon,
-  SquareIcon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { RefObject } from 'react';
@@ -21,7 +19,6 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardStyleOptions,
@@ -32,15 +29,44 @@ import { ItemPreviewPanel } from './item-preview-panel';
 import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
 
 type QuickLayoutValue = 'stacked' | 'compact';
-type QuickImageShapeValue = 'rect' | 'circle';
 
-function deriveQuickImageShape(
+type ImageFramePresetValue = 'borderless' | 'bordered';
+
+function deriveImageFramePreset(
   workbenchState: MagicItemWorkbenchState,
-): QuickImageShapeValue | '' {
-  if (workbenchState.imageBorderRadius === 0) return 'rect';
-  if (workbenchState.imageBorderRadius === imageBorderRadiusRange.max)
-    return 'circle';
+): ImageFramePresetValue | '' {
+  const { imageBorderWidthPx, imageBorderRadius, imageAspectRatio } =
+    workbenchState;
+  if (
+    imageBorderWidthPx === 0 &&
+    imageBorderRadius === 0 &&
+    imageAspectRatio === 'based-on-image'
+  ) {
+    return 'borderless';
+  }
+  if (
+    imageBorderWidthPx === 5 &&
+    imageBorderRadius === 100 &&
+    imageAspectRatio === 'square'
+  ) {
+    return 'bordered';
+  }
   return '';
+}
+
+function applyImageFramePreset(
+  setWorkbenchField: WorkbenchFieldSetter,
+  preset: ImageFramePresetValue,
+): void {
+  if (preset === 'borderless') {
+    setWorkbenchField('imageBorderWidthPx', 0);
+    setWorkbenchField('imageBorderRadius', 0);
+    setWorkbenchField('imageAspectRatio', 'based-on-image');
+  } else {
+    setWorkbenchField('imageBorderWidthPx', 5);
+    setWorkbenchField('imageBorderRadius', 100);
+    setWorkbenchField('imageAspectRatio', 'square');
+  }
 }
 
 function deriveQuickLayout(
@@ -75,7 +101,7 @@ export function PreviewColumn({
   );
 
   const quickLayout = deriveQuickLayout(workbenchState);
-  const quickImageShape = deriveQuickImageShape(workbenchState);
+  const imageFramePreset = deriveImageFramePreset(workbenchState);
 
   function handleQuickLayoutChange(value: string) {
     if (value === 'stacked') {
@@ -151,50 +177,26 @@ export function PreviewColumn({
           />
 
           <ToggleGroup
-            value={quickImageShape ? [quickImageShape] : []}
-            variant="outline"
-            onValueChange={(nextValues) => {
-              const nextValue = nextValues[nextValues.length - 1];
-              if (nextValue === 'rect') {
-                setWorkbenchField('imageBorderRadius', 0);
-              } else if (nextValue === 'circle') {
-                setWorkbenchField(
-                  'imageBorderRadius',
-                  imageBorderRadiusRange.max,
-                );
-                setWorkbenchField('imageAspectRatio', 'square');
-              }
-            }}
-          >
-            <ToggleGroupItem value="rect" aria-label="Rectangle image">
-              <HugeiconsIcon icon={SquareIcon} strokeWidth={1.5} />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="circle" aria-label="Circle image">
-              <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          <ToggleGroup
-            value={[workbenchState.imageBorder]}
+            value={imageFramePreset ? [imageFramePreset] : []}
             variant="outline"
             onValueChange={(nextValues) => {
               const nextValue = nextValues[nextValues.length - 1];
               if (nextValue) {
-                setWorkbenchField(
-                  'imageBorder',
-                  nextValue as MagicItemWorkbenchState['imageBorder'],
+                applyImageFramePreset(
+                  setWorkbenchField,
+                  nextValue as ImageFramePresetValue,
                 );
               }
             }}
           >
-            <ToggleGroupItem value="none" aria-label="No image border">
+            <ToggleGroupItem
+              value="borderless"
+              aria-label="Borderless image frame"
+            >
               <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
             </ToggleGroupItem>
-            <ToggleGroupItem value="thin" aria-label="Thin image border">
-              <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={1.5} />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="thick" aria-label="Thick image border">
-              <HugeiconsIcon icon={BorderAll02Icon} strokeWidth={3} />
+            <ToggleGroupItem value="bordered" aria-label="Bordered image frame">
+              <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
             </ToggleGroupItem>
           </ToggleGroup>
         </div>

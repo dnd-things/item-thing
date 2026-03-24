@@ -3,6 +3,11 @@
 import { z } from 'zod';
 
 import {
+  clampImageBorderWidthPx,
+  imageBorderWidthPxRange,
+} from '@/features/card-renderer/lib/card-renderer-options';
+
+import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
 } from './workbench-options';
@@ -10,7 +15,7 @@ import {
 export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
-const PERSISTENCE_VERSION = 2 as const;
+const PERSISTENCE_VERSION = 3 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -26,7 +31,8 @@ const imageAspectRatioSchema = z.enum([
   'landscape',
   'widescreen',
 ]);
-const imageBorderSchema = z.enum(['none', 'thin', 'thick']);
+/** Legacy v1–v2 only; migrated to `imageBorderWidthPx` on load. */
+const legacyImageBorderSchema = z.enum(['none', 'thin', 'thick']);
 
 /** Workbench slider uses 15° steps; persisted values are rounded on load. */
 export const IMAGE_ROTATION_DEGREES_STEP = 15 as const;
@@ -39,6 +45,19 @@ export function normalizeImageRotationDegrees(degrees: number): number {
   return Math.min(360, Math.max(0, rounded));
 }
 
+function legacyImageBorderToWidthPx(
+  legacy: z.infer<typeof legacyImageBorderSchema> | undefined,
+): number {
+  switch (legacy) {
+    case 'thin':
+      return 2;
+    case 'thick':
+      return 5;
+    default:
+      return 0;
+  }
+}
+
 const magicItemWorkbenchPartialStateSchema = z
   .object({
     cardLayout: cardLayoutSchema.optional(),
@@ -49,7 +68,13 @@ const magicItemWorkbenchPartialStateSchema = z
     imageAspectRatio: imageAspectRatioSchema.optional(),
     resolvedImageAspectRatio: z.number().optional(),
     imageBorderRadius: z.number().optional(),
-    imageBorder: imageBorderSchema.optional(),
+    imageBorderWidthPx: z
+      .number()
+      .int()
+      .min(imageBorderWidthPxRange.min)
+      .max(imageBorderWidthPxRange.max)
+      .optional(),
+    imageBorder: legacyImageBorderSchema.optional(),
     imageRightVerticalPosition: z.number().int().min(-8).optional(),
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
@@ -65,7 +90,11 @@ const magicItemWorkbenchPartialStateSchema = z
   .strip();
 
 const workbenchPersistenceEnvelopeSchema = z.object({
-  version: z.union([z.literal(1), z.literal(PERSISTENCE_VERSION)]),
+  version: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(PERSISTENCE_VERSION),
+  ]),
   state: z.unknown(),
 });
 
@@ -135,6 +164,21 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
   mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
     mergedState.imageRotationDegrees,
   );
+
+  if (stateResult.data.imageBorderWidthPx === undefined) {
+    mergedState.imageBorderWidthPx = legacyImageBorderToWidthPx(
+      stateResult.data.imageBorder,
+    );
+  }
+  mergedState.imageBorderWidthPx = clampImageBorderWidthPx(
+    mergedState.imageBorderWidthPx,
+  );
+
+  const mergedWithoutLegacyImageBorder =
+    mergedState as MagicItemWorkbenchState & {
+      imageBorder?: z.infer<typeof legacyImageBorderSchema>;
+    };
+  delete mergedWithoutLegacyImageBorder.imageBorder;
 
   if (
     envelopeResult.data.version === 1 &&
