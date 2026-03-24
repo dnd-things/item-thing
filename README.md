@@ -13,12 +13,6 @@ Should be split to:
 Behavior when advanced options conflict with basic options: use advanced options; introduce "not selected" state for the basic options.
 
 
-### Simplify border management
-
-Currently: image shape and border thickness are separate controls.
-Merge into a single control: either there's no border (which implies roundness)
-
-
 ## Bugs
 
 ## Completed
