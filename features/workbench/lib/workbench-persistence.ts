@@ -31,8 +31,6 @@ const imageAspectRatioSchema = z.enum([
   'landscape',
   'widescreen',
 ]);
-/** Legacy v1–v2 only; migrated to `imageBorderWidthPx` on load. */
-const legacyImageBorderSchema = z.enum(['none', 'thin', 'thick']);
 
 /** Workbench slider uses 15° steps; persisted values are rounded on load. */
 export const IMAGE_ROTATION_DEGREES_STEP = 15 as const;
@@ -43,19 +41,6 @@ export function normalizeImageRotationDegrees(degrees: number): number {
     Math.round(clamped / IMAGE_ROTATION_DEGREES_STEP) *
     IMAGE_ROTATION_DEGREES_STEP;
   return Math.min(360, Math.max(0, rounded));
-}
-
-function legacyImageBorderToWidthPx(
-  legacy: z.infer<typeof legacyImageBorderSchema> | undefined,
-): number {
-  switch (legacy) {
-    case 'thin':
-      return 2;
-    case 'thick':
-      return 5;
-    default:
-      return 0;
-  }
 }
 
 const magicItemWorkbenchPartialStateSchema = z
@@ -74,7 +59,6 @@ const magicItemWorkbenchPartialStateSchema = z
       .min(imageBorderWidthPxRange.min)
       .max(imageBorderWidthPxRange.max)
       .optional(),
-    imageBorder: legacyImageBorderSchema.optional(),
     imageRightVerticalPosition: z.number().int().min(-8).optional(),
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
@@ -165,20 +149,9 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     mergedState.imageRotationDegrees,
   );
 
-  if (stateResult.data.imageBorderWidthPx === undefined) {
-    mergedState.imageBorderWidthPx = legacyImageBorderToWidthPx(
-      stateResult.data.imageBorder,
-    );
-  }
   mergedState.imageBorderWidthPx = clampImageBorderWidthPx(
     mergedState.imageBorderWidthPx,
   );
-
-  const mergedWithoutLegacyImageBorder =
-    mergedState as MagicItemWorkbenchState & {
-      imageBorder?: z.infer<typeof legacyImageBorderSchema>;
-    };
-  delete mergedWithoutLegacyImageBorder.imageBorder;
 
   if (
     envelopeResult.data.version === 1 &&
