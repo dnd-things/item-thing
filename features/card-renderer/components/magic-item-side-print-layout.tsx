@@ -16,6 +16,7 @@ import {
   getCardLayoutClassName,
   getCardMediaColumnClassName,
   getCardSurfaceMinHeightClassName,
+  getImageBorderBoxShadow,
   getImageBorderStyle,
   type ImageAspectRatioOption,
 } from '../lib/card-renderer-options';
@@ -146,6 +147,7 @@ function MagicItemSidePrintLayoutMedia({
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
           border: getImageBorderStyle(imageBorderWidthPx),
+          boxShadow: getImageBorderBoxShadow(imageBorderWidthPx),
         }}
       >
         {children}

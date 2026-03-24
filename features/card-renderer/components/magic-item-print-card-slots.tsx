@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 import {
   type CardImageDimensions,
+  getImageBorderBoxShadow,
   getImageBorderStyle,
 } from '../lib/card-renderer-options';
 
@@ -160,6 +161,7 @@ export function buildMagicItemPrintCardSlots(
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
             border: getImageBorderStyle(imageBorderWidthPx),
+            boxShadow: getImageBorderBoxShadow(imageBorderWidthPx),
             overflow: 'hidden' as const,
             shapeOutside: 'border-box' as const,
             shapeMargin: '1rem',
@@ -203,6 +205,7 @@ export function buildMagicItemPrintCardSlots(
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
           border: getImageBorderStyle(imageBorderWidthPx) || undefined,
+          boxShadow: getImageBorderBoxShadow(imageBorderWidthPx) || undefined,
           overflow: 'hidden' as const,
           shapeOutside: 'border-box' as const,
           shapeMargin: '1rem',

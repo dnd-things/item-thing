@@ -26,7 +26,7 @@ export interface MagicItemCardRendererProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
-  /** 0 = no border; otherwise CSS border width in pixels (solid #000). */
+  /** 0 = no border; otherwise CSS border width in pixels (soft slate ring + shadow). */
   imageBorderWidthPx: number;
   /**
    * Image-right vertical offset; workbench maps 0–100 linearly across min…max internal integers.
@@ -214,7 +214,14 @@ export function getImageBorderStyle(imageBorderWidthPx: number): string {
   if (imageBorderWidthPx <= 0) {
     return '';
   }
-  return `${imageBorderWidthPx}px solid #000`;
+  return `${imageBorderWidthPx}px solid rgba(0, 0, 0, 0.6)`;
+}
+
+export function getImageBorderBoxShadow(imageBorderWidthPx: number): string {
+  if (imageBorderWidthPx <= 0) {
+    return '';
+  }
+  return '0 2px 8px rgba(15, 23, 42, 0.1), 0 0 0 0.5px rgba(148, 163, 184, 0.3)';
 }
 
 export function getCardSurfaceBorderRadius(
