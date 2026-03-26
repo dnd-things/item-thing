@@ -9,18 +9,9 @@ export interface PersistCardExportToConvexParams {
   convexUrl: string;
   exportFormat: 'jpg' | 'png';
   exportPixelRatio: 1 | 2;
-  renderedContentType: string;
-  renderedImageBuffer: Buffer;
   sourceArtworkBuffer: Buffer;
   sourceMimeType: string;
   workbenchState: MagicItemWorkbenchState;
-}
-
-function normalizeBlobMimeType(contentType: string): string {
-  if (contentType.startsWith('image/')) {
-    return contentType;
-  }
-  return 'application/octet-stream';
 }
 
 export async function persistCardExportToConvex(
@@ -52,20 +43,7 @@ export async function persistCardExportToConvex(
     },
   );
 
-  const uploadUrlForExport = await client.mutation(
-    api.itemExports.generateUploadUrl,
-    {},
-  );
-  const exportedBlob = new Blob([new Uint8Array(params.renderedImageBuffer)], {
-    type: normalizeBlobMimeType(params.renderedContentType),
-  });
-  const exportedImageStorageId = await uploadBlobToConvexStorage(
-    uploadUrlForExport,
-    exportedBlob,
-  );
-
   await client.mutation(api.itemExports.createItemExport, {
-    exportedImageStorageId,
     exportFormat: params.exportFormat,
     exportPixelRatio: params.exportPixelRatio,
     sourceImageStorageId,

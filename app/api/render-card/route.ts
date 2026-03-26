@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { getConvexDeploymentUrl } from '@/features/server-render-card/get-convex-deployment-url';
 import { getRequestBaseUrl } from '@/features/server-render-card/get-request-base-url';
@@ -82,24 +82,30 @@ export async function POST(request: Request) {
       },
     });
 
-    await persistCardExportToConvex({
-      convexUrl,
-      exportFormat: parsed.fields.format,
-      exportPixelRatio: parsed.fields.pixelRatio,
-      renderedContentType: result.contentType,
-      renderedImageBuffer: result.body,
-      sourceArtworkBuffer: parsed.artworkBuffer,
-      sourceMimeType: mapped.sourceMimeType,
-      workbenchState: mapped.workbenchState,
-    });
-
-    return new NextResponse(new Uint8Array(result.body), {
+    const response = new NextResponse(new Uint8Array(result.body), {
       status: 200,
       headers: {
         'Content-Type': result.contentType,
         'Cache-Control': 'no-store',
       },
     });
+
+    after(async () => {
+      try {
+        await persistCardExportToConvex({
+          convexUrl,
+          exportFormat: parsed.fields.format,
+          exportPixelRatio: parsed.fields.pixelRatio,
+          sourceArtworkBuffer: parsed.artworkBuffer,
+          sourceMimeType: mapped.sourceMimeType,
+          workbenchState: mapped.workbenchState,
+        });
+      } catch (error) {
+        console.error('persistCardExportToConvex failed', error);
+      }
+    });
+
+    return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
