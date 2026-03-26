@@ -1,5 +1,3 @@
-'use client';
-
 export type CardLayoutOption = 'vertical' | 'image-right';
 
 export type CardStyleOption = 'print' | 'minimal' | 'classic';
