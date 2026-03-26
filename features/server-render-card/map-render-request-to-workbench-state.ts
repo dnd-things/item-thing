@@ -15,6 +15,11 @@ export interface MapRenderRequestToWorkbenchStateInput {
   item: RenderCardItemJson;
 }
 
+export interface MapRenderRequestToWorkbenchStateResult {
+  sourceMimeType: string;
+  workbenchState: MagicItemWorkbenchState;
+}
+
 function getMimeTypeForDataUrl(
   sharpFormat: string | undefined,
   fileName: string,
@@ -42,7 +47,7 @@ function getMimeTypeForDataUrl(
 
 export async function mapRenderRequestToMagicItemWorkbenchState(
   input: MapRenderRequestToWorkbenchStateInput,
-): Promise<MagicItemWorkbenchState> {
+): Promise<MapRenderRequestToWorkbenchStateResult> {
   const metadata = await sharp(input.artworkBuffer).metadata();
   const widthPx = metadata.width ?? 1;
   const heightPx = metadata.height ?? 1;
@@ -64,7 +69,7 @@ export async function mapRenderRequestToMagicItemWorkbenchState(
       ? input.artworkFileName
       : 'artwork.png';
 
-  return {
+  const workbenchState: MagicItemWorkbenchState = {
     ...defaultMagicItemWorkbenchState,
     cardLayout: input.fields.cardLayout,
     sideLayoutFlow: input.fields.sideLayoutFlow,
@@ -78,5 +83,10 @@ export async function mapRenderRequestToMagicItemWorkbenchState(
     requiresAttunement: input.item.requiresAttunement,
     flavorDescription: input.item.flavorDescription,
     mechanicalDescription: input.item.mechanicalDescription,
+  };
+
+  return {
+    sourceMimeType: mimeType,
+    workbenchState,
   };
 }

@@ -9,5 +9,6 @@ export default defineSchema({
     exportFormat: v.union(v.literal('png'), v.literal('jpg')),
     exportPixelRatio: v.union(v.literal(1), v.literal(2)),
     sourceImageStorageId: v.optional(v.id('_storage')),
+    exportedImageStorageId: v.optional(v.id('_storage')),
   }),
 });

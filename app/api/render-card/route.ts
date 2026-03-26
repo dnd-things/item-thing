@@ -1,26 +1,36 @@
 import { NextResponse } from 'next/server';
 
+import { getConvexDeploymentUrl } from '@/features/server-render-card/get-convex-deployment-url';
+import { getRequestBaseUrl } from '@/features/server-render-card/get-request-base-url';
 import { mapRenderRequestToMagicItemWorkbenchState } from '@/features/server-render-card/map-render-request-to-workbench-state';
+import { persistCardExportToConvex } from '@/features/server-render-card/persist-card-export-to-convex';
 import { parseRenderCardMultipartFormData } from '@/features/server-render-card/render-card-form-schema';
+import {
+  getApiSecretOrThrow,
+  getInternalSecretOrThrow,
+  isApiRequestAuthorizedBySecret,
+} from '@/features/server-render-card/render-card-secret-auth';
+import { runPuppeteerCardExport } from '@/features/server-render-card/run-puppeteer-card-export';
 
 export const runtime = 'nodejs';
 
-function isRenderCardRequestAuthorized(request: Request): boolean {
-  const secret = process.env.RENDER_CARD_SECRET;
-  if (secret === undefined || secret.length === 0) {
-    return false;
-  }
-  const authorization = request.headers.get('authorization');
-  const bearer = authorization?.startsWith('Bearer ')
-    ? authorization.slice('Bearer '.length)
-    : null;
-  const headerSecret = request.headers.get('x-render-card-secret');
-  return bearer === secret || headerSecret === secret;
-}
-
 export async function POST(request: Request) {
-  if (!isRenderCardRequestAuthorized(request)) {
+  let apiSecret: string;
+  let internalSecret: string;
+  try {
+    apiSecret = getApiSecretOrThrow();
+    internalSecret = getInternalSecretOrThrow();
+  } catch {
+    return NextResponse.json({ error: 'unconfigured' }, { status: 503 });
+  }
+
+  if (!isApiRequestAuthorizedBySecret(request, apiSecret)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  const convexUrl = getConvexDeploymentUrl();
+  if (convexUrl === undefined) {
+    return NextResponse.json({ error: 'convex_unconfigured' }, { status: 503 });
   }
 
   let formData: FormData;
@@ -42,8 +52,11 @@ export async function POST(request: Request) {
     );
   }
 
+  let mapped: Awaited<
+    ReturnType<typeof mapRenderRequestToMagicItemWorkbenchState>
+  >;
   try {
-    await mapRenderRequestToMagicItemWorkbenchState({
+    mapped = await mapRenderRequestToMagicItemWorkbenchState({
       artworkBuffer: parsed.artworkBuffer,
       artworkFileName: parsed.artwork.name,
       fields: parsed.fields,
@@ -56,12 +69,42 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
-    {
-      error: 'not_implemented',
-      message:
-        'Card image rendering is not wired yet; validation and state mapping succeeded.',
-    },
-    { status: 501 },
-  );
+  const baseUrl = getRequestBaseUrl(request);
+
+  try {
+    const result = await runPuppeteerCardExport({
+      baseUrl,
+      internalSecret,
+      payload: {
+        state: mapped.workbenchState,
+        format: parsed.fields.format,
+        pixelRatio: parsed.fields.pixelRatio,
+      },
+    });
+
+    await persistCardExportToConvex({
+      convexUrl,
+      exportFormat: parsed.fields.format,
+      exportPixelRatio: parsed.fields.pixelRatio,
+      renderedContentType: result.contentType,
+      renderedImageBuffer: result.body,
+      sourceArtworkBuffer: parsed.artworkBuffer,
+      sourceMimeType: mapped.sourceMimeType,
+      workbenchState: mapped.workbenchState,
+    });
+
+    return new NextResponse(new Uint8Array(result.body), {
+      status: 200,
+      headers: {
+        'Content-Type': result.contentType,
+        'Cache-Control': 'no-store',
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: 'render_failed', message },
+      { status: 500 },
+    );
+  }
 }
