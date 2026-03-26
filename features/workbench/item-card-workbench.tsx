@@ -8,9 +8,13 @@ import {
   imageRightVerticalPositionDefaultForFluidSideLayout,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { DownloadControlsCard } from './components/download-controls-card';
+import {
+  DownloadControlsCard,
+  type ItemExportCompletePayload,
+} from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import { usePersistItemExport } from './lib/use-persist-item-export';
 import { useWorkbenchPersistenceControlsVisible } from './lib/use-workbench-persistence-controls-visible';
 import {
   type WorkbenchItemDetailsFormValues,
@@ -25,6 +29,7 @@ import {
   loadMagicItemWorkbenchStateFromLocalStorage,
   saveMagicItemWorkbenchStateToLocalStorage,
 } from './lib/workbench-persistence';
+import { toWorkbenchSnapshotForExport } from './lib/workbench-snapshot-for-export';
 
 interface ImagePreviewData {
   previewUrl: string;
@@ -104,6 +109,7 @@ export function ItemCardWorkbench() {
   const [isPersistenceLoadPending, setIsPersistenceLoadPending] =
     useState(false);
   const persistenceControlsVisible = useWorkbenchPersistenceControlsVisible();
+  const persistItemExport = usePersistItemExport();
   const imageReadRequestIdRef = useRef(0);
   const isApplyingPersistenceLoadRef = useRef(false);
   const previewStateRef = useRef<MagicItemWorkbenchState>(
@@ -221,6 +227,22 @@ export function ItemCardWorkbench() {
     return formValid;
   }, [form]);
 
+  const handleExportComplete = useCallback(
+    (payload: ItemExportCompletePayload) => {
+      void persistItemExport({
+        workbenchSnapshot: toWorkbenchSnapshotForExport(
+          previewStateRef.current,
+        ),
+        sourceImagePreviewDataUrl: previewStateRef.current.imagePreviewUrl,
+        exportFormat: payload.exportFormat,
+        exportPixelRatio: payload.exportPixelRatio,
+      }).catch((error: unknown) => {
+        console.error('Failed to persist export to Convex', error);
+      });
+    },
+    [persistItemExport],
+  );
+
   const handlePersistSave = useCallback(() => {
     const result = saveMagicItemWorkbenchStateToLocalStorage(
       previewStateRef.current,
@@ -311,6 +333,7 @@ export function ItemCardWorkbench() {
           getItemName={() => form.getValues('itemName')}
           disabled={!canDownload}
           onBeforeDownload={handleBeforeDownload}
+          onExportComplete={handleExportComplete}
         />
       </div>
     </div>

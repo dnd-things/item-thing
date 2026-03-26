@@ -22,11 +22,20 @@ const resolutionOptions: ReadonlyArray<{ value: '1' | '2'; label: string }> = [
   { value: '2', label: '2×' },
 ];
 
+export interface ItemExportCompletePayload {
+  exportDataUrl: string;
+  exportFormat: DownloadExtension;
+  exportPixelRatio: 1 | 2;
+}
+
 interface DownloadControlsCardProps {
   cardRef: RefObject<HTMLDivElement | null>;
   getItemName: () => string;
   disabled?: boolean;
   onBeforeDownload?: () => Promise<boolean>;
+  onExportComplete?: (
+    payload: ItemExportCompletePayload,
+  ) => void | Promise<void>;
 }
 
 export function DownloadControlsCard({
@@ -34,6 +43,7 @@ export function DownloadControlsCard({
   getItemName,
   disabled = false,
   onBeforeDownload,
+  onExportComplete,
 }: DownloadControlsCardProps) {
   const [exportFormat, setExportFormat] = useState<DownloadExtension>('png');
   const [resolution, setResolution] = useState<1 | 2>(2);
@@ -45,30 +55,31 @@ export function DownloadControlsCard({
     const itemName = getItemName();
 
     try {
+      let dataUrl: string;
       if (exportFormat === 'png') {
-        const dataUrl = await toPng(node, { pixelRatio: resolution });
-        const filename = getCardDownloadFilename(itemName, 'png');
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
-        return;
-      }
-      if (exportFormat === 'jpg') {
-        const dataUrl = await toJpeg(node, {
+        dataUrl = await toPng(node, { pixelRatio: resolution });
+      } else {
+        dataUrl = await toJpeg(node, {
           pixelRatio: resolution,
           quality: 0.92,
         });
-        const filename = getCardDownloadFilename(itemName, 'jpg');
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
       }
+
+      const filename = getCardDownloadFilename(itemName, exportFormat);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+
+      onExportComplete?.({
+        exportDataUrl: dataUrl,
+        exportFormat,
+        exportPixelRatio: resolution,
+      });
     } catch {
       // TODO: surface error to user
     }
-  }, [cardRef, getItemName, exportFormat, resolution]);
+  }, [cardRef, getItemName, exportFormat, resolution, onExportComplete]);
 
   const handleDownloadClick = useCallback(async () => {
     if (onBeforeDownload && !(await onBeforeDownload())) return;

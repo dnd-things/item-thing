@@ -9,6 +9,9 @@
  */
 
 import type * as health from "../health.js";
+import type * as itemExports from "../itemExports.js";
+import type * as lib_workbenchSnapshotValidators from "../lib/workbenchSnapshotValidators.js";
+import type * as optimizeSourceImage from "../optimizeSourceImage.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +21,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   health: typeof health;
+  itemExports: typeof itemExports;
+  "lib/workbenchSnapshotValidators": typeof lib_workbenchSnapshotValidators;
+  optimizeSourceImage: typeof optimizeSourceImage;
 }>;
 
 /**

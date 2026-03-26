@@ -6,6 +6,7 @@ import {
   Geist_Mono,
   Outfit,
 } from 'next/font/google';
+import { ConvexClientProvider } from '@/app/convex-client-provider';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
@@ -65,7 +66,7 @@ export default async function RootLayout({
       )}
     >
       <body className="antialiased">
-        {children}
+        <ConvexClientProvider>{children}</ConvexClientProvider>
         <Analytics />
       </body>
     </html>
