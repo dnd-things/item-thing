@@ -1,8 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { type UseFormReturn, useForm } from 'react-hook-form';
 import {
   getImageRightVerticalPositionDefaultForFixedSideLayout,
   imageRightVerticalPositionDefaultForFluidSideLayout,
@@ -15,7 +16,6 @@ import {
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
 import { usePersistItemExport } from './lib/use-persist-item-export';
-import { useWorkbenchPersistenceControlsVisible } from './lib/use-workbench-persistence-controls-visible';
 import {
   type WorkbenchItemDetailsFormValues,
   workbenchItemDetailsSchema,
@@ -30,6 +30,8 @@ import {
   saveMagicItemWorkbenchStateToLocalStorage,
 } from './lib/workbench-persistence';
 import { toWorkbenchSnapshotForExport } from './lib/workbench-snapshot-for-export';
+
+const WORKBENCH_AUTOSAVE_DEBOUNCE_MS = 400 as const;
 
 interface ImagePreviewData {
   previewUrl: string;
@@ -89,6 +91,54 @@ async function readImagePreviewData(
   return { previewUrl, aspectRatio };
 }
 
+async function imageFileFromPersistedWorkbenchState(
+  loaded: MagicItemWorkbenchState,
+): Promise<File | undefined> {
+  if (loaded.imagePreviewUrl.trim() === '') {
+    return undefined;
+  }
+
+  try {
+    return await dataUrlToFile(loaded.imagePreviewUrl, loaded.imageFileName);
+  } catch {
+    return undefined;
+  }
+}
+
+interface HydrateWorkbenchFromLocalStorageParams {
+  form: UseFormReturn<WorkbenchItemDetailsFormValues>;
+  setWorkbenchState: Dispatch<SetStateAction<MagicItemWorkbenchState>>;
+  isApplyingPersistenceLoadRef: MutableRefObject<boolean>;
+}
+
+async function hydrateWorkbenchFromLocalStorage(
+  params: HydrateWorkbenchFromLocalStorageParams,
+  shouldAbort: () => boolean,
+): Promise<void> {
+  const loaded = loadMagicItemWorkbenchStateFromLocalStorage();
+  if (!loaded) {
+    return;
+  }
+
+  params.isApplyingPersistenceLoadRef.current = true;
+
+  const nextImageFile = await imageFileFromPersistedWorkbenchState(loaded);
+
+  if (shouldAbort()) {
+    return;
+  }
+
+  params.form.reset({
+    itemName: loaded.itemName,
+    classificationAndRarity: loaded.classificationAndRarity,
+    requiresAttunement: loaded.requiresAttunement,
+    flavorDescription: loaded.flavorDescription,
+    mechanicalDescription: loaded.mechanicalDescription,
+    imageFile: nextImageFile,
+  });
+  params.setWorkbenchState(loaded);
+}
+
 const formDefaultValues: WorkbenchItemDetailsFormValues = {
   itemName: defaultMagicItemWorkbenchState.itemName,
   imageFile: undefined,
@@ -103,12 +153,7 @@ export function ItemCardWorkbench() {
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
-  const [persistSaveButtonTitle, setPersistSaveButtonTitle] = useState<
-    string | undefined
-  >(undefined);
-  const [isPersistenceLoadPending, setIsPersistenceLoadPending] =
-    useState(false);
-  const persistenceControlsVisible = useWorkbenchPersistenceControlsVisible();
+  const [restorationComplete, setRestorationComplete] = useState(false);
   const persistItemExport = usePersistItemExport();
   const imageReadRequestIdRef = useRef(0);
   const isApplyingPersistenceLoadRef = useRef(false);
@@ -124,6 +169,27 @@ export function ItemCardWorkbench() {
 
   const formValues = form.watch();
   const imageFile = formValues.imageFile;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void hydrateWorkbenchFromLocalStorage(
+      {
+        form,
+        setWorkbenchState,
+        isApplyingPersistenceLoadRef,
+      },
+      () => cancelled,
+    ).finally(() => {
+      if (!cancelled) {
+        setRestorationComplete(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form]);
 
   useEffect(() => {
     if (!imageFile) {
@@ -172,6 +238,46 @@ export function ItemCardWorkbench() {
   };
 
   previewStateRef.current = previewState;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: workbenchState covers preview-only controls; form.watch only fires for form fields.
+  useEffect(() => {
+    if (!restorationComplete) {
+      return;
+    }
+
+    let timeoutId: number | undefined;
+
+    const scheduleAutosave = () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+      timeoutId = window.setTimeout(() => {
+        const result = saveMagicItemWorkbenchStateToLocalStorage(
+          previewStateRef.current,
+        );
+        if (!result.success) {
+          console.warn(
+            result.reason === 'quota'
+              ? 'Workbench autosave: not enough browser storage.'
+              : 'Workbench autosave: could not write to browser storage.',
+          );
+        }
+      }, WORKBENCH_AUTOSAVE_DEBOUNCE_MS);
+    };
+
+    const subscription = form.watch(() => {
+      scheduleAutosave();
+    });
+
+    scheduleAutosave();
+
+    return () => {
+      subscription.unsubscribe();
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [form, restorationComplete, workbenchState]);
 
   const setWorkbenchField = useCallback(
     <TKey extends keyof MagicItemWorkbenchState>(
@@ -243,58 +349,6 @@ export function ItemCardWorkbench() {
     [persistItemExport],
   );
 
-  const handlePersistSave = useCallback(() => {
-    const result = saveMagicItemWorkbenchStateToLocalStorage(
-      previewStateRef.current,
-    );
-    if (!result.success) {
-      setPersistSaveButtonTitle(
-        result.reason === 'quota'
-          ? 'Not enough browser storage for this snapshot.'
-          : 'Could not save to browser storage.',
-      );
-      return;
-    }
-    setPersistSaveButtonTitle(undefined);
-  }, []);
-
-  const handlePersistLoad = useCallback(async () => {
-    setIsPersistenceLoadPending(true);
-    try {
-      const loaded = loadMagicItemWorkbenchStateFromLocalStorage();
-      if (!loaded) {
-        return;
-      }
-
-      isApplyingPersistenceLoadRef.current = true;
-
-      let imageFile: File | undefined;
-      if (loaded.imagePreviewUrl.trim() !== '') {
-        try {
-          imageFile = await dataUrlToFile(
-            loaded.imagePreviewUrl,
-            loaded.imageFileName,
-          );
-        } catch {
-          imageFile = undefined;
-        }
-      }
-
-      form.reset({
-        itemName: loaded.itemName,
-        classificationAndRarity: loaded.classificationAndRarity,
-        requiresAttunement: loaded.requiresAttunement,
-        flavorDescription: loaded.flavorDescription,
-        mechanicalDescription: loaded.mechanicalDescription,
-        imageFile,
-      });
-      setWorkbenchState(loaded);
-      setPersistSaveButtonTitle(undefined);
-    } finally {
-      setIsPersistenceLoadPending(false);
-    }
-  }, [form]);
-
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="grid auto-rows-fr gap-6 xl:grid-cols-[minmax(340px,2fr)_3fr]">
@@ -303,16 +357,6 @@ export function ItemCardWorkbench() {
             control={form.control}
             formErrors={form.formState.errors}
             trigger={form.trigger}
-            persistence={
-              persistenceControlsVisible
-                ? {
-                    onPersistSave: handlePersistSave,
-                    onPersistLoad: handlePersistLoad,
-                    isPersistenceLoadPending,
-                    persistSaveButtonTitle,
-                  }
-                : undefined
-            }
           />
         </div>
         <div className="animate-entrance animate-entrance-delay-1">
