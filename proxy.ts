@@ -6,12 +6,33 @@ import {
   isInternalRequestAuthorizedBySecret,
 } from '@/features/server-render-card/render-card-secret-auth';
 
+interface ApiRequestLogPayload {
+  method: string;
+  pathname: string;
+  search: string;
+  headers: Record<string, string>;
+}
+
+function headersToRecord(headers: Headers): Record<string, string> {
+  return Object.fromEntries(headers.entries());
+}
+
 export function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  if (pathname.startsWith('/api/') && request.method !== 'OPTIONS') {
+    const payload: ApiRequestLogPayload = {
+      method: request.method,
+      pathname,
+      search: request.nextUrl.search,
+      headers: headersToRecord(request.headers),
+    };
+    console.log('[api]', JSON.stringify(payload));
+  }
+
   if (request.method === 'OPTIONS') {
     return NextResponse.next();
   }
-
-  const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith('/api/render-card')) {
     const secret = process.env.API_SECRET;
@@ -39,5 +60,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/internal/:path*', '/api/render-card'],
+  matcher: ['/internal/:path*', '/api/:path*'],
 };
