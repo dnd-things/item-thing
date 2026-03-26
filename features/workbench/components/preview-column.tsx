@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
+import { getImageFramePresetFieldValues } from '../lib/image-frame-preset';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardStyleOptions,
@@ -58,15 +59,10 @@ function applyImageFramePreset(
   setWorkbenchField: WorkbenchFieldSetter,
   preset: ImageFramePresetValue,
 ): void {
-  if (preset === 'borderless') {
-    setWorkbenchField('imageBorderWidthPx', 0);
-    setWorkbenchField('imageBorderRadius', 0);
-    setWorkbenchField('imageAspectRatio', 'based-on-image');
-  } else {
-    setWorkbenchField('imageBorderWidthPx', 5);
-    setWorkbenchField('imageBorderRadius', 100);
-    setWorkbenchField('imageAspectRatio', 'square');
-  }
+  const values = getImageFramePresetFieldValues(preset);
+  setWorkbenchField('imageBorderWidthPx', values.imageBorderWidthPx);
+  setWorkbenchField('imageBorderRadius', values.imageBorderRadius);
+  setWorkbenchField('imageAspectRatio', values.imageAspectRatio);
 }
 
 function deriveQuickLayout(
