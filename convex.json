@@ -1,5 +1,5 @@
 {
   "node": {
-    "externalPackages": ["sharp", "oxipng-node"]
+    "externalPackages": ["sharp", "@jsquash/oxipng"]
   }
 }
