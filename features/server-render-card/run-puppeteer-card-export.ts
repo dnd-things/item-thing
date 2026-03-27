@@ -67,13 +67,26 @@ async function launchBrowserWithSparticuzChromium(): Promise<Browser> {
 async function launchBrowserForCardExport(): Promise<Browser> {
   const customExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
   if (customExecutablePath !== undefined && customExecutablePath.length > 0) {
+    console.log(
+      '[runPuppeteerCardExport]',
+      'launching browser with custom executable path',
+      customExecutablePath,
+    );
     return await launchBrowserWithCustomExecutablePath(customExecutablePath);
   }
 
   if (process.env.VERCEL_ENV === undefined) {
+    console.log(
+      '[runPuppeteerCardExport]',
+      'launching browser with bundled puppeteer',
+    );
     return await launchBrowserWithBundledPuppeteer();
   }
 
+  console.log(
+    '[runPuppeteerCardExport]',
+    'launching browser with sparticuz chromium',
+  );
   return await launchBrowserWithSparticuzChromium();
 }
 
