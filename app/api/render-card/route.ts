@@ -72,6 +72,7 @@ export async function POST(request: Request) {
   const baseUrl = getRequestBaseUrl(request);
 
   try {
+    console.log('[api/render-card]', 'running puppeteer card export');
     const result = await runPuppeteerCardExport({
       baseUrl,
       internalSecret,

@@ -82,10 +82,14 @@ export async function runPuppeteerCardExport(
 ): Promise<RunPuppeteerCardExportResult> {
   const serializedPayload = JSON.stringify(params.payload);
 
+  console.log('[runPuppeteerCardExport]', 'launching browser');
   const browser = await launchBrowserForCardExport();
+  console.log('[runPuppeteerCardExport]', 'browser launched');
 
   try {
+    console.log('[runPuppeteerCardExport]', 'creating new page');
     const page = await browser.newPage();
+    console.log('[runPuppeteerCardExport]', 'page created');
     await page.setExtraHTTPHeaders({
       'x-internal-secret': params.internalSecret,
     });
@@ -100,6 +104,11 @@ export async function runPuppeteerCardExport(
     }, serializedPayload);
 
     const exportUrl = new URL('/internal/card-export', params.baseUrl).href;
+    console.log(
+      '[runPuppeteerCardExport]',
+      'navigating to export url',
+      exportUrl,
+    );
     await page.goto(exportUrl, { waitUntil: 'load', timeout: 120_000 });
 
     await page.waitForFunction(

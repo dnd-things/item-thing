@@ -40,17 +40,20 @@ export function proxy(request: NextRequest) {
       return NextResponse.json({ error: 'unconfigured' }, { status: 503 });
     }
     if (!isApiRequestAuthorizedBySecret(request, secret)) {
+      console.log('[api/render-card]', { error: 'unauthorized' });
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     return NextResponse.next();
   }
 
   if (pathname.startsWith('/internal')) {
+    console.log('[internal]', request.headers.get('x-internal-secret'));
     const secret = process.env.INTERNAL_SECRET;
     if (secret === undefined || secret.length === 0) {
       return NextResponse.json({ error: 'unconfigured' }, { status: 503 });
     }
     if (!isInternalRequestAuthorizedBySecret(request, secret)) {
+      console.log('[internal]', { error: 'unauthorized' });
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
     return NextResponse.next();
