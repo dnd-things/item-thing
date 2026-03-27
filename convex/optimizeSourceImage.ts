@@ -1,5 +1,6 @@
 'use node';
 
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -7,6 +8,7 @@ import optimise, { init as initOxipngWasm } from '@jsquash/oxipng/optimise.js';
 import { v } from 'convex/values';
 import sharp from 'sharp';
 
+import { internal } from './_generated/api';
 import type { Id } from './_generated/dataModel';
 import { action } from './_generated/server';
 
@@ -23,6 +25,10 @@ const MIN_DIMENSION = 32;
 const PALETTE_COLOR_STEPS = [256, 224, 192, 160, 128, 96, 64, 48, 32];
 
 const OUTPUT_MIME_TYPE = 'image/png';
+
+function sha256HexOfBuffer(buffer: Buffer): string {
+  return createHash('sha256').update(buffer).digest('hex');
+}
 
 const OXIPNG_OPTIONS = {
   level: 4 as const,
@@ -184,8 +190,13 @@ export const optimizeSourceImage = action({
     const outBlob = new Blob([new Uint8Array(outputBuffer)], {
       type: OUTPUT_MIME_TYPE,
     });
+    const contentHash = sha256HexOfBuffer(outputBuffer);
     const newStorageId = await ctx.storage.store(outBlob);
+    const dedupedStorageId = await ctx.runMutation(
+      internal.storageContentHash.finalizeCandidateStorage,
+      { candidateStorageId: newStorageId, contentHash },
+    );
     await ctx.storage.delete(args.sourceStorageId);
-    return newStorageId;
+    return dedupedStorageId;
   },
 });

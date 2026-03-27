@@ -12,6 +12,7 @@ import type * as health from "../health.js";
 import type * as itemExports from "../itemExports.js";
 import type * as lib_workbenchSnapshotValidators from "../lib/workbenchSnapshotValidators.js";
 import type * as optimizeSourceImage from "../optimizeSourceImage.js";
+import type * as storageContentHash from "../storageContentHash.js";
 
 import type {
   ApiFromModules,
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   itemExports: typeof itemExports;
   "lib/workbenchSnapshotValidators": typeof lib_workbenchSnapshotValidators;
   optimizeSourceImage: typeof optimizeSourceImage;
+  storageContentHash: typeof storageContentHash;
 }>;
 
 /**

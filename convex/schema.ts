@@ -4,6 +4,11 @@ import { v } from 'convex/values';
 import { workbenchSnapshotValidator } from './lib/workbenchSnapshotValidators';
 
 export default defineSchema({
+  storageByContentHash: defineTable({
+    contentHash: v.string(),
+    storageId: v.id('_storage'),
+  }).index('by_contentHash', ['contentHash']),
+
   itemExports: defineTable({
     workbenchSnapshot: workbenchSnapshotValidator,
     exportFormat: v.union(v.literal('png'), v.literal('jpg')),
