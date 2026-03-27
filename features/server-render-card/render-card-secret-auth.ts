@@ -23,6 +23,13 @@ export function isInternalRequestAuthorizedBySecret(
 ): boolean {
   const bearer = getBearerToken(request);
   const headerSecret = request.headers.get(INTERNAL_SECRET_HEADER);
+
+  console.log('[isInternalRequestAuthorizedBySecret]', {
+    bearer,
+    headerSecret,
+    secret,
+  });
+
   return bearer === secret || headerSecret === secret;
 }
 
