@@ -10,6 +10,7 @@ import { ConvexClientProvider } from '@/app/convex-client-provider';
 import { api } from '@/convex/_generated/api';
 import './globals.css';
 import { Analytics } from '@vercel/analytics/next';
+import { serverLogger } from '@/lib/server-logger';
 import { cn } from '@/lib/utils';
 
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-sans' });
@@ -45,13 +46,13 @@ export default async function RootLayout({
     checkDb: true,
   })
     .then((result) => {
-      console.log('Health check succeeded', result);
+      serverLogger.debug({ result }, 'health check succeeded');
     })
     .catch((error) => {
-      console.error('Health check failed', error);
+      serverLogger.error({ err: error }, 'health check failed');
     })
     .finally(() => {
-      console.log('Health check completed');
+      serverLogger.debug('health check completed');
     });
 
   return (

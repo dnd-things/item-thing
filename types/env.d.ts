@@ -22,5 +22,7 @@ declare namespace NodeJS {
     API_SECRET?: string;
     /** Secret for `/internal/*` routes (Bearer or `x-internal-secret`). */
     INTERNAL_SECRET?: string;
+    /** Pino log level (e.g. `info`, `debug`). */
+    LOG_LEVEL?: string;
   }
 }

@@ -11,6 +11,7 @@ import {
   isApiRequestAuthorizedBySecret,
 } from '@/features/server-render-card/render-card-secret-auth';
 import { runPuppeteerCardExport } from '@/features/server-render-card/run-puppeteer-card-export';
+import { serverLogger } from '@/lib/server-logger';
 
 export const runtime = 'nodejs';
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   const baseUrl = getRequestBaseUrl(request);
 
   try {
-    console.log('[api/render-card]', 'running puppeteer card export');
+    serverLogger.info('running puppeteer card export');
     const result = await runPuppeteerCardExport({
       baseUrl,
       internalSecret,
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
           workbenchState: mapped.workbenchState,
         });
       } catch (error) {
-        console.error('persistCardExportToConvex failed', error);
+        serverLogger.error({ err: error }, 'persistCardExportToConvex failed');
       }
     });
 

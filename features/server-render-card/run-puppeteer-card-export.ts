@@ -2,9 +2,13 @@ import chromium from '@sparticuz/chromium-min';
 import type { Browser } from 'puppeteer-core';
 import puppeteer from 'puppeteer-core';
 
+import { serverLogger } from '@/lib/server-logger';
+
 import type { CardExportBrowserPayload } from './card-export-payload';
 import { dataUrlToBuffer } from './data-url-to-buffer';
 import { resolveSparticuzChromiumExecutablePath } from './resolve-chromium-executable-path';
+
+const log = serverLogger.child({ module: 'runPuppeteerCardExport' });
 
 export interface RunPuppeteerCardExportParams {
   baseUrl: string;
@@ -67,26 +71,19 @@ async function launchBrowserWithSparticuzChromium(): Promise<Browser> {
 async function launchBrowserForCardExport(): Promise<Browser> {
   const customExecutablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
   if (customExecutablePath !== undefined && customExecutablePath.length > 0) {
-    console.log(
-      '[runPuppeteerCardExport]',
+    log.info(
+      { executablePath: customExecutablePath },
       'launching browser with custom executable path',
-      customExecutablePath,
     );
     return await launchBrowserWithCustomExecutablePath(customExecutablePath);
   }
 
   if (process.env.VERCEL_ENV === undefined) {
-    console.log(
-      '[runPuppeteerCardExport]',
-      'launching browser with bundled puppeteer',
-    );
+    log.info('launching browser with bundled puppeteer');
     return await launchBrowserWithBundledPuppeteer();
   }
 
-  console.log(
-    '[runPuppeteerCardExport]',
-    'launching browser with sparticuz chromium',
-  );
+  log.info('launching browser with sparticuz chromium');
   return await launchBrowserWithSparticuzChromium();
 }
 
@@ -95,14 +92,14 @@ export async function runPuppeteerCardExport(
 ): Promise<RunPuppeteerCardExportResult> {
   const serializedPayload = JSON.stringify(params.payload);
 
-  console.log('[runPuppeteerCardExport]', 'launching browser');
+  log.debug('launching browser');
   const browser = await launchBrowserForCardExport();
-  console.log('[runPuppeteerCardExport]', 'browser launched');
+  log.debug('browser launched');
 
   try {
-    console.log('[runPuppeteerCardExport]', 'creating new page');
+    log.debug('creating new page');
     const page = await browser.newPage();
-    console.log('[runPuppeteerCardExport]', 'page created');
+    log.debug('page created');
     await page.setExtraHTTPHeaders({
       'x-internal-secret': params.internalSecret,
     });
@@ -117,11 +114,7 @@ export async function runPuppeteerCardExport(
     }, serializedPayload);
 
     const exportUrl = new URL('/internal/card-export', params.baseUrl).href;
-    console.log(
-      '[runPuppeteerCardExport]',
-      'navigating to export url',
-      exportUrl,
-    );
+    log.debug({ exportUrl }, 'navigating to export url');
     await page.goto(exportUrl, { waitUntil: 'load', timeout: 120_000 });
 
     await page.waitForFunction(
