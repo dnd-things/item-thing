@@ -71,6 +71,16 @@ export async function POST(request: Request) {
 
   const baseUrl = getRequestBaseUrl(request);
 
+  console.log('[api/render-card]', {
+    baseUrl,
+    internalSecret,
+    payload: {
+      state: mapped.workbenchState,
+      format: parsed.fields.format,
+      pixelRatio: parsed.fields.pixelRatio,
+    },
+  });
+
   try {
     const result = await runPuppeteerCardExport({
       baseUrl,
