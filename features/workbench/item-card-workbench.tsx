@@ -149,7 +149,13 @@ const formDefaultValues: WorkbenchItemDetailsFormValues = {
   mechanicalDescription: defaultMagicItemWorkbenchState.mechanicalDescription,
 };
 
-export function ItemCardWorkbench() {
+interface ItemCardWorkbenchProps {
+  showAdvancedWorkbenchControls: boolean;
+}
+
+export function ItemCardWorkbench({
+  showAdvancedWorkbenchControls,
+}: ItemCardWorkbenchProps) {
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
@@ -362,6 +368,7 @@ export function ItemCardWorkbench() {
         <div className="animate-entrance animate-entrance-delay-1">
           <PreviewColumn
             cardRef={cardRef}
+            showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
             workbenchState={previewState}
             setWorkbenchField={setWorkbenchField}
           />
