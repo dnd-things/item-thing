@@ -79,12 +79,14 @@ function deriveQuickLayout(
 
 interface PreviewColumnProps {
   cardRef: RefObject<HTMLDivElement | null>;
+  showAdvancedWorkbenchControls: boolean;
   workbenchState: MagicItemWorkbenchState;
   setWorkbenchField: WorkbenchFieldSetter;
 }
 
 export function PreviewColumn({
   cardRef,
+  showAdvancedWorkbenchControls,
   workbenchState,
   setWorkbenchField,
 }: PreviewColumnProps) {
@@ -197,15 +199,17 @@ export function PreviewColumn({
           </ToggleGroup>
         </div>
 
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Open card settings"
-          className="shrink-0 text-muted-foreground hover:text-foreground"
-          onClick={() => setIsDrawerOpen(true)}
-        >
-          <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
-        </Button>
+        {showAdvancedWorkbenchControls ? (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Open card settings"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+            onClick={() => setIsDrawerOpen(true)}
+          >
+            <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
+          </Button>
+        ) : null}
       </div>
 
       <ItemPreviewPanel
@@ -220,13 +224,15 @@ export function PreviewColumn({
           : {})}
       />
 
-      <WorkbenchSettingsDrawer
-        open={isDrawerOpen}
-        onOpenChange={setIsDrawerOpen}
-        imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}
-        setWorkbenchField={setWorkbenchField}
-        workbenchState={workbenchState}
-      />
+      {showAdvancedWorkbenchControls ? (
+        <WorkbenchSettingsDrawer
+          open={isDrawerOpen}
+          onOpenChange={setIsDrawerOpen}
+          imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}
+          setWorkbenchField={setWorkbenchField}
+          workbenchState={workbenchState}
+        />
+      ) : null}
     </div>
   );
 }

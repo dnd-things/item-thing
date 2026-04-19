@@ -1,6 +1,8 @@
 import { ItemCardWorkbench } from '@/features/workbench/item-card-workbench';
 
 export default function Home() {
+  const showAdvancedWorkbenchControls = process.env.VERCEL_ENV !== 'production';
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
       <div className="ambient-glow ambient-glow--warm" />
@@ -18,7 +20,9 @@ export default function Home() {
         </div>
 
         <div className="w-full">
-          <ItemCardWorkbench />
+          <ItemCardWorkbench
+            showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
+          />
         </div>
       </main>
     </div>
