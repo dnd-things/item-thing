@@ -218,7 +218,6 @@ export function PreviewColumn({
               aria-label="Use automatic card width"
               pressed={workbenchState.cardWidthAuto}
               variant="outline"
-              size="sm"
               className="rounded-full"
               onPressedChange={(pressed) => {
                 setWorkbenchField('cardWidthAuto', pressed);
