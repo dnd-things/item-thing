@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
-  getCardWidth,
   getEffectiveImageAspectRatioForLayout,
   getImageRightImageMarginTopRem,
   isSideImageCardLayout,
@@ -29,6 +28,7 @@ export function PrintMagicItemCard({
   cardLayout,
   sideLayoutFlow,
   cardBorderRadius,
+  cardWidthPx,
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
@@ -105,7 +105,7 @@ export function PrintMagicItemCard({
 
   const surfaceClassName = cn(printCardClassNames.surface, className);
   const surfaceStyle = {
-    maxWidth: getCardWidth(cardLayout),
+    maxWidth: cardWidthPx,
     ...(cardLayout === 'vertical' && { minWidth: 300 }),
     borderRadius: surfaceBorderRadius,
   };

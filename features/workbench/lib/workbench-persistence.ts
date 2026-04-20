@@ -3,7 +3,9 @@
 import { z } from 'zod';
 
 import {
+  clampCardWidthPxForLayout,
   clampImageBorderWidthPx,
+  getDefaultCardWidthPx,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
 
@@ -16,6 +18,7 @@ export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
 const PERSISTENCE_VERSION = 3 as const;
+const CURRENT_PERSISTENCE_VERSION = 4 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -49,6 +52,7 @@ const magicItemWorkbenchPartialStateSchema = z
     sideLayoutFlow: sideLayoutFlowSchema.optional(),
     cardStyle: cardStyleSchema.optional(),
     cardBorderRadius: cardBorderRadiusSchema.optional(),
+    cardWidthPx: z.number().optional(),
     imageSize: z.number().optional(),
     imageAspectRatio: imageAspectRatioSchema.optional(),
     resolvedImageAspectRatio: z.number().optional(),
@@ -78,6 +82,7 @@ const workbenchPersistenceEnvelopeSchema = z.object({
     z.literal(1),
     z.literal(2),
     z.literal(PERSISTENCE_VERSION),
+    z.literal(CURRENT_PERSISTENCE_VERSION),
   ]),
   state: z.unknown(),
 });
@@ -101,7 +106,7 @@ export function saveMagicItemWorkbenchStateToLocalStorage(
   state: MagicItemWorkbenchState,
 ): SaveMagicItemWorkbenchResult {
   try {
-    const envelope = { version: PERSISTENCE_VERSION, state };
+    const envelope = { version: CURRENT_PERSISTENCE_VERSION, state };
     localStorage.setItem(
       MAGIC_ITEM_WORKBENCH_STORAGE_KEY,
       JSON.stringify(envelope),
@@ -144,6 +149,14 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     ...defaultMagicItemWorkbenchState,
     ...stateResult.data,
   } as MagicItemWorkbenchState;
+
+  mergedState.cardWidthPx =
+    typeof stateResult.data.cardWidthPx === 'number'
+      ? clampCardWidthPxForLayout(
+          mergedState.cardLayout,
+          stateResult.data.cardWidthPx,
+        )
+      : getDefaultCardWidthPx(mergedState.cardLayout);
 
   mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
     mergedState.imageRotationDegrees,

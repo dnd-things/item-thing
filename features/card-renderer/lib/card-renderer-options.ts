@@ -20,6 +20,7 @@ export interface MagicItemCardRendererProps {
   sideLayoutFlow: SideLayoutFlowOption;
   cardStyle: CardStyleOption;
   cardBorderRadius: CardBorderRadiusOption;
+  cardWidthPx: number;
   imageSize: number;
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
@@ -68,6 +69,40 @@ export const imageBorderWidthPxRange = {
   max: 24,
   step: 1,
 } as const;
+
+export const cardWidthPxStep = 16 as const;
+
+export const cardWidthPxRangeByLayout = {
+  vertical: {
+    min: 400,
+    max: 600,
+    default: 432,
+  },
+  'image-right': {
+    min: 500,
+    max: 700,
+    default: 608,
+  },
+} as const;
+
+export function getCardWidthPxRange(cardLayout: CardLayoutOption) {
+  return cardWidthPxRangeByLayout[cardLayout];
+}
+
+export function getDefaultCardWidthPx(cardLayout: CardLayoutOption): number {
+  return getCardWidthPxRange(cardLayout).default;
+}
+
+export function clampCardWidthPxForLayout(
+  cardLayout: CardLayoutOption,
+  value: number,
+): number {
+  const range = getCardWidthPxRange(cardLayout);
+  const roundedToStep =
+    Math.round((value - range.min) / cardWidthPxStep) * cardWidthPxStep +
+    range.min;
+  return Math.min(range.max, Math.max(range.min, roundedToStep));
+}
 
 export function clampImageBorderWidthPx(value: number): number {
   const rounded = Math.round(value);
@@ -243,17 +278,6 @@ export function isCardStyleSupported(
   return supportedCardStyleOptions.includes(
     cardStyle as (typeof supportedCardStyleOptions)[number],
   );
-}
-
-export function getCardWidth(cardLayout: CardLayoutOption): number {
-  switch (cardLayout) {
-    case 'vertical':
-      return 430;
-    case 'image-right':
-      return 600;
-    default:
-      return 560;
-  }
 }
 
 export function shouldStackVerticalCardMetadata(

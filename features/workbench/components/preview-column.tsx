@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { getDefaultCardWidthPx } from '@/features/card-renderer/lib/card-renderer-options';
 
 import { getImageFramePresetFieldValues } from '../lib/image-frame-preset';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
@@ -105,9 +106,11 @@ export function PreviewColumn({
     if (value === 'stacked') {
       setWorkbenchField('cardLayout', 'vertical');
       setWorkbenchField('sideLayoutFlow', 'fixed');
+      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('vertical'));
     } else if (value === 'compact') {
       setWorkbenchField('cardLayout', 'image-right');
       setWorkbenchField('sideLayoutFlow', 'fluid');
+      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('image-right'));
     }
   }
 

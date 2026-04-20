@@ -4,7 +4,6 @@ import type { RefObject } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import {
   getCardSurfaceBorderRadius,
-  getCardWidth,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
@@ -28,7 +27,6 @@ export function PreviewSurface({
     cardStyleOptions,
     workbenchState.cardStyle,
   );
-  const selectedCardWidth = getCardWidth(workbenchState.cardLayout);
   const selectedCardBorderRadius = getCardSurfaceBorderRadius(
     workbenchState.cardBorderRadius,
   );
@@ -51,7 +49,7 @@ export function PreviewSurface({
           <div
             className="flex w-full flex-col items-center gap-4 border border-primary/8 bg-card/60 px-8 py-10 text-center backdrop-blur-md"
             style={{
-              maxWidth: selectedCardWidth,
+              maxWidth: workbenchState.cardWidthPx,
               borderRadius: selectedCardBorderRadius,
             }}
           >

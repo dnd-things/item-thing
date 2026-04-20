@@ -3,7 +3,12 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Slider } from '@/components/ui/slider';
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
+import {
+  cardWidthPxStep,
+  getCardWidthPxRange,
+  getDefaultCardWidthPx,
+  imageBorderRadiusRange,
+} from '@/features/card-renderer/lib/card-renderer-options';
 
 import {
   cardBorderRadiusOptions,
@@ -26,6 +31,7 @@ export function WorkbenchControlsPanel({
   workbenchState,
 }: WorkbenchControlsPanelProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
+  const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
 
   return (
     <Card className="border border-border/60 bg-card/65 backdrop-blur-sm">
@@ -54,6 +60,7 @@ export function WorkbenchControlsPanel({
             value={workbenchState.cardLayout}
             onValueChange={(value) => {
               setWorkbenchField('cardLayout', value);
+              setWorkbenchField('cardWidthPx', getDefaultCardWidthPx(value));
               if (value === 'vertical') {
                 setWorkbenchField('sideLayoutFlow', 'fixed');
               }
@@ -77,6 +84,27 @@ export function WorkbenchControlsPanel({
               setWorkbenchField('imageAspectRatio', value);
             }}
           />
+          <Field>
+            <FieldLabel htmlFor="card-width">Card width</FieldLabel>
+            <div className="flex h-9 items-center rounded-[24px] border border-border/70 bg-input/15 px-4">
+              <Slider
+                id="card-width"
+                value={[workbenchState.cardWidthPx]}
+                min={cardWidthRange.min}
+                max={cardWidthRange.max}
+                step={cardWidthPxStep}
+                onValueChange={(nextValue) => {
+                  const nextCardWidth = Array.isArray(nextValue)
+                    ? nextValue[0]
+                    : nextValue;
+
+                  if (typeof nextCardWidth === 'number') {
+                    setWorkbenchField('cardWidthPx', nextCardWidth);
+                  }
+                }}
+              />
+            </div>
+          </Field>
           <Field>
             <FieldLabel htmlFor="image-size">Image size</FieldLabel>
             <div className="flex h-9 items-center gap-3 rounded-[24px] border border-border/70 bg-input/15 px-4">
