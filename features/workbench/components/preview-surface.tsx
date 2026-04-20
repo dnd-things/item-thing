@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import {
   getCardSurfaceBorderRadius,
+  getResolvedCardWidthPx,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
@@ -30,6 +31,11 @@ export function PreviewSurface({
   const selectedCardBorderRadius = getCardSurfaceBorderRadius(
     workbenchState.cardBorderRadius,
   );
+  const selectedCardWidth = getResolvedCardWidthPx(
+    workbenchState.cardLayout,
+    workbenchState.cardWidthAuto,
+    workbenchState.cardWidthPx,
+  );
 
   return (
     <div className="preview-crucible flex h-full min-h-[520px] items-center justify-center p-8">
@@ -49,7 +55,7 @@ export function PreviewSurface({
           <div
             className="flex w-full flex-col items-center gap-4 border border-primary/8 bg-card/60 px-8 py-10 text-center backdrop-blur-md"
             style={{
-              maxWidth: workbenchState.cardWidthPx,
+              maxWidth: selectedCardWidth,
               borderRadius: selectedCardBorderRadius,
             }}
           >

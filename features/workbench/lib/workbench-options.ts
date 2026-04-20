@@ -73,6 +73,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   sideLayoutFlow: 'fixed',
   cardStyle: 'print',
   cardBorderRadius: 'small',
+  cardWidthAuto: true,
   cardWidthPx: getDefaultCardWidthPx('vertical'),
   imageSize: 100,
   imageAspectRatio: 'square',

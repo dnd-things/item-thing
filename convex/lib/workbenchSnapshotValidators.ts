@@ -38,6 +38,7 @@ export const workbenchSnapshotValidator = v.object({
   sideLayoutFlow: sideLayoutFlowValidator,
   cardStyle: cardStyleValidator,
   cardBorderRadius: cardBorderRadiusValidator,
+  cardWidthAuto: v.boolean(),
   cardWidthPx: v.number(),
   imageSize: v.number(),
   imageAspectRatio: imageAspectRatioValidator,

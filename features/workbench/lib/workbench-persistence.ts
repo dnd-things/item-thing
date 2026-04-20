@@ -18,7 +18,7 @@ export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
 const PERSISTENCE_VERSION = 3 as const;
-const CURRENT_PERSISTENCE_VERSION = 4 as const;
+const CURRENT_PERSISTENCE_VERSION = 5 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -52,6 +52,7 @@ const magicItemWorkbenchPartialStateSchema = z
     sideLayoutFlow: sideLayoutFlowSchema.optional(),
     cardStyle: cardStyleSchema.optional(),
     cardBorderRadius: cardBorderRadiusSchema.optional(),
+    cardWidthAuto: z.boolean().optional(),
     cardWidthPx: z.number().optional(),
     imageSize: z.number().optional(),
     imageAspectRatio: imageAspectRatioSchema.optional(),
@@ -157,6 +158,8 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
           stateResult.data.cardWidthPx,
         )
       : getDefaultCardWidthPx(mergedState.cardLayout);
+
+  mergedState.cardWidthAuto = stateResult.data.cardWidthAuto ?? true;
 
   mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
     mergedState.imageRotationDegrees,

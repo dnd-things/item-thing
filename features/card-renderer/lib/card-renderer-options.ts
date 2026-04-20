@@ -20,6 +20,7 @@ export interface MagicItemCardRendererProps {
   sideLayoutFlow: SideLayoutFlowOption;
   cardStyle: CardStyleOption;
   cardBorderRadius: CardBorderRadiusOption;
+  cardWidthAuto: boolean;
   cardWidthPx: number;
   imageSize: number;
   imageAspectRatio: ImageAspectRatioOption;
@@ -91,6 +92,17 @@ export function getCardWidthPxRange(cardLayout: CardLayoutOption) {
 
 export function getDefaultCardWidthPx(cardLayout: CardLayoutOption): number {
   return getCardWidthPxRange(cardLayout).default;
+}
+
+export function getResolvedCardWidthPx(
+  cardLayout: CardLayoutOption,
+  cardWidthAuto: boolean,
+  cardWidthPx: number,
+): number {
+  if (cardWidthAuto) {
+    return getDefaultCardWidthPx(cardLayout);
+  }
+  return clampCardWidthPxForLayout(cardLayout, cardWidthPx);
 }
 
 export function clampCardWidthPxForLayout(

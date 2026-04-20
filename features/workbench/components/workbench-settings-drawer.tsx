@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
+import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   cardWidthPxStep,
@@ -126,23 +127,44 @@ export function WorkbenchSettingsDrawer({
             />
             <Field>
               <FieldLabel htmlFor="drawer-card-width">Card width</FieldLabel>
-              <div className="flex h-9 items-center rounded-xl border border-primary/8 bg-input/10 px-4">
-                <Slider
-                  id="drawer-card-width"
-                  aria-label="Card width"
-                  value={[workbenchState.cardWidthPx]}
-                  min={cardWidthRange.min}
-                  max={cardWidthRange.max}
-                  step={cardWidthPxStep}
-                  onValueChange={(nextValue) => {
-                    const nextCardWidth = Array.isArray(nextValue)
-                      ? nextValue[0]
-                      : nextValue;
-                    if (typeof nextCardWidth === 'number') {
-                      setWorkbenchField('cardWidthPx', nextCardWidth);
+              <div className="flex items-center gap-3">
+                <Toggle
+                  aria-label="Use automatic card width"
+                  pressed={workbenchState.cardWidthAuto}
+                  variant="outline"
+                  size="sm"
+                  onPressedChange={(pressed) => {
+                    setWorkbenchField('cardWidthAuto', pressed);
+                    if (pressed) {
+                      setWorkbenchField(
+                        'cardWidthPx',
+                        getDefaultCardWidthPx(workbenchState.cardLayout),
+                      );
                     }
                   }}
-                />
+                >
+                  Auto
+                </Toggle>
+                <div className="flex min-h-9 flex-1 items-center rounded-xl border border-primary/8 bg-input/10 px-4 py-2">
+                  <Slider
+                    id="drawer-card-width"
+                    aria-label="Card width"
+                    value={[workbenchState.cardWidthPx]}
+                    min={cardWidthRange.min}
+                    max={cardWidthRange.max}
+                    step={cardWidthPxStep}
+                    disabled={workbenchState.cardWidthAuto}
+                    onValueChange={(nextValue) => {
+                      const nextCardWidth = Array.isArray(nextValue)
+                        ? nextValue[0]
+                        : nextValue;
+                      if (typeof nextCardWidth === 'number') {
+                        setWorkbenchField('cardWidthAuto', false);
+                        setWorkbenchField('cardWidthPx', nextCardWidth);
+                      }
+                    }}
+                  />
+                </div>
               </div>
             </Field>
             {isImageRightLayout ? (
