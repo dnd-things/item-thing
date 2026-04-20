@@ -17,7 +17,10 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
+  cardWidthPxStep,
   clampImageBorderWidthPx,
+  getCardWidthPxRange,
+  getDefaultCardWidthPx,
   imageBorderRadiusRange,
   imageBorderWidthPxRange,
   imageRightVerticalPositionRange,
@@ -60,6 +63,7 @@ export function WorkbenchSettingsDrawer({
 }: WorkbenchSettingsDrawerProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
   const isImageRightLayout = workbenchState.cardLayout === 'image-right';
+  const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
 
   const imageRightBoundsMin =
     imageRightVerticalPositionBounds?.min ??
@@ -105,6 +109,7 @@ export function WorkbenchSettingsDrawer({
               value={workbenchState.cardLayout}
               onValueChange={(value) => {
                 setWorkbenchField('cardLayout', value);
+                setWorkbenchField('cardWidthPx', getDefaultCardWidthPx(value));
                 if (value === 'vertical') {
                   setWorkbenchField('sideLayoutFlow', 'fixed');
                 }
@@ -119,6 +124,27 @@ export function WorkbenchSettingsDrawer({
                 setWorkbenchField('sideLayoutFlow', value);
               }}
             />
+            <Field>
+              <FieldLabel htmlFor="drawer-card-width">Card width</FieldLabel>
+              <div className="flex h-9 items-center rounded-xl border border-primary/8 bg-input/10 px-4">
+                <Slider
+                  id="drawer-card-width"
+                  aria-label="Card width"
+                  value={[workbenchState.cardWidthPx]}
+                  min={cardWidthRange.min}
+                  max={cardWidthRange.max}
+                  step={cardWidthPxStep}
+                  onValueChange={(nextValue) => {
+                    const nextCardWidth = Array.isArray(nextValue)
+                      ? nextValue[0]
+                      : nextValue;
+                    if (typeof nextCardWidth === 'number') {
+                      setWorkbenchField('cardWidthPx', nextCardWidth);
+                    }
+                  }}
+                />
+              </div>
+            </Field>
             {isImageRightLayout ? (
               <Field>
                 <FieldLabel htmlFor="drawer-image-vertical-position">
