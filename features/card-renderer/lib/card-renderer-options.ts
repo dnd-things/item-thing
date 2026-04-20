@@ -282,7 +282,11 @@ export function getCardSurfaceBorderRadius(
   }
 }
 
-export const supportedCardStyleOptions = ['print'] as const;
+export const supportedCardStyleOptions = ['print', 'minimal'] as const;
+
+export function isMinimalCardStyle(cardStyle: CardStyleOption): boolean {
+  return cardStyle === 'minimal';
+}
 
 export function isCardStyleSupported(
   cardStyle: CardStyleOption,

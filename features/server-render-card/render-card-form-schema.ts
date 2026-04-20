@@ -17,7 +17,7 @@ const pixelRatioFormSchema = z
 export const renderCardMultipartFieldsSchema = z.object({
   cardLayout: z.literal('vertical'),
   sideLayoutFlow: z.literal('fixed'),
-  cardStyle: z.literal('print'),
+  cardStyle: z.enum(['print', 'minimal']),
   imageFramePreset: z.enum(['borderless', 'bordered']),
   pixelRatio: pixelRatioFormSchema,
   format: z.enum(['png', 'jpg']),

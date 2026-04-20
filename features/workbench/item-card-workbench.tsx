@@ -8,6 +8,7 @@ import {
   getImageRightVerticalPositionDefaultForFixedSideLayout,
   imageRightVerticalPositionDefaultForFluidSideLayout,
   isCardStyleSupported,
+  isMinimalCardStyle,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
   DownloadControlsCard,
@@ -324,6 +325,14 @@ export function ItemCardWorkbench({
             nextState.imageRightVerticalPosition =
               imageRightVerticalPositionDefaultForFluidSideLayout;
           }
+        }
+
+        if (
+          fieldName === 'cardStyle' &&
+          isMinimalCardStyle(fieldValue as MagicItemWorkbenchState['cardStyle'])
+        ) {
+          nextState.cardLayout = 'vertical';
+          nextState.sideLayoutFlow = 'fixed';
         }
 
         return nextState;
