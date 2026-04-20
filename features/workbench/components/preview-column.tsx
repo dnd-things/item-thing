@@ -17,7 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+  cardWidthPxStep,
+  getCardWidthPxRange,
+  getDefaultCardWidthPx,
+} from '@/features/card-renderer/lib/card-renderer-options';
 
 import { getImageFramePresetFieldValues } from '../lib/image-frame-preset';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
@@ -91,6 +98,7 @@ export function PreviewColumn({
   setWorkbenchField,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
 
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
     cardRef,
@@ -105,9 +113,11 @@ export function PreviewColumn({
     if (value === 'stacked') {
       setWorkbenchField('cardLayout', 'vertical');
       setWorkbenchField('sideLayoutFlow', 'fixed');
+      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('vertical'));
     } else if (value === 'compact') {
       setWorkbenchField('cardLayout', 'image-right');
       setWorkbenchField('sideLayoutFlow', 'fluid');
+      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('image-right'));
     }
   }
 
@@ -197,6 +207,53 @@ export function PreviewColumn({
               <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
             </ToggleGroupItem>
           </ToggleGroup>
+
+          <div
+            aria-hidden
+            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent lg:block"
+          />
+
+          <div className="flex shrink-0 items-center gap-2">
+            <Toggle
+              aria-label="Use automatic card width"
+              pressed={workbenchState.cardWidthAuto}
+              variant="outline"
+              className="rounded-full"
+              onPressedChange={(pressed) => {
+                setWorkbenchField('cardWidthAuto', pressed);
+                if (pressed) {
+                  setWorkbenchField(
+                    'cardWidthPx',
+                    getDefaultCardWidthPx(workbenchState.cardLayout),
+                  );
+                }
+              }}
+            >
+              Auto
+            </Toggle>
+            <div className="flex w-28 shrink-0 items-center rounded-full border border-border/70 bg-input/15 px-3 py-1.5 lg:w-36">
+              <Slider
+                id="quick-card-width"
+                aria-label="Card width"
+                value={[workbenchState.cardWidthPx]}
+                min={cardWidthRange.min}
+                max={cardWidthRange.max}
+                step={cardWidthPxStep}
+                disabled={workbenchState.cardWidthAuto}
+                className="w-full"
+                onValueChange={(nextValue) => {
+                  const nextCardWidth = Array.isArray(nextValue)
+                    ? nextValue[0]
+                    : nextValue;
+
+                  if (typeof nextCardWidth === 'number') {
+                    setWorkbenchField('cardWidthAuto', false);
+                    setWorkbenchField('cardWidthPx', nextCardWidth);
+                  }
+                }}
+              />
+            </div>
+          </div>
         </div>
 
         {showAdvancedWorkbenchControls ? (

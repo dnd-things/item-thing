@@ -4,9 +4,9 @@ import { cn } from '@/lib/utils';
 import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
-  getCardWidth,
   getEffectiveImageAspectRatioForLayout,
   getImageRightImageMarginTopRem,
+  getResolvedCardWidthPx,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
@@ -29,6 +29,8 @@ export function PrintMagicItemCard({
   cardLayout,
   sideLayoutFlow,
   cardBorderRadius,
+  cardWidthAuto,
+  cardWidthPx,
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
@@ -105,7 +107,7 @@ export function PrintMagicItemCard({
 
   const surfaceClassName = cn(printCardClassNames.surface, className);
   const surfaceStyle = {
-    maxWidth: getCardWidth(cardLayout),
+    maxWidth: getResolvedCardWidthPx(cardLayout, cardWidthAuto, cardWidthPx),
     ...(cardLayout === 'vertical' && { minWidth: 300 }),
     borderRadius: surfaceBorderRadius,
   };

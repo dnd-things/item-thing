@@ -3,7 +3,10 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Slider } from '@/components/ui/slider';
-import { imageBorderRadiusRange } from '@/features/card-renderer/lib/card-renderer-options';
+import {
+  getDefaultCardWidthPx,
+  imageBorderRadiusRange,
+} from '@/features/card-renderer/lib/card-renderer-options';
 
 import {
   cardBorderRadiusOptions,
@@ -54,6 +57,7 @@ export function WorkbenchControlsPanel({
             value={workbenchState.cardLayout}
             onValueChange={(value) => {
               setWorkbenchField('cardLayout', value);
+              setWorkbenchField('cardWidthPx', getDefaultCardWidthPx(value));
               if (value === 'vertical') {
                 setWorkbenchField('sideLayoutFlow', 'fixed');
               }

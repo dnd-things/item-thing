@@ -4,7 +4,7 @@ import type { RefObject } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import {
   getCardSurfaceBorderRadius,
-  getCardWidth,
+  getResolvedCardWidthPx,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
@@ -28,9 +28,13 @@ export function PreviewSurface({
     cardStyleOptions,
     workbenchState.cardStyle,
   );
-  const selectedCardWidth = getCardWidth(workbenchState.cardLayout);
   const selectedCardBorderRadius = getCardSurfaceBorderRadius(
     workbenchState.cardBorderRadius,
+  );
+  const selectedCardWidth = getResolvedCardWidthPx(
+    workbenchState.cardLayout,
+    workbenchState.cardWidthAuto,
+    workbenchState.cardWidthPx,
   );
 
   return (
