@@ -1,0 +1,75 @@
+.decoBanner {
+  --deco-border: #9e7410;
+  --deco-fill: #f0dfb1;
+  --deco-height: 2.5rem;
+  --deco-cap-size: calc(var(--deco-height) / 1.4142);
+  --deco-cap-offset: 0.75rem;
+  --deco-square-size: 0.8rem;
+  --deco-stud-size: 0.5rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 0 var(--deco-cap-size);
+  padding: 0 1rem;
+  border-top: 1px solid var(--deco-border);
+  border-bottom: 1px solid var(--deco-border);
+  background: var(--deco-fill);
+  box-shadow: 0 8px 14px rgba(31, 23, 4, 0.14);
+  height: var(--deco-height);
+}
+
+.decoBannerLabel {
+  position: relative;
+  z-index: 2;
+  padding: 0 0.15rem;
+  text-wrap: balance;
+}
+
+.decoBannerCap {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: var(--deco-cap-size);
+  height: var(--deco-cap-size);
+  border-bottom: 1px solid var(--deco-border);
+  border-left: 1px solid var(--deco-border);
+  background: var(--deco-fill);
+}
+
+.decoBannerCap::before,
+.decoBannerCap::after {
+  content: "";
+  position: absolute;
+}
+
+.decoBannerCap::before {
+  width: var(--deco-square-size);
+  height: var(--deco-square-size);
+  border: 1px solid var(--deco-border);
+  background: var(--deco-fill);
+  bottom: calc(-1 * (var(--deco-square-size) - var(--deco-stud-size)));
+  left: calc(-1 * (var(--deco-square-size) - var(--deco-stud-size)));
+}
+
+.decoBannerCap::after {
+  width: var(--deco-stud-size);
+  height: var(--deco-stud-size);
+  background: var(--deco-border);
+  bottom: 0;
+  left: 0;
+}
+
+.decoBannerCapLeft {
+  transform: translateY(-50%) translateX(-50%);
+  left: 0;
+  rotate: 45deg;
+}
+
+.decoBannerCapRight {
+  transform: translateY(-50%) translateX(50%);
+  right: 0;
+  rotate: -135deg;
+}

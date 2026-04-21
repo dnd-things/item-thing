@@ -9,9 +9,9 @@ import {
   getCardSurfaceBorderRadius,
   type MagicItemCardRendererProps,
 } from '../lib/card-renderer-options';
+import styles from './minimal-magic-item-card.module.css';
 
 const MINIMAL_CARD_MAX_WIDTH_PX = 430;
-const MINIMAL_BANNER_HEIGHT_PX = 42;
 const MINIMAL_BANNER_WIDTH = 'clamp(244px, 64%, 292px)';
 const MINIMAL_PANEL_BACKGROUND = '#f2f2f2';
 const MINIMAL_FLAVOR_FONT_FAMILY =
@@ -77,6 +77,11 @@ export function MinimalMagicItemCard({
     resolvedImageAspectRatio,
   );
   const artworkFrameWidth = getMinimalArtworkFrameWidth(artworkAspectRatio);
+  const decoBannerClassName = styles.decoBanner;
+  const decoBannerCapClassName = styles.decoBannerCap;
+  const decoBannerCapLeftClassName = styles.decoBannerCapLeft;
+  const decoBannerCapRightClassName = styles.decoBannerCapRight;
+  const decoBannerLabelClassName = styles.decoBannerLabel;
 
   return (
     <div
@@ -127,19 +132,31 @@ export function MinimalMagicItemCard({
           style={{ backgroundColor: MINIMAL_PANEL_BACKGROUND }}
         >
           <div
-            className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center px-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-2px_0_rgba(131,91,4,0.18),0_10px_16px_rgba(26,18,1,0.22)]"
+            className={cn(
+              decoBannerClassName,
+              'absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2 text-center',
+            )}
             style={{
               width: MINIMAL_BANNER_WIDTH,
-              height: MINIMAL_BANNER_HEIGHT_PX,
-              background:
-                'linear-gradient(180deg, #f6d365 0%, #f1c232 56%, #d4a017 100%)',
-              border: '1px solid #b89010',
-              borderRadius: 18,
-              clipPath:
-                'polygon(8% 0%, 92% 0%, 100% 50%, 92% 100%, 8% 100%, 0% 50%)',
             }}
           >
-            <span className="line-clamp-2 text-[0.64rem] leading-[0.95rem] font-bold tracking-[0.18em] uppercase text-black">
+            <span
+              aria-hidden
+              className={cn(decoBannerCapClassName, decoBannerCapLeftClassName)}
+            />
+            <span
+              aria-hidden
+              className={cn(
+                decoBannerCapClassName,
+                decoBannerCapRightClassName,
+              )}
+            />
+            <span
+              className={cn(
+                decoBannerLabelClassName,
+                'line-clamp-2 text-[0.64rem] leading-[0.95rem] font-bold tracking-[0.18em] uppercase text-black',
+              )}
+            >
               {bannerLabel}
             </span>
           </div>
