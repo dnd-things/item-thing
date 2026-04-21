@@ -89,8 +89,35 @@ export function MinimalMagicItemCard({
         borderRadius: 0,
       }}
     >
+      <div aria-hidden className={styles.artDecoCardBorder}>
+        <span
+          className={cn(
+            styles.artDecoCardCorner,
+            styles.artDecoCardCornerTopLeft,
+          )}
+        />
+        <span
+          className={cn(
+            styles.artDecoCardCorner,
+            styles.artDecoCardCornerTopRight,
+          )}
+        />
+        <span
+          className={cn(
+            styles.artDecoCardCorner,
+            styles.artDecoCardCornerBottomLeft,
+          )}
+        />
+        <span
+          className={cn(
+            styles.artDecoCardCorner,
+            styles.artDecoCardCornerBottomRight,
+          )}
+        />
+      </div>
+
       <div className="flex flex-col">
-        <section className="relative bg-[#292c4d] px-6 pb-10 pt-8">
+        <section className="relative bg-[#292c4d] px-8 pb-14 pt-10">
           <div className="absolute inset-0 bg-[linear-gradient(160deg,#1f2240_0%,#2f315a_28%,#5a4f8a_60%,#3b3566_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.12),transparent_34%),radial-gradient(circle_at_76%_24%,rgba(168,148,255,0.18),transparent_30%),radial-gradient(circle_at_54%_78%,rgba(12,15,35,0.28),transparent_38%),radial-gradient(circle_at_34%_60%,rgba(243,245,255,0.08),transparent_32%)]" />
           <div className="absolute inset-0 opacity-30 mix-blend-screen bg-[radial-gradient(rgba(255,255,255,0.12)_0.8px,transparent_0.8px)] bg-position-[0_0,9px_9px] bg-size-[18px_18px]" />
@@ -153,7 +180,7 @@ export function MinimalMagicItemCard({
         </section>
 
         <section
-          className="relative flex flex-col px-7 pb-5 pt-11"
+          className="relative flex flex-col px-8 pb-7 pt-14"
           style={{ backgroundColor: MINIMAL_PANEL_BACKGROUND }}
         >
           <div

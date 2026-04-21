@@ -1,3 +1,69 @@
+.artDecoCardBorder {
+  --art-deco-border: #9e7410;
+  --art-deco-frame-inset: 13px;
+  --art-deco-corner-size: 0.5rem;
+
+  position: absolute;
+  inset: var(--art-deco-frame-inset);
+  z-index: 30;
+  border: 1px solid var(--art-deco-border);
+  pointer-events: none;
+}
+
+.artDecoCardCorner {
+  width: var(--art-deco-corner-size);
+  height: var(--art-deco-corner-size);
+  border: 1px solid var(--art-deco-border);
+  position: absolute;
+}
+
+.artDecoCardCorner::before,
+.artDecoCardCorner::after {
+  content: "";
+  position: absolute;
+}
+
+.artDecoCardCorner::after {
+  width: 2rem;
+  height: calc(1rem - 1px);
+  left: calc(-2px + 1rem);
+  top: -1px;
+  border-left: 1px solid var(--art-deco-border);
+  border-top: 1px solid var(--art-deco-border);
+}
+
+.artDecoCardCorner::before {
+  width: 1rem;
+  height: 2rem;
+  border-left: 1px solid var(--art-deco-border);
+  border-top: 1px solid var(--art-deco-border);
+  left: -1px;
+  top: calc(-2px + 1rem);
+}
+
+.artDecoCardCornerTopLeft {
+  left: calc(-1 * var(--art-deco-corner-size));
+  top: calc(-1 * var(--art-deco-corner-size));
+}
+
+.artDecoCardCornerTopRight {
+  right: calc(-1 * var(--art-deco-corner-size));
+  top: calc(-1 * var(--art-deco-corner-size));
+  transform: scaleX(-1);
+}
+
+.artDecoCardCornerBottomLeft {
+  left: calc(-1 * var(--art-deco-corner-size));
+  bottom: calc(-1 * var(--art-deco-corner-size));
+  transform: scaleY(-1);
+}
+
+.artDecoCardCornerBottomRight {
+  right: calc(-1 * var(--art-deco-corner-size));
+  bottom: calc(-1 * var(--art-deco-corner-size));
+  transform: scale(-1);
+}
+
 .decoBanner {
   --deco-border: #9e7410;
   --deco-fill: #f0dfb1;
