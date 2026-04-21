@@ -1,6 +1,6 @@
 .minimalCard {
   --minimal-card-gold: #c79a2d;
-  --minimal-card-gold-glow: rgba(199, 154, 45, 0.34);
+  --minimal-card-gold-glow: rgba(199, 154, 45, 0.18);
 }
 
 .artDecoCardBorder {
@@ -12,8 +12,8 @@
   z-index: 30;
   border: 1px solid var(--minimal-card-gold);
   box-shadow:
-    0 0 0.5rem var(--minimal-card-gold-glow),
-    0 0 1.1rem rgba(199, 154, 45, 0.14);
+    0 0 0.24rem var(--minimal-card-gold-glow),
+    0 0 0.6rem rgba(199, 154, 45, 0.08);
   pointer-events: none;
 }
 
@@ -23,8 +23,8 @@
   border: 1px solid var(--minimal-card-gold);
   position: absolute;
   box-shadow:
-    0 0 0.35rem var(--minimal-card-gold-glow),
-    0 0 0.8rem rgba(199, 154, 45, 0.14);
+    0 0 0.16rem var(--minimal-card-gold-glow),
+    0 0 0.35rem rgba(199, 154, 45, 0.08);
 }
 
 .artDecoCardCorner::before,
@@ -40,8 +40,8 @@
   top: -1px;
   border-left: 1px solid var(--minimal-card-gold);
   border-top: 1px solid var(--minimal-card-gold);
-  filter: drop-shadow(0 0 0.22rem var(--minimal-card-gold-glow))
-    drop-shadow(0 0 0.5rem rgba(199, 154, 45, 0.12));
+  filter: drop-shadow(0 0 0.08rem var(--minimal-card-gold-glow))
+    drop-shadow(0 0 0.18rem rgba(199, 154, 45, 0.08));
 }
 
 .artDecoCardCorner::before {
@@ -51,8 +51,8 @@
   border-top: 1px solid var(--minimal-card-gold);
   left: -1px;
   top: calc(-2px + 1rem);
-  filter: drop-shadow(0 0 0.22rem var(--minimal-card-gold-glow))
-    drop-shadow(0 0 0.5rem rgba(199, 154, 45, 0.12));
+  filter: drop-shadow(0 0 0.08rem var(--minimal-card-gold-glow))
+    drop-shadow(0 0 0.18rem rgba(199, 154, 45, 0.08));
 }
 
 .artDecoCardCornerTopLeft {
@@ -97,8 +97,8 @@
   background: var(--deco-fill);
   box-shadow:
     0 8px 14px rgba(31, 23, 4, 0.14),
-    0 0 0.4rem var(--minimal-card-gold-glow),
-    0 0 0.9rem rgba(199, 154, 45, 0.16);
+    0 0 0.18rem var(--minimal-card-gold-glow),
+    0 0 0.45rem rgba(199, 154, 45, 0.1);
   height: var(--deco-height);
 }
 
@@ -120,8 +120,8 @@
   border-left: 1px solid var(--minimal-card-gold);
   background: var(--deco-fill);
   box-shadow:
-    0 0 0.3rem var(--minimal-card-gold-glow),
-    0 0 0.7rem rgba(199, 154, 45, 0.12);
+    0 0 0.12rem var(--minimal-card-gold-glow),
+    0 0 0.28rem rgba(199, 154, 45, 0.08);
 }
 
 .decoBannerCap::before,
