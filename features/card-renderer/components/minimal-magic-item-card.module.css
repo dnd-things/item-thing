@@ -1,0 +1,243 @@
+.minimalCard {
+  --minimal-card-gold: #c79a2d;
+  --minimal-card-gold-glow: rgba(199, 154, 45, 0.18);
+  --minimal-hero-base: hsl(234 30% 23%);
+  --minimal-hero-highlight: hsl(254 29% 43%);
+  --minimal-hero-shadow: hsl(230 49% 10%);
+  --minimal-hero-grid: hsla(251 100% 91% / 0.12);
+  --minimal-hero-glow: hsla(255 62% 77% / 0.18);
+  --minimal-hero-accent-glow: hsla(224 100% 97% / 0.08);
+}
+
+.heroPanel {
+  background: var(--minimal-hero-base);
+}
+
+.heroGradientLayer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    var(--minimal-hero-shadow) 0%,
+    color-mix(
+        in srgb,
+        var(--minimal-hero-shadow) 58%,
+        var(--minimal-hero-base) 42%
+      )
+      28%,
+    var(--minimal-hero-highlight) 60%,
+    color-mix(
+        in srgb,
+        var(--minimal-hero-highlight) 68%,
+        var(--minimal-hero-base) 32%
+      )
+      100%
+  );
+}
+
+.heroAtmosphereLayer {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 22% 18%,
+      color-mix(
+          in srgb,
+          var(--minimal-hero-highlight) 62%,
+          var(--minimal-hero-glow) 38%
+        )
+        0%,
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 76% 24%,
+      var(--minimal-hero-glow) 0%,
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 54% 78%,
+      color-mix(
+          in srgb,
+          var(--minimal-hero-shadow) 74%,
+          var(--minimal-hero-base) 26%
+        )
+        0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 34% 60%,
+      var(--minimal-hero-accent-glow) 0%,
+      transparent 32%
+    );
+}
+
+.heroGridLayer {
+  position: absolute;
+  inset: 0;
+  opacity: 0.34;
+  mix-blend-mode: screen;
+  background-image: radial-gradient(
+    var(--minimal-hero-grid) 0.8px,
+    transparent 0.8px
+  );
+  background-position:
+    0 0,
+    9px 9px;
+  background-size: 18px 18px;
+}
+
+.artDecoCardBorder {
+  --art-deco-frame-inset: 13px;
+  --art-deco-corner-size: 0.5rem;
+
+  position: absolute;
+  inset: var(--art-deco-frame-inset);
+  z-index: 30;
+  border: 1px solid var(--minimal-card-gold);
+  box-shadow:
+    0 0 0.24rem var(--minimal-card-gold-glow),
+    0 0 0.6rem rgba(199, 154, 45, 0.08);
+  pointer-events: none;
+}
+
+.artDecoCardCorner {
+  width: var(--art-deco-corner-size);
+  height: var(--art-deco-corner-size);
+  border: 1px solid var(--minimal-card-gold);
+  position: absolute;
+  box-shadow:
+    0 0 0.16rem var(--minimal-card-gold-glow),
+    0 0 0.35rem rgba(199, 154, 45, 0.08);
+}
+
+.artDecoCardCorner::before,
+.artDecoCardCorner::after {
+  content: "";
+  position: absolute;
+}
+
+.artDecoCardCorner::after {
+  width: 2rem;
+  height: calc(1rem - 1px);
+  left: calc(-2px + 1rem);
+  top: -1px;
+  border-left: 1px solid var(--minimal-card-gold);
+  border-top: 1px solid var(--minimal-card-gold);
+  filter: drop-shadow(0 0 0.08rem var(--minimal-card-gold-glow))
+    drop-shadow(0 0 0.18rem rgba(199, 154, 45, 0.08));
+}
+
+.artDecoCardCorner::before {
+  width: 1rem;
+  height: 2rem;
+  border-left: 1px solid var(--minimal-card-gold);
+  border-top: 1px solid var(--minimal-card-gold);
+  left: -1px;
+  top: calc(-2px + 1rem);
+  filter: drop-shadow(0 0 0.08rem var(--minimal-card-gold-glow))
+    drop-shadow(0 0 0.18rem rgba(199, 154, 45, 0.08));
+}
+
+.artDecoCardCornerTopLeft {
+  left: calc(-1 * var(--art-deco-corner-size));
+  top: calc(-1 * var(--art-deco-corner-size));
+}
+
+.artDecoCardCornerTopRight {
+  right: calc(-1 * var(--art-deco-corner-size));
+  top: calc(-1 * var(--art-deco-corner-size));
+  transform: scaleX(-1);
+}
+
+.artDecoCardCornerBottomLeft {
+  left: calc(-1 * var(--art-deco-corner-size));
+  bottom: calc(-1 * var(--art-deco-corner-size));
+  transform: scaleY(-1);
+}
+
+.artDecoCardCornerBottomRight {
+  right: calc(-1 * var(--art-deco-corner-size));
+  bottom: calc(-1 * var(--art-deco-corner-size));
+  transform: scale(-1);
+}
+
+.decoBanner {
+  --deco-fill: #f0dfb1;
+  --deco-height: 2.5rem;
+  --deco-cap-size: calc(var(--deco-height) / 1.4142);
+  --deco-cap-offset: 0.75rem;
+  --deco-square-size: 0.8rem;
+  --deco-stud-size: 0.5rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 0 var(--deco-cap-size);
+  padding: 0 1rem;
+  border-top: 1px solid var(--minimal-card-gold);
+  border-bottom: 1px solid var(--minimal-card-gold);
+  background: var(--deco-fill);
+  box-shadow:
+    0 8px 14px rgba(31, 23, 4, 0.14),
+    0 0 0.18rem var(--minimal-card-gold-glow),
+    0 0 0.45rem rgba(199, 154, 45, 0.1);
+  height: var(--deco-height);
+}
+
+.decoBannerLabel {
+  position: relative;
+  z-index: 2;
+  padding: 0 0.15rem;
+  text-wrap: balance;
+}
+
+.decoBannerCap {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  width: var(--deco-cap-size);
+  height: var(--deco-cap-size);
+  border-bottom: 1px solid var(--minimal-card-gold);
+  border-left: 1px solid var(--minimal-card-gold);
+  background: var(--deco-fill);
+  box-shadow:
+    0 0 0.12rem var(--minimal-card-gold-glow),
+    0 0 0.28rem rgba(199, 154, 45, 0.08);
+}
+
+.decoBannerCap::before,
+.decoBannerCap::after {
+  content: "";
+  position: absolute;
+}
+
+.decoBannerCap::before {
+  width: var(--deco-square-size);
+  height: var(--deco-square-size);
+  border: 1px solid var(--minimal-card-gold);
+  background: var(--deco-fill);
+  bottom: calc(-1 * (var(--deco-square-size) - var(--deco-stud-size)));
+  left: calc(-1 * (var(--deco-square-size) - var(--deco-stud-size)));
+}
+
+.decoBannerCap::after {
+  width: var(--deco-stud-size);
+  height: var(--deco-stud-size);
+  background: var(--minimal-card-gold);
+  bottom: 0;
+  left: 0;
+}
+
+.decoBannerCapLeft {
+  transform: translateY(-50%) translateX(-50%);
+  left: 0;
+  rotate: 45deg;
+}
+
+.decoBannerCapRight {
+  transform: translateY(-50%) translateX(50%);
+  right: 0;
+  rotate: -135deg;
+}

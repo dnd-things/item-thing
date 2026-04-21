@@ -24,6 +24,7 @@ import {
   cardWidthPxStep,
   getCardWidthPxRange,
   getDefaultCardWidthPx,
+  isMinimalCardStyle,
 } from '@/features/card-renderer/lib/card-renderer-options';
 
 import { getImageFramePresetFieldValues } from '../lib/image-frame-preset';
@@ -99,6 +100,7 @@ export function PreviewColumn({
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
+  const isMinimalStyle = isMinimalCardStyle(workbenchState.cardStyle);
 
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
     cardRef,
@@ -134,10 +136,9 @@ export function PreviewColumn({
               value={workbenchState.cardStyle}
               onValueChange={(nextValue) => {
                 if (nextValue) {
-                  setWorkbenchField(
-                    'cardStyle',
-                    nextValue as MagicItemWorkbenchState['cardStyle'],
-                  );
+                  const nextStyle =
+                    nextValue as MagicItemWorkbenchState['cardStyle'];
+                  setWorkbenchField('cardStyle', nextStyle);
                 }
               }}
             >
@@ -156,104 +157,115 @@ export function PreviewColumn({
             </Select>
           </div>
 
-          <div
-            aria-hidden
-            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
-          />
+          {!isMinimalStyle ? (
+            <>
+              <div
+                aria-hidden
+                className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
+              />
 
-          <ToggleGroup
-            value={quickLayout ? [quickLayout] : []}
-            variant="outline"
-            onValueChange={(nextValues) => {
-              const nextValue = nextValues[nextValues.length - 1];
-              if (nextValue) {
-                handleQuickLayoutChange(nextValue);
-              }
-            }}
-          >
-            <ToggleGroupItem value="stacked" aria-label="Stacked layout">
-              Stacked
-            </ToggleGroupItem>
-            <ToggleGroupItem value="compact" aria-label="Compact layout">
-              Compact
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          <div
-            aria-hidden
-            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
-          />
-
-          <ToggleGroup
-            value={imageFramePreset ? [imageFramePreset] : []}
-            variant="outline"
-            onValueChange={(nextValues) => {
-              const nextValue = nextValues[nextValues.length - 1];
-              if (nextValue) {
-                applyImageFramePreset(
-                  setWorkbenchField,
-                  nextValue as ImageFramePresetValue,
-                );
-              }
-            }}
-          >
-            <ToggleGroupItem
-              value="borderless"
-              aria-label="Borderless image frame"
-            >
-              <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="bordered" aria-label="Bordered image frame">
-              <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
-            </ToggleGroupItem>
-          </ToggleGroup>
-
-          <div
-            aria-hidden
-            className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent lg:block"
-          />
-
-          <div className="flex shrink-0 items-center gap-2">
-            <Toggle
-              aria-label="Use automatic card width"
-              pressed={workbenchState.cardWidthAuto}
-              variant="outline"
-              className="rounded-full"
-              onPressedChange={(pressed) => {
-                setWorkbenchField('cardWidthAuto', pressed);
-                if (pressed) {
-                  setWorkbenchField(
-                    'cardWidthPx',
-                    getDefaultCardWidthPx(workbenchState.cardLayout),
-                  );
-                }
-              }}
-            >
-              Auto
-            </Toggle>
-            <div className="flex w-28 shrink-0 items-center rounded-full border border-border/70 bg-input/15 px-3 py-1.5 lg:w-36">
-              <Slider
-                id="quick-card-width"
-                aria-label="Card width"
-                value={[workbenchState.cardWidthPx]}
-                min={cardWidthRange.min}
-                max={cardWidthRange.max}
-                step={cardWidthPxStep}
-                disabled={workbenchState.cardWidthAuto}
-                className="w-full"
-                onValueChange={(nextValue) => {
-                  const nextCardWidth = Array.isArray(nextValue)
-                    ? nextValue[0]
-                    : nextValue;
-
-                  if (typeof nextCardWidth === 'number') {
-                    setWorkbenchField('cardWidthAuto', false);
-                    setWorkbenchField('cardWidthPx', nextCardWidth);
+              <ToggleGroup
+                value={quickLayout ? [quickLayout] : []}
+                variant="outline"
+                onValueChange={(nextValues) => {
+                  const nextValue = nextValues[nextValues.length - 1];
+                  if (nextValue) {
+                    handleQuickLayoutChange(nextValue);
                   }
                 }}
+              >
+                <ToggleGroupItem value="stacked" aria-label="Stacked layout">
+                  Stacked
+                </ToggleGroupItem>
+                <ToggleGroupItem value="compact" aria-label="Compact layout">
+                  Compact
+                </ToggleGroupItem>
+              </ToggleGroup>
+
+              <div
+                aria-hidden
+                className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent sm:block"
               />
-            </div>
-          </div>
+
+              <ToggleGroup
+                value={imageFramePreset ? [imageFramePreset] : []}
+                variant="outline"
+                onValueChange={(nextValues) => {
+                  const nextValue = nextValues[nextValues.length - 1];
+                  if (nextValue) {
+                    applyImageFramePreset(
+                      setWorkbenchField,
+                      nextValue as ImageFramePresetValue,
+                    );
+                  }
+                }}
+              >
+                <ToggleGroupItem
+                  value="borderless"
+                  aria-label="Borderless image frame"
+                >
+                  <HugeiconsIcon icon={BorderNone01Icon} strokeWidth={1.5} />
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="bordered"
+                  aria-label="Bordered image frame"
+                >
+                  <HugeiconsIcon icon={CircleIcon} strokeWidth={1.5} />
+                </ToggleGroupItem>
+              </ToggleGroup>
+
+              <div
+                aria-hidden
+                className="hidden h-5 w-px bg-linear-to-b from-transparent via-muted-foreground/15 to-transparent lg:block"
+              />
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Toggle
+                  aria-label="Use automatic card width"
+                  pressed={workbenchState.cardWidthAuto}
+                  variant="outline"
+                  className="rounded-full"
+                  onPressedChange={(pressed) => {
+                    setWorkbenchField('cardWidthAuto', pressed);
+                    if (pressed) {
+                      setWorkbenchField(
+                        'cardWidthPx',
+                        getDefaultCardWidthPx(workbenchState.cardLayout),
+                      );
+                    }
+                  }}
+                >
+                  Auto
+                </Toggle>
+                <div className="flex w-28 shrink-0 items-center rounded-full border border-border/70 bg-input/15 px-3 py-1.5 lg:w-36">
+                  <Slider
+                    id="quick-card-width"
+                    aria-label="Card width"
+                    value={[workbenchState.cardWidthPx]}
+                    min={cardWidthRange.min}
+                    max={cardWidthRange.max}
+                    step={cardWidthPxStep}
+                    disabled={workbenchState.cardWidthAuto}
+                    className="w-full"
+                    onValueChange={(nextValue) => {
+                      const nextCardWidth = Array.isArray(nextValue)
+                        ? nextValue[0]
+                        : nextValue;
+
+                      if (typeof nextCardWidth === 'number') {
+                        setWorkbenchField('cardWidthAuto', false);
+                        setWorkbenchField('cardWidthPx', nextCardWidth);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <span className="rounded-full border border-amber-400/20 bg-amber-400/8 px-3 py-1 text-[11px] font-semibold tracking-[0.16em] uppercase text-amber-100/70">
+              Minimal locks layout
+            </span>
+          )}
         </div>
 
         {showAdvancedWorkbenchControls ? (

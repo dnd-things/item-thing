@@ -1,5 +1,6 @@
 'use client';
 
+import { MinimalMagicItemCard } from './components/minimal-magic-item-card';
 import { PrintMagicItemCard } from './components/print-magic-item-card';
 import {
   isCardStyleSupported,
@@ -17,5 +18,10 @@ export function CardRenderer({ cardStyle, ...rest }: CardRendererProps) {
     return null;
   }
 
-  return <PrintMagicItemCard cardStyle={cardStyle} {...rest} />;
+  switch (cardStyle) {
+    case 'minimal':
+      return <MinimalMagicItemCard cardStyle={cardStyle} {...rest} />;
+    default:
+      return <PrintMagicItemCard cardStyle={cardStyle} {...rest} />;
+  }
 }

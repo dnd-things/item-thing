@@ -1,7 +1,7 @@
-import sharp from 'sharp';
 import { getImageFramePresetFieldValues } from '@/features/workbench/lib/image-frame-preset';
 import type { MagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
 import { defaultMagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
+import { trimTransparentBounds } from '@/lib/trim-transparent-bounds';
 
 import type {
   RenderCardItemJson,
@@ -48,16 +48,16 @@ function getMimeTypeForDataUrl(
 export async function mapRenderRequestToMagicItemWorkbenchState(
   input: MapRenderRequestToWorkbenchStateInput,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {
-  const metadata = await sharp(input.artworkBuffer).metadata();
-  const widthPx = metadata.width ?? 1;
-  const heightPx = metadata.height ?? 1;
+  const trimmedArtwork = await trimTransparentBounds(input.artworkBuffer);
+  const widthPx = trimmedArtwork.width;
+  const heightPx = trimmedArtwork.height;
   const resolvedImageAspectRatio = heightPx > 0 ? widthPx / heightPx : 1;
 
-  const mimeType = getMimeTypeForDataUrl(
-    metadata.format,
-    input.artworkFileName,
-  );
-  const base64 = input.artworkBuffer.toString('base64');
+  const mimeType =
+    trimmedArtwork.mimeType.trim() !== ''
+      ? trimmedArtwork.mimeType
+      : getMimeTypeForDataUrl(undefined, input.artworkFileName);
+  const base64 = trimmedArtwork.buffer.toString('base64');
   const imagePreviewUrl = `data:${mimeType};base64,${base64}`;
 
   const frameFields = getImageFramePresetFieldValues(
