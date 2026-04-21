@@ -6,6 +6,7 @@ export interface ImagePreviewData {
 }
 
 const MIN_VISIBLE_ALPHA = 8;
+const MAX_INSPECTION_DIMENSION_PX = 2048;
 
 async function readFileAsDataUrl(imageFile: File): Promise<string> {
   return await new Promise((resolve, reject) => {
@@ -88,6 +89,24 @@ function findVisibleAlphaBounds(
   };
 }
 
+function getInspectionDimensions(
+  width: number,
+  height: number,
+): {
+  width: number;
+  height: number;
+} {
+  const scale = Math.min(
+    1,
+    MAX_INSPECTION_DIMENSION_PX / Math.max(width, height),
+  );
+
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
+}
+
 export async function readImagePreviewData(
   imageFile: File,
 ): Promise<ImagePreviewData> {
@@ -100,8 +119,9 @@ export async function readImagePreviewData(
   }
 
   const sourceCanvas = document.createElement('canvas');
-  sourceCanvas.width = width;
-  sourceCanvas.height = height;
+  const inspectionDimensions = getInspectionDimensions(width, height);
+  sourceCanvas.width = inspectionDimensions.width;
+  sourceCanvas.height = inspectionDimensions.height;
 
   const sourceContext = sourceCanvas.getContext('2d', {
     willReadFrequently: true,
@@ -110,9 +130,82 @@ export async function readImagePreviewData(
     throw new Error('Failed to inspect image transparency.');
   }
 
-  sourceContext.drawImage(image, 0, 0);
-  const imageData = sourceContext.getImageData(0, 0, width, height);
-  const bounds = findVisibleAlphaBounds(imageData.data, width, height);
+  sourceContext.drawImage(
+    image,
+    0,
+    0,
+    inspectionDimensions.width,
+    inspectionDimensions.height,
+  );
+
+  let bounds: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null;
+  try {
+    const imageData = sourceContext.getImageData(
+      0,
+      0,
+      inspectionDimensions.width,
+      inspectionDimensions.height,
+    );
+    const scaledBounds = findVisibleAlphaBounds(
+      imageData.data,
+      inspectionDimensions.width,
+      inspectionDimensions.height,
+    );
+
+    bounds =
+      scaledBounds === null
+        ? null
+        : {
+            left: Math.max(
+              0,
+              Math.floor(
+                (scaledBounds.left * width) / inspectionDimensions.width,
+              ),
+            ),
+            top: Math.max(
+              0,
+              Math.floor(
+                (scaledBounds.top * height) / inspectionDimensions.height,
+              ),
+            ),
+            width:
+              Math.min(
+                width,
+                Math.ceil(
+                  ((scaledBounds.left + scaledBounds.width) * width) /
+                    inspectionDimensions.width,
+                ),
+              ) -
+              Math.max(
+                0,
+                Math.floor(
+                  (scaledBounds.left * width) / inspectionDimensions.width,
+                ),
+              ),
+            height:
+              Math.min(
+                height,
+                Math.ceil(
+                  ((scaledBounds.top + scaledBounds.height) * height) /
+                    inspectionDimensions.height,
+                ),
+              ) -
+              Math.max(
+                0,
+                Math.floor(
+                  (scaledBounds.top * height) / inspectionDimensions.height,
+                ),
+              ),
+          };
+  } catch {
+    const previewUrl = await readFileAsDataUrl(imageFile);
+    return { previewUrl, aspectRatio: width / height };
+  }
 
   if (
     bounds === null ||
@@ -134,7 +227,7 @@ export async function readImagePreviewData(
   }
 
   outputContext.drawImage(
-    sourceCanvas,
+    image,
     bounds.left,
     bounds.top,
     bounds.width,

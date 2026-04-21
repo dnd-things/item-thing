@@ -139,10 +139,6 @@ export function PreviewColumn({
                   const nextStyle =
                     nextValue as MagicItemWorkbenchState['cardStyle'];
                   setWorkbenchField('cardStyle', nextStyle);
-                  if (nextStyle === 'minimal') {
-                    setWorkbenchField('cardLayout', 'vertical');
-                    setWorkbenchField('sideLayoutFlow', 'fixed');
-                  }
                 }
               }}
             >

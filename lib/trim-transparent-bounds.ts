@@ -2,6 +2,7 @@ import sharp from 'sharp';
 
 const MIN_VISIBLE_ALPHA = 8;
 const RGBA_CHANNEL_COUNT = 4;
+const MAX_ALPHA_TRIM_PIXELS = 16_777_216;
 
 export interface TrimTransparentBoundsResult {
   buffer: Buffer;
@@ -49,6 +50,10 @@ export async function trimTransparentBounds(
       width,
       height,
     };
+  }
+
+  if (width * height > MAX_ALPHA_TRIM_PIXELS) {
+    throw new Error('Image is too large to inspect transparency safely.');
   }
 
   const raw = await image.ensureAlpha().raw().toBuffer();

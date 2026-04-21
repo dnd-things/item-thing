@@ -43,10 +43,6 @@ export function WorkbenchControlsPanel({
             value={workbenchState.cardStyle}
             onValueChange={(value) => {
               setWorkbenchField('cardStyle', value);
-              if (value === 'minimal') {
-                setWorkbenchField('cardLayout', 'vertical');
-                setWorkbenchField('sideLayoutFlow', 'fixed');
-              }
             }}
           />
           <ToggleField
