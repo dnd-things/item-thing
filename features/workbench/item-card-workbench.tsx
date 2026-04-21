@@ -16,6 +16,7 @@ import {
 } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import { readImagePreviewData } from './lib/read-image-preview-data';
 import { usePersistItemExport } from './lib/use-persist-item-export';
 import {
   type WorkbenchItemDetailsFormValues,
@@ -33,64 +34,6 @@ import {
 import { toWorkbenchSnapshotForExport } from './lib/workbench-snapshot-for-export';
 
 const WORKBENCH_AUTOSAVE_DEBOUNCE_MS = 400 as const;
-
-interface ImagePreviewData {
-  previewUrl: string;
-  aspectRatio: number;
-}
-
-async function readFileAsDataUrl(imageFile: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-
-    fileReader.onerror = () => {
-      reject(new Error('Failed to read image file.'));
-    };
-
-    fileReader.onload = () => {
-      if (typeof fileReader.result === 'string') {
-        resolve(fileReader.result);
-        return;
-      }
-
-      reject(new Error('Image preview did not produce a data URL.'));
-    };
-
-    fileReader.readAsDataURL(imageFile);
-  });
-}
-
-async function readImageAspectRatio(previewUrl: string): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const image = new Image();
-
-    image.onerror = () => {
-      reject(new Error('Failed to read image dimensions.'));
-    };
-
-    image.onload = () => {
-      const hasValidDimensions =
-        image.naturalWidth > 0 && image.naturalHeight > 0;
-
-      if (!hasValidDimensions) {
-        reject(new Error('Image dimensions are invalid.'));
-        return;
-      }
-
-      resolve(image.naturalWidth / image.naturalHeight);
-    };
-
-    image.src = previewUrl;
-  });
-}
-
-async function readImagePreviewData(
-  imageFile: File,
-): Promise<ImagePreviewData> {
-  const previewUrl = await readFileAsDataUrl(imageFile);
-  const aspectRatio = await readImageAspectRatio(previewUrl);
-  return { previewUrl, aspectRatio };
-}
 
 async function imageFileFromPersistedWorkbenchState(
   loaded: MagicItemWorkbenchState,
