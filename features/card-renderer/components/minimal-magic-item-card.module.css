@@ -1,6 +1,69 @@
 .minimalCard {
   --minimal-card-gold: #c79a2d;
   --minimal-card-gold-glow: rgba(199, 154, 45, 0.18);
+  --minimal-hero-base: hsl(234 30% 23%);
+  --minimal-hero-highlight: hsl(254 29% 43%);
+  --minimal-hero-shadow: hsl(230 49% 10%);
+  --minimal-hero-grid: hsla(251 100% 91% / 0.12);
+  --minimal-hero-glow: hsla(255 62% 77% / 0.18);
+  --minimal-hero-accent-glow: hsla(224 100% 97% / 0.08);
+}
+
+.heroPanel {
+  background: var(--minimal-hero-base);
+}
+
+.heroGradientLayer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    var(--minimal-hero-shadow) 0%,
+    color-mix(in srgb, var(--minimal-hero-base) 84%, black) 28%,
+    var(--minimal-hero-highlight) 60%,
+    color-mix(in srgb, var(--minimal-hero-base) 76%, white) 100%
+  );
+}
+
+.heroAtmosphereLayer {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 22% 18%,
+      color-mix(in srgb, var(--minimal-hero-glow) 72%, white) 0%,
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 76% 24%,
+      var(--minimal-hero-glow) 0%,
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 54% 78%,
+      color-mix(in srgb, var(--minimal-hero-shadow) 88%, black) 0%,
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 34% 60%,
+      var(--minimal-hero-accent-glow) 0%,
+      transparent 32%
+    );
+}
+
+.heroGridLayer {
+  position: absolute;
+  inset: 0;
+  opacity: 0.34;
+  mix-blend-mode: screen;
+  background-image: radial-gradient(
+    var(--minimal-hero-grid) 0.8px,
+    transparent 0.8px
+  );
+  background-position:
+    0 0,
+    9px 9px;
+  background-size: 18px 18px;
 }
 
 .artDecoCardBorder {

@@ -10,6 +10,11 @@ declare const styles: {
   readonly decoBannerCapLeft: string;
   readonly decoBannerCapRight: string;
   readonly decoBannerLabel: string;
+  readonly heroAtmosphereLayer: string;
+  readonly heroGradientLayer: string;
+  readonly heroGridLayer: string;
+  readonly heroPanel: string;
+  readonly minimalCard: string;
 };
 
 export default styles;

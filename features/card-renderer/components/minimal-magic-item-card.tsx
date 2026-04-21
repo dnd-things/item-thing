@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { type CSSProperties, useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import type { MagicItemCardRendererProps } from '../lib/card-renderer-options';
+import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
+import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
 import styles from './minimal-magic-item-card.module.css';
 
 const MINIMAL_CARD_MAX_WIDTH_PX = 430;
@@ -53,6 +55,9 @@ export function MinimalMagicItemCard({
   imagePreviewUrl,
   imageFileName,
   resolvedImageAspectRatio,
+  imageRotationDegrees,
+  imageFlipHorizontal,
+  imageFlipVertical,
   itemName,
   classificationAndRarity,
   requiresAttunement,
@@ -77,6 +82,23 @@ export function MinimalMagicItemCard({
   const decoBannerCapLeftClassName = styles.decoBannerCapLeft;
   const decoBannerCapRightClassName = styles.decoBannerCapRight;
   const decoBannerLabelClassName = styles.decoBannerLabel;
+  const renderImageUrl = useFlippedImagePreviewUrl(
+    imagePreviewUrl,
+    imageRotationDegrees,
+    imageFlipHorizontal,
+    imageFlipVertical,
+  );
+  const artworkTheme = useMinimalArtworkTheme(renderImageUrl);
+  const minimalCardStyle = {
+    maxWidth: MINIMAL_CARD_MAX_WIDTH_PX,
+    borderRadius: 0,
+    ['--minimal-hero-base' as string]: artworkTheme.base,
+    ['--minimal-hero-highlight' as string]: artworkTheme.highlight,
+    ['--minimal-hero-shadow' as string]: artworkTheme.shadow,
+    ['--minimal-hero-grid' as string]: artworkTheme.grid,
+    ['--minimal-hero-glow' as string]: artworkTheme.glow,
+    ['--minimal-hero-accent-glow' as string]: artworkTheme.accentGlow,
+  } satisfies CSSProperties;
 
   return (
     <div
@@ -85,10 +107,7 @@ export function MinimalMagicItemCard({
         'relative isolate w-full overflow-hidden bg-[#f2f2f2] text-slate-950 shadow-[0_22px_70px_rgba(15,23,42,0.24)]',
         className,
       )}
-      style={{
-        maxWidth: MINIMAL_CARD_MAX_WIDTH_PX,
-        borderRadius: 0,
-      }}
+      style={minimalCardStyle}
     >
       <div aria-hidden className={styles.artDecoCardBorder}>
         <span
@@ -118,12 +137,12 @@ export function MinimalMagicItemCard({
       </div>
 
       <div className="flex flex-col">
-        <section className="relative bg-[#292c4d] px-8 pb-14 pt-10">
-          <div className="absolute inset-0 bg-[linear-gradient(160deg,#1f2240_0%,#2f315a_28%,#5a4f8a_60%,#3b3566_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.12),transparent_34%),radial-gradient(circle_at_76%_24%,rgba(168,148,255,0.18),transparent_30%),radial-gradient(circle_at_54%_78%,rgba(12,15,35,0.28),transparent_38%),radial-gradient(circle_at_34%_60%,rgba(243,245,255,0.08),transparent_32%)]" />
-          <div className="absolute inset-0 opacity-30 mix-blend-screen bg-[radial-gradient(rgba(255,255,255,0.12)_0.8px,transparent_0.8px)] bg-position-[0_0,9px_9px] bg-size-[18px_18px]" />
+        <section className={cn(styles.heroPanel, 'relative px-8 pb-14 pt-10')}>
+          <div aria-hidden className={styles.heroGradientLayer} />
+          <div aria-hidden className={styles.heroAtmosphereLayer} />
+          <div aria-hidden className={styles.heroGridLayer} />
           <div className="relative flex items-center justify-center">
-            {imagePreviewUrl.trim() !== '' ? (
+            {renderImageUrl.trim() !== '' ? (
               <div
                 className="relative"
                 style={{
@@ -138,7 +157,7 @@ export function MinimalMagicItemCard({
                   className="object-contain drop-shadow-[0_22px_34px_rgba(7,10,22,0.34)]"
                   fill
                   sizes="(max-width: 768px) 80vw, 360px"
-                  src={imagePreviewUrl}
+                  src={renderImageUrl}
                   unoptimized
                 />
               </div>
