@@ -19,9 +19,19 @@
   background: linear-gradient(
     160deg,
     var(--minimal-hero-shadow) 0%,
-    color-mix(in srgb, var(--minimal-hero-base) 84%, black) 28%,
+    color-mix(
+        in srgb,
+        var(--minimal-hero-shadow) 58%,
+        var(--minimal-hero-base) 42%
+      )
+      28%,
     var(--minimal-hero-highlight) 60%,
-    color-mix(in srgb, var(--minimal-hero-base) 76%, white) 100%
+    color-mix(
+        in srgb,
+        var(--minimal-hero-highlight) 68%,
+        var(--minimal-hero-base) 32%
+      )
+      100%
   );
 }
 
@@ -31,7 +41,12 @@
   background:
     radial-gradient(
       circle at 22% 18%,
-      color-mix(in srgb, var(--minimal-hero-glow) 72%, white) 0%,
+      color-mix(
+          in srgb,
+          var(--minimal-hero-highlight) 62%,
+          var(--minimal-hero-glow) 38%
+        )
+        0%,
       transparent 34%
     ),
     radial-gradient(
@@ -41,7 +56,12 @@
     ),
     radial-gradient(
       circle at 54% 78%,
-      color-mix(in srgb, var(--minimal-hero-shadow) 88%, black) 0%,
+      color-mix(
+          in srgb,
+          var(--minimal-hero-shadow) 74%,
+          var(--minimal-hero-base) 26%
+        )
+        0%,
       transparent 38%
     ),
     radial-gradient(
