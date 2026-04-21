@@ -81,6 +81,7 @@ export function MinimalMagicItemCard({
   return (
     <div
       className={cn(
+        styles.minimalCard,
         'relative isolate w-full overflow-hidden bg-[#f2f2f2] text-slate-950 shadow-[0_22px_70px_rgba(15,23,42,0.24)]',
         className,
       )}
