@@ -8,7 +8,7 @@ import {
   getDefaultCardWidthPx,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
-
+import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
@@ -151,6 +151,7 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     ...stateResult.data,
   } as MagicItemWorkbenchState;
 
+  mergedState.cardWidthAuto = stateResult.data.cardWidthAuto ?? true;
   mergedState.cardWidthPx =
     typeof stateResult.data.cardWidthPx === 'number'
       ? clampCardWidthPxForLayout(
@@ -158,8 +159,6 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
           stateResult.data.cardWidthPx,
         )
       : getDefaultCardWidthPx(mergedState.cardLayout);
-
-  mergedState.cardWidthAuto = stateResult.data.cardWidthAuto ?? true;
 
   mergedState.imageRotationDegrees = normalizeImageRotationDegrees(
     mergedState.imageRotationDegrees,
@@ -173,12 +172,12 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     envelopeResult.data.version === 1 &&
     typeof stateResult.data.imageRightVerticalPosition === 'number'
   ) {
-    return {
+    return normalizeWorkbenchStateForStyle({
       ...mergedState,
       imageRightVerticalPosition:
         stateResult.data.imageRightVerticalPosition * 2,
-    };
+    });
   }
 
-  return mergedState;
+  return normalizeWorkbenchStateForStyle(mergedState);
 }

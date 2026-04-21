@@ -8,7 +8,6 @@ import {
   getImageRightVerticalPositionDefaultForFixedSideLayout,
   imageRightVerticalPositionDefaultForFluidSideLayout,
   isCardStyleSupported,
-  isMinimalCardStyle,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
   DownloadControlsCard,
@@ -16,6 +15,7 @@ import {
 } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import { normalizeWorkbenchStateForStyle } from './lib/card-style-capability-registry';
 import { readImagePreviewData } from './lib/read-image-preview-data';
 import { usePersistItemExport } from './lib/use-persist-item-export';
 import {
@@ -270,15 +270,7 @@ export function ItemCardWorkbench({
           }
         }
 
-        if (
-          fieldName === 'cardStyle' &&
-          isMinimalCardStyle(fieldValue as MagicItemWorkbenchState['cardStyle'])
-        ) {
-          nextState.cardLayout = 'vertical';
-          nextState.sideLayoutFlow = 'fixed';
-        }
-
-        return nextState;
+        return normalizeWorkbenchStateForStyle(nextState);
       });
     },
     [],

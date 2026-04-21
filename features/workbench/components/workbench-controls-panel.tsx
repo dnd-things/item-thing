@@ -6,9 +6,9 @@ import { Slider } from '@/components/ui/slider';
 import {
   getDefaultCardWidthPx,
   imageBorderRadiusRange,
-  isMinimalCardStyle,
 } from '@/features/card-renderer/lib/card-renderer-options';
 
+import { getWorkbenchControlsForPlacement } from '../lib/card-style-capability-registry';
 import {
   cardBorderRadiusOptions,
   cardLayoutOptions,
@@ -30,7 +30,10 @@ export function WorkbenchControlsPanel({
   workbenchState,
 }: WorkbenchControlsPanelProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
-  const isMinimalStyle = isMinimalCardStyle(workbenchState.cardStyle);
+  const visibleControls = new Set([
+    ...getWorkbenchControlsForPlacement(workbenchState.cardStyle, 'basic'),
+    ...getWorkbenchControlsForPlacement(workbenchState.cardStyle, 'advanced'),
+  ]);
 
   return (
     <Card className="border border-border/60 bg-card/65 backdrop-blur-sm">
@@ -45,15 +48,17 @@ export function WorkbenchControlsPanel({
               setWorkbenchField('cardStyle', value);
             }}
           />
-          <ToggleField
-            fieldLabel="Card corner"
-            options={cardBorderRadiusOptions}
-            value={workbenchState.cardBorderRadius}
-            onValueChange={(value) => {
-              setWorkbenchField('cardBorderRadius', value);
-            }}
-          />
-          {!isMinimalStyle ? (
+          {visibleControls.has('cardBorderRadius') ? (
+            <ToggleField
+              fieldLabel="Card corner"
+              options={cardBorderRadiusOptions}
+              value={workbenchState.cardBorderRadius}
+              onValueChange={(value) => {
+                setWorkbenchField('cardBorderRadius', value);
+              }}
+            />
+          ) : null}
+          {visibleControls.has('cardLayout') ? (
             <>
               <ToggleField
                 fieldLabel="Image position"

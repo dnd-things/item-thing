@@ -1,4 +1,5 @@
-import { getImageFramePresetFieldValues } from '@/features/workbench/lib/image-frame-preset';
+import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
+import { normalizeWorkbenchStateForStyle } from '@/features/workbench/lib/card-style-capability-registry';
 import type { MagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
 import { defaultMagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
 import { trimTransparentBounds } from '@/lib/trim-transparent-bounds';
@@ -8,11 +9,14 @@ import type {
   RenderCardMultipartFields,
 } from './render-card-form-schema';
 
-export interface MapRenderRequestToWorkbenchStateInput {
+export interface MapRenderRequestToWorkbenchStateInput<
+  TStyle extends SupportedStyleCapability,
+> {
   artworkBuffer: Buffer;
   artworkFileName: string;
-  fields: RenderCardMultipartFields;
+  fields: RenderCardMultipartFields<TStyle>;
   item: RenderCardItemJson;
+  style: TStyle;
 }
 
 export interface MapRenderRequestToWorkbenchStateResult {
@@ -45,8 +49,10 @@ function getMimeTypeForDataUrl(
   return 'image/png';
 }
 
-export async function mapRenderRequestToMagicItemWorkbenchState(
-  input: MapRenderRequestToWorkbenchStateInput,
+export async function mapRenderRequestToMagicItemWorkbenchState<
+  TStyle extends SupportedStyleCapability,
+>(
+  input: MapRenderRequestToWorkbenchStateInput<TStyle>,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {
   const trimmedArtwork = await trimTransparentBounds(input.artworkBuffer);
   const widthPx = trimmedArtwork.width;
@@ -60,21 +66,15 @@ export async function mapRenderRequestToMagicItemWorkbenchState(
   const base64 = trimmedArtwork.buffer.toString('base64');
   const imagePreviewUrl = `data:${mimeType};base64,${base64}`;
 
-  const frameFields = getImageFramePresetFieldValues(
-    input.fields.imageFramePreset,
-  );
-
   const safeFileName =
     input.artworkFileName.trim().length > 0
       ? input.artworkFileName
       : 'artwork.png';
 
-  const workbenchState: MagicItemWorkbenchState = {
+  const workbenchState = normalizeWorkbenchStateForStyle({
     ...defaultMagicItemWorkbenchState,
-    cardLayout: input.fields.cardLayout,
-    sideLayoutFlow: input.fields.sideLayoutFlow,
-    cardStyle: input.fields.cardStyle,
-    ...frameFields,
+    ...input.fields,
+    cardStyle: input.style,
     resolvedImageAspectRatio,
     imageFileName: safeFileName,
     imagePreviewUrl,
@@ -83,7 +83,7 @@ export async function mapRenderRequestToMagicItemWorkbenchState(
     requiresAttunement: input.item.requiresAttunement,
     flavorDescription: input.item.flavorDescription,
     mechanicalDescription: input.item.mechanicalDescription,
-  };
+  });
 
   return {
     sourceMimeType: mimeType,

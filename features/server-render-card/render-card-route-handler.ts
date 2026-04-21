@@ -1,21 +1,23 @@
 import { after, NextResponse } from 'next/server';
+import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
+import { serverLogger } from '@/lib/server-logger';
 
-import { getConvexDeploymentUrl } from '@/features/server-render-card/get-convex-deployment-url';
-import { getRequestBaseUrl } from '@/features/server-render-card/get-request-base-url';
-import { mapRenderRequestToMagicItemWorkbenchState } from '@/features/server-render-card/map-render-request-to-workbench-state';
-import { persistCardExportToConvex } from '@/features/server-render-card/persist-card-export-to-convex';
-import { parseRenderCardMultipartFormData } from '@/features/server-render-card/render-card-form-schema';
+import { getConvexDeploymentUrl } from './get-convex-deployment-url';
+import { getRequestBaseUrl } from './get-request-base-url';
+import { mapRenderRequestToMagicItemWorkbenchState } from './map-render-request-to-workbench-state';
+import { persistCardExportToConvex } from './persist-card-export-to-convex';
+import { parseRenderCardMultipartFormData } from './render-card-form-schema';
 import {
   getApiSecretOrThrow,
   getInternalSecretOrThrow,
   isApiRequestAuthorizedBySecret,
-} from '@/features/server-render-card/render-card-secret-auth';
-import { runPuppeteerCardExport } from '@/features/server-render-card/run-puppeteer-card-export';
-import { serverLogger } from '@/lib/server-logger';
+} from './render-card-secret-auth';
+import { runPuppeteerCardExport } from './run-puppeteer-card-export';
 
-export const runtime = 'nodejs';
-
-export async function POST(request: Request) {
+export async function handleRenderCardRoute(
+  request: Request,
+  style: SupportedStyleCapability,
+) {
   let apiSecret: string;
   let internalSecret: string;
   try {
@@ -41,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'invalid_form_data' }, { status: 400 });
   }
 
-  const parsed = await parseRenderCardMultipartFormData(formData);
+  const parsed = await parseRenderCardMultipartFormData(formData, style);
   if (!parsed.ok) {
     return NextResponse.json(
       {
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
   }
 
   let mapped: Awaited<
-    ReturnType<typeof mapRenderRequestToMagicItemWorkbenchState>
+    ReturnType<typeof mapRenderRequestToMagicItemWorkbenchState<typeof style>>
   >;
   try {
     mapped = await mapRenderRequestToMagicItemWorkbenchState({
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
       artworkFileName: parsed.artwork.name,
       fields: parsed.fields,
       item: parsed.item,
+      style,
     });
   } catch {
     return NextResponse.json(
@@ -71,16 +74,21 @@ export async function POST(request: Request) {
   }
 
   const baseUrl = getRequestBaseUrl(request);
+  const sharedFields = parsed.fields as {
+    format: 'png' | 'jpg';
+    pixelRatio: 1 | 2;
+  };
+  const { format, pixelRatio } = sharedFields;
 
   try {
-    serverLogger.info('running puppeteer card export');
+    serverLogger.info({ style }, 'running puppeteer card export');
     const result = await runPuppeteerCardExport({
       baseUrl,
       internalSecret,
       payload: {
         state: mapped.workbenchState,
-        format: parsed.fields.format,
-        pixelRatio: parsed.fields.pixelRatio,
+        format,
+        pixelRatio,
       },
     });
 
@@ -96,14 +104,17 @@ export async function POST(request: Request) {
       try {
         await persistCardExportToConvex({
           convexUrl,
-          exportFormat: parsed.fields.format,
-          exportPixelRatio: parsed.fields.pixelRatio,
+          exportFormat: format,
+          exportPixelRatio: pixelRatio,
           sourceArtworkBuffer: parsed.artworkBuffer,
           sourceMimeType: mapped.sourceMimeType,
           workbenchState: mapped.workbenchState,
         });
       } catch (error) {
-        serverLogger.error({ err: error }, 'persistCardExportToConvex failed');
+        serverLogger.error(
+          { err: error, style },
+          'persistCardExportToConvex failed',
+        );
       }
     });
 

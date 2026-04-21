@@ -26,6 +26,7 @@ interface ToolbarSelectFieldProps<TValue extends string> {
 interface ToggleFieldProps<TValue extends string> {
   fieldDescription?: string;
   fieldLabel: string;
+  labelHidden?: boolean;
   options: ReadonlyArray<SelectionOption<TValue>>;
   value: TValue;
   disabled?: boolean;
@@ -78,6 +79,7 @@ export function ToolbarSelectField<TValue extends string>({
 export function ToggleField<TValue extends string>({
   fieldDescription,
   fieldLabel,
+  labelHidden = false,
   options,
   value,
   disabled = false,
@@ -85,7 +87,11 @@ export function ToggleField<TValue extends string>({
 }: ToggleFieldProps<TValue>) {
   return (
     <Field>
-      <FieldLabel>{fieldLabel}</FieldLabel>
+      {labelHidden ? (
+        <FieldLabel className="sr-only">{fieldLabel}</FieldLabel>
+      ) : (
+        <FieldLabel>{fieldLabel}</FieldLabel>
+      )}
       {fieldDescription ? (
         <FieldDescription>{fieldDescription}</FieldDescription>
       ) : null}
