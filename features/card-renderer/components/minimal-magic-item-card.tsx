@@ -233,23 +233,17 @@ export function MinimalMagicItemCard({
             </div>
 
             {requiresAttunement ? (
-              <footer className={styles.attunementFooter}>
+              <footer className="mt-4 flex min-h-[1.95rem] max-w-full items-center justify-center gap-[0.72rem] px-[1.05rem] py-[0.28rem]">
                 <span
                   aria-hidden
-                  className={cn(
-                    styles.attunementFooterCap,
-                    styles.attunementFooterCapLeft,
-                  )}
+                  className="ml-[0.08rem] size-[0.36rem] shrink-0 rotate-45 border border-[color:color-mix(in_srgb,var(--minimal-card-gold)_58%,white_42%)]"
                 />
-                <span className={styles.attunementFooterLabel}>
+                <span className="max-w-full text-center text-[0.63rem] leading-[1.1] font-normal tracking-[0.16em] text-[color:color-mix(in_srgb,#475569_82%,#0f172a_18%)] uppercase text-balance">
                   Requires attunement
                 </span>
                 <span
                   aria-hidden
-                  className={cn(
-                    styles.attunementFooterCap,
-                    styles.attunementFooterCapRight,
-                  )}
+                  className="mr-[0.08rem] size-[0.36rem] shrink-0 rotate-45 border border-[color:color-mix(in_srgb,var(--minimal-card-gold)_58%,white_42%)]"
                 />
               </footer>
             ) : null}
