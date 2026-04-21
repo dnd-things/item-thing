@@ -5,12 +5,15 @@ import { type CSSProperties, useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
-import type { MagicItemCardRendererProps } from '../lib/card-renderer-options';
+import {
+  getCardImageDimensions,
+  getResolvedCardWidthPx,
+  type MagicItemCardRendererProps,
+} from '../lib/card-renderer-options';
 import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
 import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
 import styles from './minimal-magic-item-card.module.css';
 
-const MINIMAL_CARD_MAX_WIDTH_PX = 430;
 const MINIMAL_BANNER_WIDTH = 'clamp(244px, 64%, 292px)';
 const MINIMAL_PANEL_BACKGROUND = '#f2f2f2';
 const MINIMAL_FLAVOR_FONT_FAMILY =
@@ -52,6 +55,9 @@ interface MinimalMagicItemCardProps extends MagicItemCardRendererProps {
 
 export function MinimalMagicItemCard({
   className,
+  cardWidthAuto,
+  cardWidthPx,
+  imageSize,
   imagePreviewUrl,
   imageFileName,
   resolvedImageAspectRatio,
@@ -75,7 +81,6 @@ export function MinimalMagicItemCard({
   const artworkAspectRatio = clampMinimalArtworkAspectRatio(
     resolvedImageAspectRatio,
   );
-  const artworkFrameWidth = getMinimalArtworkFrameWidth(artworkAspectRatio);
   const decoBannerClassName = styles.decoBanner;
   const decoBannerCapClassName = styles.decoBannerCap;
   const decoBannerCapLeftClassName = styles.decoBannerCapLeft;
@@ -88,8 +93,19 @@ export function MinimalMagicItemCard({
     imageFlipVertical,
   );
   const artworkTheme = useMinimalArtworkTheme(renderImageUrl);
+  const resolvedCardWidthPx = getResolvedCardWidthPx(
+    'vertical',
+    cardWidthAuto,
+    cardWidthPx,
+  );
+  const cardImageDimensions = getCardImageDimensions(
+    imageSize,
+    'based-on-image',
+    artworkAspectRatio,
+    0,
+  );
   const minimalCardStyle = {
-    maxWidth: MINIMAL_CARD_MAX_WIDTH_PX,
+    maxWidth: resolvedCardWidthPx,
     borderRadius: 0,
     ['--minimal-hero-base' as string]: artworkTheme.base,
     ['--minimal-hero-highlight' as string]: artworkTheme.highlight,
@@ -145,8 +161,9 @@ export function MinimalMagicItemCard({
               <div
                 className="relative"
                 style={{
-                  width: artworkFrameWidth,
-                  aspectRatio: `${artworkAspectRatio}`,
+                  width: cardImageDimensions.width,
+                  height: cardImageDimensions.height,
+                  maxWidth: getMinimalArtworkFrameWidth(artworkAspectRatio),
                   minHeight: 220,
                   maxHeight: 390,
                 }}
@@ -161,7 +178,14 @@ export function MinimalMagicItemCard({
                 />
               </div>
             ) : (
-              <div className="flex min-h-[240px] w-full max-w-[76%] items-center justify-center rounded-[2rem] border border-white/14 bg-white/6 px-8 text-center text-sm font-medium tracking-[0.18em] uppercase text-white/70 backdrop-blur-sm">
+              <div
+                className="flex items-center justify-center rounded-[2rem] border border-white/14 bg-white/6 px-8 text-center text-sm font-medium tracking-[0.18em] uppercase text-white/70 backdrop-blur-sm"
+                style={{
+                  width: cardImageDimensions.width,
+                  height: Math.max(cardImageDimensions.height, 240),
+                  maxWidth: '76%',
+                }}
+              >
                 Add artwork
               </div>
             )}
