@@ -1,4 +1,9 @@
 declare const styles: {
+  readonly attunementFooter: string;
+  readonly attunementFooterCap: string;
+  readonly attunementFooterCapLeft: string;
+  readonly attunementFooterCapRight: string;
+  readonly attunementFooterLabel: string;
   readonly artDecoCardBorder: string;
   readonly artDecoCardCorner: string;
   readonly artDecoCardCornerBottomLeft: string;

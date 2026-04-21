@@ -70,7 +70,6 @@ export function MinimalMagicItemCard({
   );
 
   const bannerLabel = classificationAndRarity.trim() || 'Magic item';
-  const footerLabel = requiresAttunement ? 'Requires attunement' : bannerLabel;
   const artworkAltText = itemName || imageFileName || 'Magic item artwork';
   const hasFlavorDescription = flavorDescription.trim().length > 0;
   const artworkAspectRatio = clampMinimalArtworkAspectRatio(
@@ -233,32 +232,27 @@ export function MinimalMagicItemCard({
               </Markdown>
             </div>
 
-            <footer className="mt-3 flex items-end justify-between gap-4 border-t border-slate-400/25 pt-3 text-[0.68rem] text-slate-500 uppercase">
-              <div className="flex min-w-0 items-center gap-2">
+            {requiresAttunement ? (
+              <footer className={styles.attunementFooter}>
                 <span
                   aria-hidden
-                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-full border border-slate-500/55"
-                >
-                  <span className="size-1.5 rounded-full bg-slate-500/70" />
+                  className={cn(
+                    styles.attunementFooterCap,
+                    styles.attunementFooterCapLeft,
+                  )}
+                />
+                <span className={styles.attunementFooterLabel}>
+                  Requires attunement
                 </span>
-                <span className="truncate tracking-[0.14em]">
-                  {footerLabel}
-                </span>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2 text-right tracking-[0.22em]">
                 <span
                   aria-hidden
-                  className="grid size-4 grid-cols-2 gap-[2px] rounded-[4px] border border-slate-500/45 p-[2px]"
-                >
-                  <span className="rounded-[1px] bg-slate-500/70" />
-                  <span className="rounded-[1px] bg-slate-500/45" />
-                  <span className="rounded-[1px] bg-slate-500/45" />
-                  <span className="rounded-[1px] bg-slate-500/70" />
-                </span>
-                <span>Item Thing</span>
-              </div>
-            </footer>
+                  className={cn(
+                    styles.attunementFooterCap,
+                    styles.attunementFooterCapRight,
+                  )}
+                />
+              </footer>
+            ) : null}
           </div>
         </section>
       </div>

@@ -241,3 +241,90 @@
   right: 0;
   rotate: -135deg;
 }
+
+.attunementFooter {
+  --attunement-fill: color-mix(in srgb, #f2f2f2 86%, #f0dfb1 14%);
+  --attunement-height: 2.15rem;
+  --attunement-cap-size: 0.7rem;
+  --attunement-stud-size: 0.24rem;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1rem auto 0;
+  padding: 0.2rem 1.35rem;
+  border-top: 1px solid
+    color-mix(in srgb, var(--minimal-card-gold) 72%, white 28%);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--minimal-card-gold) 72%, white 28%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--attunement-fill) 88%, white 12%) 0%,
+    var(--attunement-fill) 100%
+  );
+  box-shadow:
+    0 0 0.16rem var(--minimal-card-gold-glow),
+    0 0 0.35rem rgba(199, 154, 45, 0.08);
+  min-height: var(--attunement-height);
+}
+
+.attunementFooterLabel {
+  max-width: 100%;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.68rem;
+  line-height: 1.1;
+  color: color-mix(in srgb, #334155 78%, #0f172a 22%);
+  text-wrap: balance;
+}
+
+.attunementFooterCap {
+  position: relative;
+  flex: none;
+  width: var(--attunement-cap-size);
+  height: var(--attunement-cap-size);
+  border: 1px solid color-mix(in srgb, var(--minimal-card-gold) 82%, white 18%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--attunement-fill) 78%, white 22%) 0%,
+    var(--attunement-fill) 100%
+  );
+  box-shadow:
+    0 0 0.12rem var(--minimal-card-gold-glow),
+    0 0 0.24rem rgba(199, 154, 45, 0.08);
+  rotate: 45deg;
+}
+
+.attunementFooterCap::before,
+.attunementFooterCap::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  translate: -50% -50%;
+  rotate: 0deg;
+}
+
+.attunementFooterCap::before {
+  width: calc(var(--attunement-cap-size) + 0.28rem);
+  height: calc(var(--attunement-cap-size) + 0.28rem);
+  border: 1px solid color-mix(in srgb, var(--minimal-card-gold) 58%, white 42%);
+}
+
+.attunementFooterCap::after {
+  width: var(--attunement-stud-size);
+  height: var(--attunement-stud-size);
+  background: var(--minimal-card-gold);
+}
+
+.attunementFooterCapLeft {
+  margin-left: 0.08rem;
+}
+
+.attunementFooterCapRight {
+  margin-right: 0.08rem;
+}
