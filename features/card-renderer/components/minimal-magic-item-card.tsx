@@ -95,7 +95,7 @@ export function MinimalMagicItemCard({
       }}
     >
       <div className="flex flex-col">
-        <section className="relative overflow-hidden bg-[#292c4d] px-6 pb-10 pt-8">
+        <section className="relative bg-[#292c4d] px-6 pb-10 pt-8">
           <div className="absolute inset-0 bg-[linear-gradient(160deg,#1f2240_0%,#2f315a_28%,#5a4f8a_60%,#3b3566_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(255,255,255,0.12),transparent_34%),radial-gradient(circle_at_76%_24%,rgba(168,148,255,0.18),transparent_30%),radial-gradient(circle_at_54%_78%,rgba(12,15,35,0.28),transparent_38%),radial-gradient(circle_at_34%_60%,rgba(243,245,255,0.08),transparent_32%)]" />
           <div className="absolute inset-0 opacity-30 mix-blend-screen [background-image:radial-gradient(rgba(255,255,255,0.12)_0.8px,transparent_0.8px)] [background-position:0_0,9px_9px] [background-size:18px_18px]" />
@@ -125,16 +125,11 @@ export function MinimalMagicItemCard({
               </div>
             )}
           </div>
-        </section>
 
-        <section
-          className="relative flex flex-col px-7 pb-5 pt-11"
-          style={{ backgroundColor: MINIMAL_PANEL_BACKGROUND }}
-        >
           <div
             className={cn(
               decoBannerClassName,
-              'absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2 text-center',
+              'absolute! m-0! bottom-0 left-1/2 z-20 -translate-x-1/2 translate-y-1/2 text-center',
             )}
             style={{
               width: MINIMAL_BANNER_WIDTH,
@@ -160,7 +155,12 @@ export function MinimalMagicItemCard({
               {bannerLabel}
             </span>
           </div>
+        </section>
 
+        <section
+          className="relative flex flex-col px-7 pb-5 pt-11"
+          style={{ backgroundColor: MINIMAL_PANEL_BACKGROUND }}
+        >
           <div
             aria-hidden
             className="absolute inset-x-0 top-0 h-5"
