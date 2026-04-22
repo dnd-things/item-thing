@@ -8,6 +8,7 @@ import {
   getDefaultCardWidthPx,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { normalizeMinimalArtworkThemeCustomColor } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import {
   defaultMagicItemWorkbenchState,
@@ -33,6 +34,12 @@ const imageAspectRatioSchema = z.enum([
   'portrait-9-16',
   'landscape',
   'widescreen',
+]);
+const minimalArtworkThemeSourceSchema = z.enum([
+  'auto-complement',
+  'triad-left',
+  'triad-right',
+  'custom',
 ]);
 
 /** Workbench slider uses 15° steps; persisted values are rounded on load. */
@@ -68,6 +75,8 @@ const magicItemWorkbenchPartialStateSchema = z
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
     imageRotationDegrees: z.number().min(0).max(360).optional(),
+    minimalArtworkThemeSource: minimalArtworkThemeSourceSchema.optional(),
+    minimalArtworkThemeCustomColor: z.string().optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
     itemName: z.string().optional(),
@@ -167,6 +176,10 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
   mergedState.imageBorderWidthPx = clampImageBorderWidthPx(
     mergedState.imageBorderWidthPx,
   );
+  mergedState.minimalArtworkThemeCustomColor =
+    normalizeMinimalArtworkThemeCustomColor(
+      mergedState.minimalArtworkThemeCustomColor,
+    );
 
   if (
     envelopeResult.data.version === 1 &&

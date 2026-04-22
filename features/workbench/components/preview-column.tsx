@@ -17,6 +17,7 @@ import {
   getCardWidthPxRange,
   getDefaultCardWidthPx,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { useMinimalArtworkTheme } from '@/features/card-renderer/lib/use-minimal-artwork-theme';
 
 import {
   getWorkbenchControlsForPlacement,
@@ -34,6 +35,7 @@ import {
   type WorkbenchFieldSetter,
 } from '../lib/workbench-options';
 import { ItemPreviewPanel } from './item-preview-panel';
+import { MinimalArtworkThemeSourceControl } from './minimal-artwork-theme-source-control';
 import { ToggleField } from './workbench-field-controls';
 import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
 
@@ -113,6 +115,11 @@ export function PreviewColumn({
   const quickLayout = deriveQuickLayout(workbenchState);
   const imageFramePreset = deriveImageFramePreset(workbenchState);
   const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
+  const minimalArtworkTheme = useMinimalArtworkTheme(
+    workbenchState.imagePreviewUrl,
+    workbenchState.minimalArtworkThemeSource,
+    workbenchState.minimalArtworkThemeCustomColor,
+  );
 
   function handleQuickLayoutChange(value: string) {
     if (value === 'stacked') {
@@ -232,6 +239,22 @@ export function PreviewColumn({
             </div>
           </div>
         );
+      case 'minimalArtworkThemeSource':
+        return (
+          <MinimalArtworkThemeSourceControl
+            customColor={workbenchState.minimalArtworkThemeCustomColor}
+            labelHidden
+            source={workbenchState.minimalArtworkThemeSource}
+            swatches={minimalArtworkTheme.swatches}
+            onCustomColorChange={(value) => {
+              setWorkbenchField('minimalArtworkThemeCustomColor', value);
+              setWorkbenchField('minimalArtworkThemeSource', 'custom');
+            }}
+            onSourceChange={(value) => {
+              setWorkbenchField('minimalArtworkThemeSource', value);
+            }}
+          />
+        );
       default:
         return null;
     }
@@ -296,6 +319,7 @@ export function PreviewColumn({
 
       {showAdvancedWorkbenchControls ? (
         <WorkbenchSettingsDrawer
+          minimalArtworkThemeSwatches={minimalArtworkTheme.swatches}
           open={isDrawerOpen}
           onOpenChange={setIsDrawerOpen}
           imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}

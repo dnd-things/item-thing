@@ -29,6 +29,7 @@ import {
   mapImageRightVerticalPositionToUserPercent,
   mapUserPercentToImageRightVerticalPosition,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import type { MinimalArtworkThemeSwatch } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import {
   getWorkbenchControlsForPlacement,
   type WorkbenchControlId,
@@ -48,6 +49,7 @@ import {
   IMAGE_ROTATION_DEGREES_STEP,
   normalizeImageRotationDegrees,
 } from '../lib/workbench-persistence';
+import { MinimalArtworkThemeSourceControl } from './minimal-artwork-theme-source-control';
 import { ToggleField, ToolbarSelectField } from './workbench-field-controls';
 
 interface WorkbenchSettingsDrawerProps {
@@ -56,6 +58,7 @@ interface WorkbenchSettingsDrawerProps {
   setWorkbenchField: WorkbenchFieldSetter;
   workbenchState: MagicItemWorkbenchState;
   imageRightVerticalPositionBounds?: ImageRightVerticalPositionBounds;
+  minimalArtworkThemeSwatches: ReadonlyArray<MinimalArtworkThemeSwatch>;
 }
 
 export function WorkbenchSettingsDrawer({
@@ -64,6 +67,7 @@ export function WorkbenchSettingsDrawer({
   setWorkbenchField,
   workbenchState,
   imageRightVerticalPositionBounds,
+  minimalArtworkThemeSwatches,
 }: WorkbenchSettingsDrawerProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
   const isImageRightLayout = workbenchState.cardLayout === 'image-right';
@@ -426,6 +430,21 @@ export function WorkbenchSettingsDrawer({
               ))}
             </ToggleGroup>
           </Field>
+        );
+      case 'minimalArtworkThemeSource':
+        return (
+          <MinimalArtworkThemeSourceControl
+            customColor={workbenchState.minimalArtworkThemeCustomColor}
+            source={workbenchState.minimalArtworkThemeSource}
+            swatches={minimalArtworkThemeSwatches}
+            onCustomColorChange={(value) => {
+              setWorkbenchField('minimalArtworkThemeCustomColor', value);
+              setWorkbenchField('minimalArtworkThemeSource', 'custom');
+            }}
+            onSourceChange={(value) => {
+              setWorkbenchField('minimalArtworkThemeSource', value);
+            }}
+          />
         );
       default:
         return null;

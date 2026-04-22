@@ -3,6 +3,7 @@ import {
   type ImageAspectRatioOption,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { normalizeMinimalArtworkThemeCustomColor } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import {
   getRenderStyleFieldIds,
   type RenderStyleFieldId,
@@ -108,6 +109,13 @@ const renderStyleFieldSchemaMap = {
   imageRotationDegrees: optionalNumberFieldSchema({ min: 0, max: 360 }),
   imageFlipHorizontal: booleanFormFieldSchema.optional(),
   imageFlipVertical: booleanFormFieldSchema.optional(),
+  minimalArtworkThemeSource: z
+    .enum(['auto-complement', 'triad-left', 'triad-right', 'custom'])
+    .optional(),
+  minimalArtworkThemeCustomColor: z
+    .string()
+    .transform((value) => normalizeMinimalArtworkThemeCustomColor(value))
+    .optional(),
 } as const satisfies Record<RenderStyleFieldId, z.ZodTypeAny>;
 
 function pickRenderStyleFieldSchemaShape(

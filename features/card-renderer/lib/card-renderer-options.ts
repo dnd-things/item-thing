@@ -15,6 +15,12 @@ export type ImageAspectRatioOption =
   | 'landscape'
   | 'widescreen';
 
+export type MinimalArtworkThemeSource =
+  | 'auto-complement'
+  | 'triad-left'
+  | 'triad-right'
+  | 'custom';
+
 export interface MagicItemCardRendererProps {
   cardLayout: CardLayoutOption;
   sideLayoutFlow: SideLayoutFlowOption;
@@ -44,6 +50,8 @@ export interface MagicItemCardRendererProps {
   /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
   imageFlipHorizontal: boolean;
   imageFlipVertical: boolean;
+  minimalArtworkThemeSource: MinimalArtworkThemeSource;
+  minimalArtworkThemeCustomColor: string;
   imageFileName: string;
   imagePreviewUrl: string;
   itemName: string;

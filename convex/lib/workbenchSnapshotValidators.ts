@@ -30,6 +30,13 @@ const imageAspectRatioValidator = v.union(
   v.literal('widescreen'),
 );
 
+const minimalArtworkThemeSourceValidator = v.union(
+  v.literal('auto-complement'),
+  v.literal('triad-left'),
+  v.literal('triad-right'),
+  v.literal('custom'),
+);
+
 /**
  * Serializable workbench fields (matches MagicItemWorkbenchState minus imagePreviewUrl).
  */
@@ -49,6 +56,8 @@ export const workbenchSnapshotValidator = v.object({
   imageRotationDegrees: v.number(),
   imageFlipHorizontal: v.boolean(),
   imageFlipVertical: v.boolean(),
+  minimalArtworkThemeSource: minimalArtworkThemeSourceValidator,
+  minimalArtworkThemeCustomColor: v.string(),
   imageFileName: v.string(),
   itemName: v.string(),
   classificationAndRarity: v.string(),

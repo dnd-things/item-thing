@@ -28,7 +28,8 @@ export type WorkbenchControlId =
   | 'imageRightVerticalPosition'
   | 'imageRotationDegrees'
   | 'imageFlipHorizontal'
-  | 'imageFlipVertical';
+  | 'imageFlipVertical'
+  | 'minimalArtworkThemeSource';
 
 export type RenderStyleFieldId =
   | 'cardBorderRadius'
@@ -43,7 +44,9 @@ export type RenderStyleFieldId =
   | 'imageRightVerticalPosition'
   | 'imageRotationDegrees'
   | 'imageFlipHorizontal'
-  | 'imageFlipVertical';
+  | 'imageFlipVertical'
+  | 'minimalArtworkThemeSource'
+  | 'minimalArtworkThemeCustomColor';
 
 interface StyleCapabilityConfig {
   controls: Record<WorkbenchControlId, WorkbenchControlPlacement>;
@@ -64,7 +67,13 @@ export interface StyleNormalizableWorkbenchState {
 }
 
 const workbenchControlOrderByPlacement = {
-  basic: ['quickLayout', 'imageFramePreset', 'cardBorderRadius', 'cardWidth'],
+  basic: [
+    'quickLayout',
+    'imageFramePreset',
+    'cardBorderRadius',
+    'cardWidth',
+    'minimalArtworkThemeSource',
+  ],
   advanced: [
     'cardBorderRadius',
     'cardLayout',
@@ -78,6 +87,7 @@ const workbenchControlOrderByPlacement = {
     'imageRotationDegrees',
     'imageFlipHorizontal',
     'imageFlipVertical',
+    'minimalArtworkThemeSource',
   ],
 } as const satisfies Record<
   'basic' | 'advanced',
@@ -101,6 +111,7 @@ const styleCapabilityRegistry = {
       imageRotationDegrees: 'advanced',
       imageFlipHorizontal: 'advanced',
       imageFlipVertical: 'advanced',
+      minimalArtworkThemeSource: 'none',
     },
     renderFields: [
       'cardBorderRadius',
@@ -134,6 +145,7 @@ const styleCapabilityRegistry = {
       imageRotationDegrees: 'advanced',
       imageFlipHorizontal: 'advanced',
       imageFlipVertical: 'advanced',
+      minimalArtworkThemeSource: 'both',
     },
     renderFields: [
       'imageSize',
@@ -142,6 +154,8 @@ const styleCapabilityRegistry = {
       'imageRotationDegrees',
       'imageFlipHorizontal',
       'imageFlipVertical',
+      'minimalArtworkThemeSource',
+      'minimalArtworkThemeCustomColor',
     ],
   },
 } as const satisfies Record<SupportedStyleCapability, StyleCapabilityConfig>;
