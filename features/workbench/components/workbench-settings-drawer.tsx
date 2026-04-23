@@ -435,6 +435,7 @@ export function WorkbenchSettingsDrawer({
         return (
           <MinimalArtworkThemeSourceControl
             customColor={workbenchState.minimalArtworkThemeCustomColor}
+            showCustomColor
             source={workbenchState.minimalArtworkThemeSource}
             swatches={minimalArtworkThemeSwatches}
             onCustomColorChange={(value) => {
