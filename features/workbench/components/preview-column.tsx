@@ -267,7 +267,7 @@ export function PreviewColumn({
         data-print-hide
         className="flex items-center gap-2 rounded-xl border border-primary/6 bg-card/40 px-3 py-2 backdrop-blur-lg"
       >
-        <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overflow-y-hidden">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           <div className="min-w-32 shrink-0">
             <ToggleField
               fieldLabel="Style"
