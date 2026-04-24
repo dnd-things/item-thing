@@ -1,3 +1,5 @@
+import type { ArtworkColorSource } from './artwork-color-source';
+
 export type CardLayoutOption = 'vertical' | 'image-right';
 
 export type CardStyleOption = 'print' | 'minimal' | 'classic';
@@ -14,12 +16,6 @@ export type ImageAspectRatioOption =
   | 'portrait-9-16'
   | 'landscape'
   | 'widescreen';
-
-export type MinimalArtworkThemeSource =
-  | 'auto-complement'
-  | 'triad-left'
-  | 'triad-right'
-  | 'custom';
 
 export interface MagicItemCardRendererProps {
   cardLayout: CardLayoutOption;
@@ -50,8 +46,8 @@ export interface MagicItemCardRendererProps {
   /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
   imageFlipHorizontal: boolean;
   imageFlipVertical: boolean;
-  minimalArtworkThemeSource: MinimalArtworkThemeSource;
-  minimalArtworkThemeCustomColor: string;
+  artworkColorSource: ArtworkColorSource;
+  artworkCustomColor: string;
   imageFileName: string;
   imagePreviewUrl: string;
   itemName: string;
@@ -263,11 +259,14 @@ export function getImageRightVerticalPositionDefaultForFixedSideLayout(
   );
 }
 
-export function getImageBorderStyle(imageBorderWidthPx: number): string {
+export function getImageBorderStyle(
+  imageBorderWidthPx: number,
+  color = 'rgba(0, 0, 0, 0.6)',
+): string {
   if (imageBorderWidthPx <= 0) {
     return '';
   }
-  return `${imageBorderWidthPx}px solid rgba(0, 0, 0, 0.6)`;
+  return `${imageBorderWidthPx}px solid ${color}`;
 }
 
 export function getImageBorderBoxShadow(imageBorderWidthPx: number): string {

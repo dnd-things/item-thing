@@ -29,7 +29,7 @@ export type WorkbenchControlId =
   | 'imageRotationDegrees'
   | 'imageFlipHorizontal'
   | 'imageFlipVertical'
-  | 'minimalArtworkThemeSource';
+  | 'artworkColorSource';
 
 export type RenderStyleFieldId =
   | 'cardBorderRadius'
@@ -45,8 +45,8 @@ export type RenderStyleFieldId =
   | 'imageRotationDegrees'
   | 'imageFlipHorizontal'
   | 'imageFlipVertical'
-  | 'minimalArtworkThemeSource'
-  | 'minimalArtworkThemeCustomColor';
+  | 'artworkColorSource'
+  | 'artworkCustomColor';
 
 interface StyleCapabilityConfig {
   controls: Record<WorkbenchControlId, WorkbenchControlPlacement>;
@@ -72,7 +72,7 @@ const workbenchControlOrderByPlacement = {
     'imageFramePreset',
     'cardBorderRadius',
     'cardWidth',
-    'minimalArtworkThemeSource',
+    'artworkColorSource',
   ],
   advanced: [
     'cardBorderRadius',
@@ -87,7 +87,7 @@ const workbenchControlOrderByPlacement = {
     'imageRotationDegrees',
     'imageFlipHorizontal',
     'imageFlipVertical',
-    'minimalArtworkThemeSource',
+    'artworkColorSource',
   ],
 } as const satisfies Record<
   'basic' | 'advanced',
@@ -111,7 +111,7 @@ const styleCapabilityRegistry = {
       imageRotationDegrees: 'advanced',
       imageFlipHorizontal: 'advanced',
       imageFlipVertical: 'advanced',
-      minimalArtworkThemeSource: 'none',
+      artworkColorSource: 'both',
     },
     renderFields: [
       'cardBorderRadius',
@@ -127,6 +127,8 @@ const styleCapabilityRegistry = {
       'imageRotationDegrees',
       'imageFlipHorizontal',
       'imageFlipVertical',
+      'artworkColorSource',
+      'artworkCustomColor',
     ],
   },
   minimal: {
@@ -145,7 +147,7 @@ const styleCapabilityRegistry = {
       imageRotationDegrees: 'advanced',
       imageFlipHorizontal: 'advanced',
       imageFlipVertical: 'advanced',
-      minimalArtworkThemeSource: 'both',
+      artworkColorSource: 'both',
     },
     renderFields: [
       'imageSize',
@@ -154,8 +156,8 @@ const styleCapabilityRegistry = {
       'imageRotationDegrees',
       'imageFlipHorizontal',
       'imageFlipVertical',
-      'minimalArtworkThemeSource',
-      'minimalArtworkThemeCustomColor',
+      'artworkColorSource',
+      'artworkCustomColor',
     ],
   },
 } as const satisfies Record<SupportedStyleCapability, StyleCapabilityConfig>;

@@ -17,6 +17,7 @@ import {
 
 interface MagicItemVerticalPrintLayoutContextValue {
   cardImageDimensions: CardImageDimensions;
+  imageBorderColor: string;
   imageBorderWidthPx: number;
 }
 
@@ -39,6 +40,7 @@ interface MagicItemVerticalPrintLayoutRootProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
+  imageBorderColor: string;
   imageBorderWidthPx: number;
   imageSize: number;
 }
@@ -49,6 +51,7 @@ function MagicItemVerticalPrintLayoutRoot({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
+  imageBorderColor,
   imageBorderWidthPx,
   imageSize,
 }: MagicItemVerticalPrintLayoutRootProps) {
@@ -66,9 +69,10 @@ function MagicItemVerticalPrintLayoutRoot({
   const contextValue = useMemo(
     (): MagicItemVerticalPrintLayoutContextValue => ({
       cardImageDimensions,
+      imageBorderColor,
       imageBorderWidthPx,
     }),
-    [cardImageDimensions, imageBorderWidthPx],
+    [cardImageDimensions, imageBorderColor, imageBorderWidthPx],
   );
 
   return (
@@ -98,7 +102,7 @@ function MagicItemVerticalPrintLayoutMedia({
   mediaColumnClassName,
   mediaFrameClassName,
 }: MagicItemVerticalPrintLayoutMediaProps) {
-  const { cardImageDimensions, imageBorderWidthPx } =
+  const { cardImageDimensions, imageBorderColor, imageBorderWidthPx } =
     useMagicItemVerticalPrintLayoutContext();
 
   return (
@@ -118,7 +122,7 @@ function MagicItemVerticalPrintLayoutMedia({
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorderWidthPx),
+          border: getImageBorderStyle(imageBorderWidthPx, imageBorderColor),
           boxShadow: getImageBorderBoxShadow(imageBorderWidthPx),
         }}
       >

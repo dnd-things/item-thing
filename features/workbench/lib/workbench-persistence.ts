@@ -1,14 +1,13 @@
 'use client';
 
 import { z } from 'zod';
-
+import { normalizeArtworkCustomColor } from '@/features/card-renderer/lib/artwork-color-source';
 import {
   clampCardWidthPxForLayout,
   clampImageBorderWidthPx,
   getDefaultCardWidthPx,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { normalizeMinimalArtworkThemeCustomColor } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import {
   defaultMagicItemWorkbenchState,
@@ -19,7 +18,7 @@ export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
 const PERSISTENCE_VERSION = 3 as const;
-const CURRENT_PERSISTENCE_VERSION = 5 as const;
+const CURRENT_PERSISTENCE_VERSION = 6 as const;
 
 const cardLayoutSchema = z.enum(['vertical', 'image-right']);
 const sideLayoutFlowSchema = z.enum(['fixed', 'fluid']);
@@ -35,7 +34,7 @@ const imageAspectRatioSchema = z.enum([
   'landscape',
   'widescreen',
 ]);
-const minimalArtworkThemeSourceSchema = z.enum([
+const artworkColorSourceSchema = z.enum([
   'auto-complement',
   'triad-left',
   'triad-right',
@@ -75,7 +74,9 @@ const magicItemWorkbenchPartialStateSchema = z
     imageFlipHorizontal: z.boolean().optional(),
     imageFlipVertical: z.boolean().optional(),
     imageRotationDegrees: z.number().min(0).max(360).optional(),
-    minimalArtworkThemeSource: minimalArtworkThemeSourceSchema.optional(),
+    artworkColorSource: artworkColorSourceSchema.optional(),
+    artworkCustomColor: z.string().optional(),
+    minimalArtworkThemeSource: artworkColorSourceSchema.optional(),
     minimalArtworkThemeCustomColor: z.string().optional(),
     imageFileName: z.string().optional(),
     imagePreviewUrl: z.string().optional(),
@@ -92,6 +93,7 @@ const workbenchPersistenceEnvelopeSchema = z.object({
     z.literal(1),
     z.literal(2),
     z.literal(PERSISTENCE_VERSION),
+    z.literal(5),
     z.literal(CURRENT_PERSISTENCE_VERSION),
   ]),
   state: z.unknown(),
@@ -155,9 +157,25 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
     return null;
   }
 
+  const migratedState = {
+    ...stateResult.data,
+    artworkColorSource:
+      stateResult.data.artworkColorSource ??
+      stateResult.data.minimalArtworkThemeSource,
+    artworkCustomColor:
+      stateResult.data.artworkCustomColor ??
+      stateResult.data.minimalArtworkThemeCustomColor,
+  };
+
+  const {
+    minimalArtworkThemeSource: _minimalArtworkThemeSource,
+    minimalArtworkThemeCustomColor: _minimalArtworkThemeCustomColor,
+    ...stateForMerge
+  } = migratedState;
+
   const mergedState = {
     ...defaultMagicItemWorkbenchState,
-    ...stateResult.data,
+    ...stateForMerge,
   } as MagicItemWorkbenchState;
 
   mergedState.cardWidthAuto = stateResult.data.cardWidthAuto ?? true;
@@ -176,10 +194,9 @@ export function loadMagicItemWorkbenchStateFromLocalStorage(): MagicItemWorkbenc
   mergedState.imageBorderWidthPx = clampImageBorderWidthPx(
     mergedState.imageBorderWidthPx,
   );
-  mergedState.minimalArtworkThemeCustomColor =
-    normalizeMinimalArtworkThemeCustomColor(
-      mergedState.minimalArtworkThemeCustomColor,
-    );
+  mergedState.artworkCustomColor = normalizeArtworkCustomColor(
+    mergedState.artworkCustomColor,
+  );
 
   if (
     envelopeResult.data.version === 1 &&

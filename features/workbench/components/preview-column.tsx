@@ -34,8 +34,8 @@ import {
   type MagicItemWorkbenchState,
   type WorkbenchFieldSetter,
 } from '../lib/workbench-options';
+import { ArtworkColorSourceControl } from './artwork-color-source-control';
 import { ItemPreviewPanel } from './item-preview-panel';
-import { MinimalArtworkThemeSourceControl } from './minimal-artwork-theme-source-control';
 import { ToggleField } from './workbench-field-controls';
 import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
 
@@ -117,9 +117,20 @@ export function PreviewColumn({
   const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
   const minimalArtworkTheme = useMinimalArtworkTheme(
     workbenchState.imagePreviewUrl,
-    workbenchState.minimalArtworkThemeSource,
-    workbenchState.minimalArtworkThemeCustomColor,
+    workbenchState.artworkColorSource,
+    workbenchState.artworkCustomColor,
   );
+  const isArtworkColorControlDisabled =
+    workbenchState.imagePreviewUrl.trim().length === 0 ||
+    (workbenchState.cardStyle === 'print' &&
+      workbenchState.imageBorderWidthPx <= 0);
+  const artworkColorControlDisabledReason =
+    workbenchState.imagePreviewUrl.trim().length === 0
+      ? 'Add artwork to choose a color source'
+      : workbenchState.cardStyle === 'print' &&
+          workbenchState.imageBorderWidthPx <= 0
+        ? 'Add an artwork border to choose its color'
+        : undefined;
 
   function handleQuickLayoutChange(value: string) {
     if (value === 'stacked') {
@@ -239,20 +250,22 @@ export function PreviewColumn({
             </div>
           </div>
         );
-      case 'minimalArtworkThemeSource':
+      case 'artworkColorSource':
         return (
-          <MinimalArtworkThemeSourceControl
-            customColor={workbenchState.minimalArtworkThemeCustomColor}
+          <ArtworkColorSourceControl
+            customColor={workbenchState.artworkCustomColor}
+            disabled={isArtworkColorControlDisabled}
+            disabledReason={artworkColorControlDisabledReason}
             labelHidden
             showCustomColor={false}
-            source={workbenchState.minimalArtworkThemeSource}
+            source={workbenchState.artworkColorSource}
             swatches={minimalArtworkTheme.swatches}
             onCustomColorChange={(value) => {
-              setWorkbenchField('minimalArtworkThemeCustomColor', value);
-              setWorkbenchField('minimalArtworkThemeSource', 'custom');
+              setWorkbenchField('artworkCustomColor', value);
+              setWorkbenchField('artworkColorSource', 'custom');
             }}
             onSourceChange={(value) => {
-              setWorkbenchField('minimalArtworkThemeSource', value);
+              setWorkbenchField('artworkColorSource', value);
             }}
           />
         );
@@ -320,7 +333,9 @@ export function PreviewColumn({
 
       {showAdvancedWorkbenchControls ? (
         <WorkbenchSettingsDrawer
-          minimalArtworkThemeSwatches={minimalArtworkTheme.swatches}
+          artworkColorControlDisabled={isArtworkColorControlDisabled}
+          artworkColorControlDisabledReason={artworkColorControlDisabledReason}
+          artworkColorSwatches={minimalArtworkTheme.swatches}
           open={isDrawerOpen}
           onOpenChange={setIsDrawerOpen}
           imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}

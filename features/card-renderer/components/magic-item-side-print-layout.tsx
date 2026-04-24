@@ -25,6 +25,7 @@ const SIDE_CARD_LAYOUT = 'image-right' as const;
 
 interface MagicItemSidePrintLayoutContextValue {
   cardImageDimensions: CardImageDimensions;
+  imageBorderColor: string;
   imageBorderWidthPx: number;
 }
 
@@ -47,6 +48,7 @@ interface MagicItemSidePrintLayoutRootProps {
   imageAspectRatio: ImageAspectRatioOption;
   resolvedImageAspectRatio: number;
   imageBorderRadius: number;
+  imageBorderColor: string;
   imageBorderWidthPx: number;
   imageSize: number;
 }
@@ -57,6 +59,7 @@ function MagicItemSidePrintLayoutRoot({
   imageAspectRatio,
   resolvedImageAspectRatio,
   imageBorderRadius,
+  imageBorderColor,
   imageBorderWidthPx,
   imageSize,
 }: MagicItemSidePrintLayoutRootProps) {
@@ -73,9 +76,10 @@ function MagicItemSidePrintLayoutRoot({
   const contextValue = useMemo(
     (): MagicItemSidePrintLayoutContextValue => ({
       cardImageDimensions,
+      imageBorderColor,
       imageBorderWidthPx,
     }),
-    [cardImageDimensions, imageBorderWidthPx],
+    [cardImageDimensions, imageBorderColor, imageBorderWidthPx],
   );
 
   return (
@@ -125,7 +129,7 @@ function MagicItemSidePrintLayoutMedia({
   mediaFrameClassName,
   mediaColumnStyle,
 }: MagicItemSidePrintLayoutMediaProps) {
-  const { cardImageDimensions, imageBorderWidthPx } =
+  const { cardImageDimensions, imageBorderColor, imageBorderWidthPx } =
     useMagicItemSidePrintLayoutContext();
 
   return (
@@ -146,7 +150,7 @@ function MagicItemSidePrintLayoutMedia({
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorderWidthPx),
+          border: getImageBorderStyle(imageBorderWidthPx, imageBorderColor),
           boxShadow: getImageBorderBoxShadow(imageBorderWidthPx),
         }}
       >

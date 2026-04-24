@@ -86,6 +86,7 @@ export interface MagicItemPrintCardSlotsParams {
   shouldStackMetadata: boolean;
   cardImageDimensions: CardImageDimensions;
   imageBorderWidthPx: number;
+  imageBorderColor: string;
   sideImageMarginTopRem: number;
   /**
    * Image URL for `<Image src>` and `shape-outside: url()` — same canvas blob when rotated/flipped
@@ -121,6 +122,7 @@ export function buildMagicItemPrintCardSlots(
     shouldStackMetadata,
     cardImageDimensions,
     imageBorderWidthPx,
+    imageBorderColor,
     sideImageMarginTopRem,
     renderImageUrl,
     imageFileName,
@@ -179,7 +181,7 @@ export function buildMagicItemPrintCardSlots(
             width: cardImageDimensions.width,
             height: cardImageDimensions.height,
             borderRadius: cardImageDimensions.borderRadius,
-            border: getImageBorderStyle(imageBorderWidthPx),
+            border: getImageBorderStyle(imageBorderWidthPx, imageBorderColor),
             boxShadow: getImageBorderBoxShadow(imageBorderWidthPx),
             overflow: 'hidden' as const,
             shapeOutside: 'border-box' as const,
@@ -223,7 +225,9 @@ export function buildMagicItemPrintCardSlots(
           width: cardImageDimensions.width,
           height: cardImageDimensions.height,
           borderRadius: cardImageDimensions.borderRadius,
-          border: getImageBorderStyle(imageBorderWidthPx) || undefined,
+          border:
+            getImageBorderStyle(imageBorderWidthPx, imageBorderColor) ||
+            undefined,
           boxShadow: getImageBorderBoxShadow(imageBorderWidthPx) || undefined,
           overflow: 'hidden' as const,
           shapeOutside: 'border-box' as const,

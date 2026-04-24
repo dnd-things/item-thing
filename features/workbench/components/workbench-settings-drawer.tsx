@@ -17,6 +17,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import type { ArtworkColorSwatch } from '@/features/card-renderer/lib/artwork-color-source';
 import {
   cardWidthPxStep,
   clampImageBorderWidthPx,
@@ -29,7 +30,6 @@ import {
   mapImageRightVerticalPositionToUserPercent,
   mapUserPercentToImageRightVerticalPosition,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import type { MinimalArtworkThemeSwatch } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import {
   getWorkbenchControlsForPlacement,
   type WorkbenchControlId,
@@ -49,7 +49,7 @@ import {
   IMAGE_ROTATION_DEGREES_STEP,
   normalizeImageRotationDegrees,
 } from '../lib/workbench-persistence';
-import { MinimalArtworkThemeSourceControl } from './minimal-artwork-theme-source-control';
+import { ArtworkColorSourceControl } from './artwork-color-source-control';
 import { ToggleField, ToolbarSelectField } from './workbench-field-controls';
 
 interface WorkbenchSettingsDrawerProps {
@@ -57,8 +57,10 @@ interface WorkbenchSettingsDrawerProps {
   onOpenChange: (open: boolean) => void;
   setWorkbenchField: WorkbenchFieldSetter;
   workbenchState: MagicItemWorkbenchState;
+  artworkColorControlDisabled: boolean;
+  artworkColorControlDisabledReason?: string | undefined;
   imageRightVerticalPositionBounds?: ImageRightVerticalPositionBounds;
-  minimalArtworkThemeSwatches: ReadonlyArray<MinimalArtworkThemeSwatch>;
+  artworkColorSwatches: ReadonlyArray<ArtworkColorSwatch>;
 }
 
 export function WorkbenchSettingsDrawer({
@@ -66,8 +68,10 @@ export function WorkbenchSettingsDrawer({
   onOpenChange,
   setWorkbenchField,
   workbenchState,
+  artworkColorControlDisabled,
+  artworkColorControlDisabledReason,
   imageRightVerticalPositionBounds,
-  minimalArtworkThemeSwatches,
+  artworkColorSwatches,
 }: WorkbenchSettingsDrawerProps) {
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
   const isImageRightLayout = workbenchState.cardLayout === 'image-right';
@@ -431,19 +435,21 @@ export function WorkbenchSettingsDrawer({
             </ToggleGroup>
           </Field>
         );
-      case 'minimalArtworkThemeSource':
+      case 'artworkColorSource':
         return (
-          <MinimalArtworkThemeSourceControl
-            customColor={workbenchState.minimalArtworkThemeCustomColor}
+          <ArtworkColorSourceControl
+            customColor={workbenchState.artworkCustomColor}
+            disabled={artworkColorControlDisabled}
+            disabledReason={artworkColorControlDisabledReason}
             showCustomColor
-            source={workbenchState.minimalArtworkThemeSource}
-            swatches={minimalArtworkThemeSwatches}
+            source={workbenchState.artworkColorSource}
+            swatches={artworkColorSwatches}
             onCustomColorChange={(value) => {
-              setWorkbenchField('minimalArtworkThemeCustomColor', value);
-              setWorkbenchField('minimalArtworkThemeSource', 'custom');
+              setWorkbenchField('artworkCustomColor', value);
+              setWorkbenchField('artworkColorSource', 'custom');
             }}
             onSourceChange={(value) => {
-              setWorkbenchField('minimalArtworkThemeSource', value);
+              setWorkbenchField('artworkColorSource', value);
             }}
           />
         );

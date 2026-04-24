@@ -30,7 +30,7 @@ const imageAspectRatioValidator = v.union(
   v.literal('widescreen'),
 );
 
-const minimalArtworkThemeSourceValidator = v.union(
+const artworkColorSourceValidator = v.union(
   v.literal('auto-complement'),
   v.literal('triad-left'),
   v.literal('triad-right'),
@@ -40,7 +40,7 @@ const minimalArtworkThemeSourceValidator = v.union(
 /**
  * Serializable workbench fields (matches MagicItemWorkbenchState minus imagePreviewUrl).
  */
-export const workbenchSnapshotValidator = v.object({
+const sharedWorkbenchSnapshotShape = {
   cardLayout: cardLayoutValidator,
   sideLayoutFlow: sideLayoutFlowValidator,
   cardStyle: cardStyleValidator,
@@ -56,12 +56,29 @@ export const workbenchSnapshotValidator = v.object({
   imageRotationDegrees: v.number(),
   imageFlipHorizontal: v.boolean(),
   imageFlipVertical: v.boolean(),
-  minimalArtworkThemeSource: minimalArtworkThemeSourceValidator,
-  minimalArtworkThemeCustomColor: v.string(),
+  artworkColorSource: artworkColorSourceValidator,
+  artworkCustomColor: v.string(),
   imageFileName: v.string(),
   itemName: v.string(),
   classificationAndRarity: v.string(),
   requiresAttunement: v.boolean(),
   flavorDescription: v.string(),
   mechanicalDescription: v.string(),
+} as const;
+
+const currentWorkbenchSnapshotValidator = v.object({
+  ...sharedWorkbenchSnapshotShape,
+  artworkColorSource: artworkColorSourceValidator,
+  artworkCustomColor: v.string(),
 });
+
+const legacyWorkbenchSnapshotValidator = v.object({
+  ...sharedWorkbenchSnapshotShape,
+  minimalArtworkThemeSource: artworkColorSourceValidator,
+  minimalArtworkThemeCustomColor: v.string(),
+});
+
+export const workbenchSnapshotValidator = v.union(
+  currentWorkbenchSnapshotValidator,
+  legacyWorkbenchSnapshotValidator,
+);

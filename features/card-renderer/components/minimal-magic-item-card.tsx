@@ -64,8 +64,8 @@ export function MinimalMagicItemCard({
   imageRotationDegrees,
   imageFlipHorizontal,
   imageFlipVertical,
-  minimalArtworkThemeSource,
-  minimalArtworkThemeCustomColor,
+  artworkColorSource,
+  artworkCustomColor,
   itemName,
   classificationAndRarity,
   requiresAttunement,
@@ -96,8 +96,8 @@ export function MinimalMagicItemCard({
   );
   const { theme: artworkTheme } = useMinimalArtworkTheme(
     renderImageUrl,
-    minimalArtworkThemeSource,
-    minimalArtworkThemeCustomColor,
+    artworkColorSource,
+    artworkCustomColor,
   );
   const resolvedCardWidthPx = getResolvedCardWidthPx(
     'vertical',

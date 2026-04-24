@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import {
-  getMinimalArtworkThemeFallback,
-  getMinimalArtworkThemeSwatches,
+  type ArtworkColorSource,
+  type ArtworkColorSwatch,
+  getArtworkColorSwatches,
   type HslColor,
-  type MinimalArtworkTheme,
-  type MinimalArtworkThemeSource,
-  type MinimalArtworkThemeSwatch,
-  resolveMinimalArtworkTheme,
+  resolveArtworkColor,
   rgbToHsl,
   wrapHue,
+} from './artwork-color-source';
+import {
+  getMinimalArtworkThemeFallback,
+  type MinimalArtworkTheme,
+  resolveMinimalArtworkTheme,
 } from './minimal-artwork-theme-source';
 
 const FALLBACK_MINIMAL_ARTWORK_THEME = getMinimalArtworkThemeFallback();
@@ -197,13 +200,14 @@ async function deriveMinimalArtworkThemeFromUrl(
 
 export interface UseMinimalArtworkThemeResult {
   accentColor: HslColor | null;
-  swatches: ReadonlyArray<MinimalArtworkThemeSwatch>;
+  artworkColor: string;
+  swatches: ReadonlyArray<ArtworkColorSwatch>;
   theme: MinimalArtworkTheme;
 }
 
 export function useMinimalArtworkTheme(
   renderImageUrl: string,
-  source: MinimalArtworkThemeSource,
+  source: ArtworkColorSource,
   customColor: string,
 ): UseMinimalArtworkThemeResult {
   const [accentColor, setAccentColor] = useState<HslColor | null>(null);
@@ -236,7 +240,8 @@ export function useMinimalArtworkTheme(
 
   return {
     accentColor,
-    swatches: getMinimalArtworkThemeSwatches(accentColor),
+    artworkColor: resolveArtworkColor(accentColor, source, customColor),
+    swatches: getArtworkColorSwatches(accentColor),
     theme: resolveMinimalArtworkTheme(accentColor, source, customColor),
   };
 }

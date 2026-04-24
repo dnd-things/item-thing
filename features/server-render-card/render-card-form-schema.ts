@@ -1,9 +1,9 @@
 import { z } from 'zod';
+import { normalizeArtworkCustomColor } from '@/features/card-renderer/lib/artwork-color-source';
 import {
   type ImageAspectRatioOption,
   imageBorderWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { normalizeMinimalArtworkThemeCustomColor } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 import {
   getRenderStyleFieldIds,
   type RenderStyleFieldId,
@@ -109,12 +109,12 @@ const renderStyleFieldSchemaMap = {
   imageRotationDegrees: optionalNumberFieldSchema({ min: 0, max: 360 }),
   imageFlipHorizontal: booleanFormFieldSchema.optional(),
   imageFlipVertical: booleanFormFieldSchema.optional(),
-  minimalArtworkThemeSource: z
+  artworkColorSource: z
     .enum(['auto-complement', 'triad-left', 'triad-right', 'custom'])
     .optional(),
-  minimalArtworkThemeCustomColor: z
+  artworkCustomColor: z
     .string()
-    .transform((value) => normalizeMinimalArtworkThemeCustomColor(value))
+    .transform((value) => normalizeArtworkCustomColor(value))
     .optional(),
 } as const satisfies Record<RenderStyleFieldId, z.ZodTypeAny>;
 
@@ -154,12 +154,34 @@ function getFormEntry(
 function collectRenderFieldEntries(
   formData: FormData,
 ): Record<string, FormDataEntryValue> {
-  const entries: Record<string, FormDataEntryValue> = {};
+  type ArtworkColorAliasEntries = Partial<
+    Record<
+      | 'artworkColorSource'
+      | 'artworkCustomColor'
+      | 'minimalArtworkThemeSource'
+      | 'minimalArtworkThemeCustomColor',
+      FormDataEntryValue
+    >
+  >;
+  const entries: Record<string, FormDataEntryValue> & ArtworkColorAliasEntries =
+    {};
   for (const [key, value] of formData.entries()) {
     if (key === 'artwork' || key === 'item') {
       continue;
     }
     entries[key] = value;
+  }
+  if (
+    entries.artworkColorSource === undefined &&
+    entries.minimalArtworkThemeSource !== undefined
+  ) {
+    entries.artworkColorSource = entries.minimalArtworkThemeSource;
+  }
+  if (
+    entries.artworkCustomColor === undefined &&
+    entries.minimalArtworkThemeCustomColor !== undefined
+  ) {
+    entries.artworkCustomColor = entries.minimalArtworkThemeCustomColor;
   }
   return entries;
 }

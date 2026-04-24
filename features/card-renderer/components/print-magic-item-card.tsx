@@ -12,6 +12,7 @@ import {
   shouldStackVerticalCardMetadata,
 } from '../lib/card-renderer-options';
 import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
+import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
 import {
   buildMagicItemPrintCardSlots,
   printCardClassNames,
@@ -35,6 +36,8 @@ export function PrintMagicItemCard({
   resolvedImageAspectRatio,
   imageBorderRadius,
   imageBorderWidthPx,
+  artworkColorSource,
+  artworkCustomColor,
   imageRightVerticalPosition,
   imageSize,
   imageFileName,
@@ -54,6 +57,11 @@ export function PrintMagicItemCard({
     imageRotationDegrees,
     imageFlipHorizontal,
     imageFlipVertical,
+  );
+  const { artworkColor } = useMinimalArtworkTheme(
+    renderImageUrl,
+    artworkColorSource,
+    artworkCustomColor,
   );
 
   const layoutImageAspectRatio = getEffectiveImageAspectRatioForLayout(
@@ -87,6 +95,7 @@ export function PrintMagicItemCard({
     shouldStackMetadata,
     cardImageDimensions,
     imageBorderWidthPx,
+    imageBorderColor: artworkColor,
     sideImageMarginTopRem,
     renderImageUrl,
     imageFileName,
@@ -120,6 +129,7 @@ export function PrintMagicItemCard({
           resolvedImageAspectRatio={resolvedImageAspectRatio}
           imageBorderRadius={imageBorderRadius}
           imageBorderWidthPx={imageBorderWidthPx}
+          imageBorderColor={artworkColor}
           imageSize={imageSize}
         >
           <MagicItemVerticalPrintLayout.Media
@@ -159,6 +169,7 @@ export function PrintMagicItemCard({
         resolvedImageAspectRatio={resolvedImageAspectRatio}
         imageBorderRadius={imageBorderRadius}
         imageBorderWidthPx={imageBorderWidthPx}
+        imageBorderColor={artworkColor}
         imageSize={imageSize}
       >
         <MagicItemSidePrintLayout.MainRow>

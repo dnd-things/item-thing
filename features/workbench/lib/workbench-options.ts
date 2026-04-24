@@ -1,4 +1,8 @@
 import {
+  type ArtworkColorSource,
+  DEFAULT_ARTWORK_CUSTOM_COLOR,
+} from '@/features/card-renderer/lib/artwork-color-source';
+import {
   type CardBorderRadiusOption,
   type CardLayoutOption,
   type CardStyleOption,
@@ -6,10 +10,8 @@ import {
   type ImageAspectRatioOption,
   imageRightVerticalPositionDefaultForFluidSideLayout,
   type MagicItemCardRendererProps,
-  type MinimalArtworkThemeSource,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { DEFAULT_MINIMAL_ARTWORK_THEME_CUSTOM_COLOR } from '@/features/card-renderer/lib/minimal-artwork-theme-source';
 export interface SelectionOption<TValue extends string> {
   label: string;
   value: TValue;
@@ -87,9 +89,8 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   imageRotationDegrees: 0,
   imageFlipHorizontal: false,
   imageFlipVertical: false,
-  minimalArtworkThemeSource:
-    'auto-complement' satisfies MinimalArtworkThemeSource,
-  minimalArtworkThemeCustomColor: DEFAULT_MINIMAL_ARTWORK_THEME_CUSTOM_COLOR,
+  artworkColorSource: 'auto-complement' satisfies ArtworkColorSource,
+  artworkCustomColor: DEFAULT_ARTWORK_CUSTOM_COLOR,
   imageFileName: '',
   imagePreviewUrl: '',
   itemName: '',
