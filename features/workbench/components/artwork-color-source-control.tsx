@@ -28,6 +28,8 @@ function getSourceLabel(source: DerivedArtworkColorSource) {
       return 'Triad left';
     case 'triad-right':
       return 'Triad right';
+    case 'neutral':
+      return 'Neutral';
     default:
       return 'Direct complement';
   }

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   DEFAULT_ARTWORK_CUSTOM_COLOR,
+  DEFAULT_NEUTRAL_ARTWORK_COLOR,
   getArtworkColorSourceHue,
+  getArtworkColorSwatches,
   normalizeArtworkCustomColor,
   resolveArtworkColor,
 } from './artwork-color-source.ts';
@@ -48,4 +50,35 @@ test('resolved artwork color follows the selected source', () => {
     resolveArtworkColor(accentColor, 'custom', '#123456'),
     '#123456',
   );
+  assert.equal(
+    resolveArtworkColor(accentColor, 'neutral', '#123456'),
+    DEFAULT_NEUTRAL_ARTWORK_COLOR,
+  );
+});
+
+test('swatches include the fixed neutral color after derived colors', () => {
+  const swatches = getArtworkColorSwatches({
+    hue: 30,
+    saturation: 0.5,
+    lightness: 0.4,
+  });
+
+  assert.deepEqual(swatches, [
+    {
+      source: 'auto-complement',
+      color: 'hsl(210 50% 52%)',
+    },
+    {
+      source: 'triad-left',
+      color: 'hsl(330 50% 52%)',
+    },
+    {
+      source: 'triad-right',
+      color: 'hsl(90 50% 52%)',
+    },
+    {
+      source: 'neutral',
+      color: DEFAULT_NEUTRAL_ARTWORK_COLOR,
+    },
+  ]);
 });

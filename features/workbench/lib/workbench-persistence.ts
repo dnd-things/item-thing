@@ -38,6 +38,7 @@ const artworkColorSourceSchema = z.enum([
   'auto-complement',
   'triad-left',
   'triad-right',
+  'neutral',
   'custom',
 ]);
 

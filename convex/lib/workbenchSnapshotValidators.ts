@@ -34,6 +34,7 @@ const artworkColorSourceValidator = v.union(
   v.literal('auto-complement'),
   v.literal('triad-left'),
   v.literal('triad-right'),
+  v.literal('neutral'),
   v.literal('custom'),
 );
 

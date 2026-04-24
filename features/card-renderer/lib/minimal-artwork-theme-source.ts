@@ -3,12 +3,13 @@
 import {
   type ArtworkColorSource,
   createArtworkSourceColor,
-  type DerivedArtworkColorSource,
+  DEFAULT_NEUTRAL_ARTWORK_COLOR,
   formatHsl,
   formatHsla,
   getArtworkColorFallbackSourceColor,
   getComplementaryHue,
   type HslColor,
+  type HueArtworkColorSource,
   parseHexColorToHsl,
   wrapHue,
 } from './artwork-color-source.ts';
@@ -86,7 +87,7 @@ export function buildMinimalArtworkThemeFromSourceColor(
 function createMinimalArtworkThemeSeedColor(
   complementaryHue: number,
   accentColor: HslColor,
-  source: DerivedArtworkColorSource,
+  source: HueArtworkColorSource,
 ): HslColor {
   return createArtworkSourceColor(complementaryHue, accentColor, source);
 }
@@ -99,6 +100,11 @@ export function resolveMinimalArtworkTheme(
   if (source === 'custom') {
     return buildMinimalArtworkThemeFromSourceColor(
       parseHexColorToHsl(customColor),
+    );
+  }
+  if (source === 'neutral') {
+    return buildMinimalArtworkThemeFromSourceColor(
+      parseHexColorToHsl(DEFAULT_NEUTRAL_ARTWORK_COLOR),
     );
   }
 

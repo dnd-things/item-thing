@@ -110,7 +110,7 @@ const renderStyleFieldSchemaMap = {
   imageFlipHorizontal: booleanFormFieldSchema.optional(),
   imageFlipVertical: booleanFormFieldSchema.optional(),
   artworkColorSource: z
-    .enum(['auto-complement', 'triad-left', 'triad-right', 'custom'])
+    .enum(['auto-complement', 'triad-left', 'triad-right', 'neutral', 'custom'])
     .optional(),
   artworkCustomColor: z
     .string()

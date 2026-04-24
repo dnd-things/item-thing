@@ -4,9 +4,14 @@ export type ArtworkColorSource =
   | 'auto-complement'
   | 'triad-left'
   | 'triad-right'
+  | 'neutral'
   | 'custom';
 
 export type DerivedArtworkColorSource = Exclude<ArtworkColorSource, 'custom'>;
+export type HueArtworkColorSource = Exclude<
+  DerivedArtworkColorSource,
+  'neutral'
+>;
 
 export interface HslColor {
   hue: number;
@@ -26,6 +31,7 @@ const FALLBACK_SOURCE_COLOR = {
 } satisfies HslColor;
 
 export const DEFAULT_ARTWORK_CUSTOM_COLOR = '#292d4c' as const;
+export const DEFAULT_NEUTRAL_ARTWORK_COLOR = '#2f3136' as const;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -145,7 +151,7 @@ export function getArtworkColorFallbackSourceColor(): HslColor {
 
 export function getArtworkColorSourceHue(
   complementaryHue: number,
-  source: DerivedArtworkColorSource,
+  source: HueArtworkColorSource,
 ): number {
   switch (source) {
     case 'triad-left':
@@ -164,7 +170,7 @@ export function getComplementaryHue(accentHue: number): number {
 export function createArtworkSourceColor(
   complementaryHue: number,
   accentColor: HslColor,
-  source: DerivedArtworkColorSource,
+  source: HueArtworkColorSource,
 ): HslColor {
   return {
     hue: getArtworkColorSourceHue(complementaryHue, source),
@@ -182,16 +188,24 @@ export function getArtworkColorSwatches(
     : sourceColor.hue;
   const swatchSaturation = clamp(sourceColor.saturation, 0.34, 0.74);
 
-  return (['auto-complement', 'triad-left', 'triad-right'] as const).map(
-    (source) => ({
-      source,
-      color: formatHsl(
-        getArtworkColorSourceHue(complementaryHue, source),
-        swatchSaturation,
-        0.52,
-      ),
-    }),
-  );
+  const derivedSwatches = (
+    ['auto-complement', 'triad-left', 'triad-right'] as const
+  ).map((source) => ({
+    source,
+    color: formatHsl(
+      getArtworkColorSourceHue(complementaryHue, source),
+      swatchSaturation,
+      0.52,
+    ),
+  }));
+
+  return [
+    ...derivedSwatches,
+    {
+      source: 'neutral',
+      color: DEFAULT_NEUTRAL_ARTWORK_COLOR,
+    },
+  ];
 }
 
 export function resolveArtworkColor(
@@ -201,6 +215,9 @@ export function resolveArtworkColor(
 ): string {
   if (source === 'custom') {
     return normalizeArtworkCustomColor(customColor);
+  }
+  if (source === 'neutral') {
+    return DEFAULT_NEUTRAL_ARTWORK_COLOR;
   }
 
   const swatch = getArtworkColorSwatches(accentColor).find(
