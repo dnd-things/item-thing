@@ -2,8 +2,6 @@
 
 import Image from 'next/image';
 import { type CSSProperties, useMemo } from 'react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 import {
   getCardImageDimensions,
@@ -12,6 +10,7 @@ import {
 } from '../lib/card-renderer-options';
 import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
 import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
+import { MechanicsMarkdown } from './mechanics-markdown';
 import styles from './minimal-magic-item-card.module.css';
 
 const MINIMAL_BANNER_WIDTH = 'clamp(244px, 64%, 292px)';
@@ -257,9 +256,9 @@ export function MinimalMagicItemCard({
             ) : null}
 
             <div className="mt-4 text-left text-[0.93rem] leading-[1.45] text-slate-800 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5 [&_strong]:font-semibold [&_em]:italic [&_code]:rounded [&_code]:bg-slate-200/70 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.78rem] [&_table]:my-3 [&_table]:w-full [&_table]:border-collapse [&_thead]:text-slate-600 [&_tbody_tr:not(:last-child)]:border-b [&_tbody_tr:not(:last-child)]:border-slate-300/60 [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:text-[0.72rem] [&_th]:font-semibold [&_th]:tracking-[0.12em] [&_th]:uppercase [&_td]:px-2 [&_td]:py-1.5 [&_td]:align-top">
-              <Markdown remarkPlugins={[remarkGfm]}>
+              <MechanicsMarkdown>
                 {normalizedMechanicalDescription}
-              </Markdown>
+              </MechanicsMarkdown>
             </div>
 
             {requiresAttunement ? (

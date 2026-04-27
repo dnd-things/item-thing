@@ -2,8 +2,6 @@
 
 import Image from 'next/image';
 import { cloneElement } from 'react';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
 import {
@@ -11,6 +9,7 @@ import {
   getImageBorderBoxShadow,
   getImageBorderStyle,
 } from '../lib/card-renderer-options';
+import { MechanicsMarkdown } from './mechanics-markdown';
 
 export const printCardClassNames = {
   surface:
@@ -288,8 +287,7 @@ export function buildMagicItemPrintCardSlots(
           })
         : null}
       {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
-      <Markdown
-        remarkPlugins={[remarkGfm]}
+      <MechanicsMarkdown
         components={{
           h1: BodyHeading,
           h2: BodyHeading,
@@ -301,7 +299,7 @@ export function buildMagicItemPrintCardSlots(
         }}
       >
         {mechanicalDescription}
-      </Markdown>
+      </MechanicsMarkdown>
     </div>
   );
 
