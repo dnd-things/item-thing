@@ -58,7 +58,7 @@ async function launchBrowserWithBundledPuppeteer(): Promise<Browser> {
 async function launchBrowserWithSparticuzChromium(): Promise<Browser> {
   const executablePath = await resolveSparticuzChromiumExecutablePath();
   return await puppeteer.launch({
-    args: puppeteer.defaultArgs({
+    args: await puppeteer.defaultArgs({
       args: chromium.args,
       headless: 'shell',
     }),
