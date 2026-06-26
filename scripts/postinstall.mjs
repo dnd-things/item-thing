@@ -6,6 +6,20 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = dirname(__dirname);
 
+function findPackageRoot(resolvedPath) {
+  let currentDir = dirname(fileURLToPath(resolvedPath));
+
+  while (currentDir !== dirname(currentDir)) {
+    if (existsSync(join(currentDir, 'package.json'))) {
+      return currentDir;
+    }
+
+    currentDir = dirname(currentDir);
+  }
+
+  return null;
+}
+
 async function main() {
   try {
     console.log(
@@ -13,8 +27,15 @@ async function main() {
     );
 
     const chromiumResolvedPath = import.meta.resolve('@sparticuz/chromium');
-    const chromiumPath = chromiumResolvedPath.replace(/^file:\/\//, '');
-    const chromiumDir = dirname(dirname(dirname(chromiumPath)));
+    const chromiumDir = findPackageRoot(chromiumResolvedPath);
+
+    if (!chromiumDir) {
+      console.warn(
+        'Chromium package root not found; skip chromium-pack.tar (OK for environments without @sparticuz/chromium)',
+      );
+      return;
+    }
+
     const binDir = join(chromiumDir, 'bin');
 
     if (!existsSync(binDir)) {
