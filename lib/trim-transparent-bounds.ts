@@ -110,9 +110,10 @@ export async function trimTransparentBounds(
       height: trimmedHeight,
     })
     .png({
+      // True-colour crop: Sharp quantizes to a palette when effort is set unless palette is explicit.
+      palette: false,
       compressionLevel: 9,
       adaptiveFiltering: true,
-      effort: 10,
     })
     .toBuffer();
 
