@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import optimise, { init as initOxipngWasm } from '@jsquash/oxipng/optimise.js';
+import { ConvexError } from 'convex/values';
 import sharp from 'sharp';
 
 export const MAX_SOURCE_STORAGE_BYTES = 2 * 1024 * 1024;
@@ -306,21 +307,51 @@ export async function storeOptimizedSourceImage<
   TStorageId extends string,
 >(args: {
   sourceStorageId: TStorageId;
+  activeOptimizerVersion?: string;
+  expectedOptimizerVersion?: string;
   load: (sourceStorageId: TStorageId) => Promise<Blob | null>;
+  lookup?: (input: {
+    inputHash: string;
+    optimizerVersion: string;
+  }) => Promise<TStorageId | null>;
   optimize: (input: Buffer) => Promise<Buffer>;
   store: (blob: Blob) => Promise<TStorageId>;
   finalize: (input: {
     candidateStorageId: TStorageId;
     contentHash: string;
+    inputHash?: string;
+    optimizerVersion?: string;
   }) => Promise<TStorageId>;
   deleteSource: (sourceStorageId: TStorageId) => Promise<void>;
 }): Promise<TStorageId> {
+  if (
+    args.expectedOptimizerVersion !== undefined &&
+    args.expectedOptimizerVersion !== args.activeOptimizerVersion
+  ) {
+    throw new ConvexError({ code: 'stale_optimizer_version' });
+  }
+
   const source = await args.load(args.sourceStorageId);
   if (source === null) {
     throw new Error('Source image not found in storage');
   }
 
   const input = Buffer.from(await source.arrayBuffer());
+  const inputHash = sha256HexOfBuffer(input);
+  const activeOptimizerVersion = args.activeOptimizerVersion;
+  if (activeOptimizerVersion !== undefined && args.lookup !== undefined) {
+    const cached = await args.lookup({
+      inputHash,
+      optimizerVersion: activeOptimizerVersion,
+    });
+    if (cached !== null) {
+      if (cached !== args.sourceStorageId) {
+        await args.deleteSource(args.sourceStorageId);
+      }
+      return cached;
+    }
+  }
+
   let outputBuffer: Buffer;
   try {
     outputBuffer = await args.optimize(input);
@@ -337,7 +368,12 @@ export async function storeOptimizedSourceImage<
   const dedupedStorageId = await args.finalize({
     candidateStorageId: newStorageId,
     contentHash,
+    ...(activeOptimizerVersion !== undefined
+      ? { inputHash, optimizerVersion: activeOptimizerVersion }
+      : {}),
   });
-  await args.deleteSource(args.sourceStorageId);
+  if (dedupedStorageId !== args.sourceStorageId) {
+    await args.deleteSource(args.sourceStorageId);
+  }
   return dedupedStorageId;
 }

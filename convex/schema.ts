@@ -9,6 +9,12 @@ export default defineSchema({
     storageId: v.id('_storage'),
   }).index('by_contentHash', ['contentHash']),
 
+  sourceOptimizationCache: defineTable({
+    inputHash: v.string(),
+    optimizerVersion: v.string(),
+    storageId: v.id('_storage'),
+  }).index('by_inputHash_optimizerVersion', ['inputHash', 'optimizerVersion']),
+
   itemExports: defineTable({
     workbenchSnapshot: workbenchSnapshotValidator,
     exportFormat: v.union(v.literal('png'), v.literal('jpg')),

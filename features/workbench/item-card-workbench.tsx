@@ -104,7 +104,9 @@ export function ItemCardWorkbench({
     defaultMagicItemWorkbenchState,
   );
   const [restorationComplete, setRestorationComplete] = useState(false);
-  const persistItemExport = usePersistItemExport();
+  const persistItemExport = usePersistItemExport(
+    workbenchState.imagePreviewUrl,
+  );
   const imageReadRequestIdRef = useRef(0);
   const isApplyingPersistenceLoadRef = useRef(false);
   const previewStateRef = useRef<MagicItemWorkbenchState>(
