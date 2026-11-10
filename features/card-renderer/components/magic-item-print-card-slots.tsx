@@ -79,6 +79,16 @@ function BodyTable({
   );
 }
 
+const printMechanicsMarkdownComponents = {
+  h1: BodyHeading,
+  h2: BodyHeading,
+  h3: BodyHeading,
+  h4: BodyHeading,
+  h5: BodyHeading,
+  h6: BodyHeading,
+  table: BodyTable,
+};
+
 export interface MagicItemPrintCardSlotsParams {
   isSideLayout: boolean;
   shouldUseWrappedSideLayout: boolean;
@@ -287,17 +297,7 @@ export function buildMagicItemPrintCardSlots(
           })
         : null}
       {shouldUseWrappedSideLayout ? flavorDescriptionSlot : null}
-      <MechanicsMarkdown
-        components={{
-          h1: BodyHeading,
-          h2: BodyHeading,
-          h3: BodyHeading,
-          h4: BodyHeading,
-          h5: BodyHeading,
-          h6: BodyHeading,
-          table: BodyTable,
-        }}
-      >
+      <MechanicsMarkdown components={printMechanicsMarkdownComponents}>
         {mechanicalDescription}
       </MechanicsMarkdown>
     </div>

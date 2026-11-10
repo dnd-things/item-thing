@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -8,6 +9,7 @@ import {
   parseMechanicsText,
   splitMechanicsTokenPrefix,
 } from '../lib/mechanics-markdown-grammar';
+import { sameMarkdownRender } from '../lib/mechanics-markdown-render';
 
 interface MarkdownAstNode {
   type: string;
@@ -106,6 +108,8 @@ function remarkMechanicsMarkdown() {
   };
 }
 
+const remarkPlugins = [remarkGfm, remarkMechanicsMarkdown];
+
 function DiceNotation({ value }: { value: string }) {
   return (
     <span
@@ -163,13 +167,13 @@ function MechanicsSpan({
   );
 }
 
-export function MechanicsMarkdown({
+export const MechanicsMarkdown = memo(function MechanicsMarkdown({
   children,
   components,
 }: MechanicsMarkdownProps) {
   return (
     <Markdown
-      remarkPlugins={[remarkGfm, remarkMechanicsMarkdown]}
+      remarkPlugins={remarkPlugins}
       components={{
         ...components,
         span: MechanicsSpan,
@@ -178,4 +182,4 @@ export function MechanicsMarkdown({
       {children}
     </Markdown>
   );
-}
+}, sameMarkdownRender);
