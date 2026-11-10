@@ -4,7 +4,7 @@ import puppeteer from 'puppeteer-core';
 
 import { artworkLimitErrorFromSerialized } from '@/lib/artwork-limit-error';
 import { serverLogger } from '@/lib/server-logger';
-
+import { createCardExportBrowserSession } from './card-export-browser-session';
 import type { CardExportBrowserPayload } from './card-export-payload';
 import { dataUrlToBuffer } from './data-url-to-buffer';
 import { resolveSparticuzChromiumExecutablePath } from './resolve-chromium-executable-path';
@@ -88,76 +88,102 @@ async function launchBrowserForCardExport(): Promise<Browser> {
   return await launchBrowserWithSparticuzChromium();
 }
 
+const cardExportBrowserSession = createCardExportBrowserSession(
+  launchBrowserForCardExport,
+);
+
 export async function runPuppeteerCardExport(
   params: RunPuppeteerCardExportParams,
 ): Promise<RunPuppeteerCardExportResult> {
   const serializedPayload = JSON.stringify(params.payload);
+  const totalStart = Date.now();
 
-  log.debug('launching browser');
-  const browser = await launchBrowserForCardExport();
-  log.debug('browser launched');
+  const { value, timings } = await cardExportBrowserSession.run(
+    async (page) => {
+      const navigationStart = Date.now();
+      await page.setExtraHTTPHeaders({
+        'x-internal-secret': params.internalSecret,
+      });
 
-  try {
-    log.debug('creating new page');
-    const page = await browser.newPage();
-    log.debug('page created');
-    await page.setExtraHTTPHeaders({
-      'x-internal-secret': params.internalSecret,
-    });
+      await page.evaluateOnNewDocument((inner: string) => {
+        const w = window as unknown as {
+          __MAGIC_ITEM_CARD_EXPORT__?: CardExportBrowserPayload;
+        };
+        w.__MAGIC_ITEM_CARD_EXPORT__ = JSON.parse(
+          inner,
+        ) as CardExportBrowserPayload;
+      }, serializedPayload);
 
-    await page.evaluateOnNewDocument((inner: string) => {
-      const w = window as unknown as {
-        __MAGIC_ITEM_CARD_EXPORT__?: CardExportBrowserPayload;
-      };
-      w.__MAGIC_ITEM_CARD_EXPORT__ = JSON.parse(
-        inner,
-      ) as CardExportBrowserPayload;
-    }, serializedPayload);
+      const exportUrl = new URL('/internal/card-export', params.baseUrl).href;
+      await page.goto(exportUrl, { waitUntil: 'load', timeout: 120_000 });
+      const navigationMs = Date.now() - navigationStart;
 
-    const exportUrl = new URL('/internal/card-export', params.baseUrl).href;
-    log.debug({ exportUrl }, 'navigating to export url');
-    await page.goto(exportUrl, { waitUntil: 'load', timeout: 120_000 });
+      const readyStart = Date.now();
+      await page.waitForFunction(
+        () => {
+          const w = window as unknown as {
+            __CARD_EXPORT_STATUS__?: string;
+          };
+          return (
+            w.__CARD_EXPORT_STATUS__ === 'ok' ||
+            w.__CARD_EXPORT_STATUS__ === 'error'
+          );
+        },
+        { timeout: 120_000 },
+      );
 
-    await page.waitForFunction(
-      () => {
+      const outcome = await page.evaluate(() => {
         const w = window as unknown as {
           __CARD_EXPORT_STATUS__?: string;
+          __CARD_EXPORT_ERROR__?: string;
+          __CARD_EXPORT_RESULT__?: string;
         };
-        return (
-          w.__CARD_EXPORT_STATUS__ === 'ok' ||
-          w.__CARD_EXPORT_STATUS__ === 'error'
-        );
-      },
-      { timeout: 120_000 },
-    );
+        return {
+          status: w.__CARD_EXPORT_STATUS__,
+          error: w.__CARD_EXPORT_ERROR__,
+          result: w.__CARD_EXPORT_RESULT__,
+        };
+      });
+      const readyMs = Date.now() - readyStart;
 
-    const outcome = await page.evaluate(() => {
-      const w = window as unknown as {
-        __CARD_EXPORT_STATUS__?: string;
-        __CARD_EXPORT_ERROR__?: string;
-        __CARD_EXPORT_RESULT__?: string;
-      };
-      return {
-        status: w.__CARD_EXPORT_STATUS__,
-        error: w.__CARD_EXPORT_ERROR__,
-        result: w.__CARD_EXPORT_RESULT__,
-      };
-    });
-
-    if (outcome.status !== 'ok' || outcome.result === undefined) {
-      const limit = artworkLimitErrorFromSerialized(outcome.error);
-      if (limit) {
-        throw limit;
+      if (outcome.status !== 'ok' || outcome.result === undefined) {
+        const limit = artworkLimitErrorFromSerialized(outcome.error);
+        if (limit) {
+          throw limit;
+        }
+        throw new Error(outcome.error ?? 'card_export_failed');
       }
-      throw new Error(outcome.error ?? 'card_export_failed');
-    }
 
-    const { mimeType, buffer } = dataUrlToBuffer(outcome.result);
-    return {
-      body: buffer,
-      contentType: mimeType,
-    };
-  } finally {
-    await browser.close();
-  }
+      const decodeStart = Date.now();
+      const { mimeType, buffer } = dataUrlToBuffer(outcome.result);
+      const decodeMs = Date.now() - decodeStart;
+
+      return {
+        body: buffer,
+        contentType: mimeType,
+        navigationMs,
+        readyMs,
+        decodeMs,
+      };
+    },
+  );
+
+  const totalMs = Date.now() - totalStart;
+  log.info(
+    {
+      queueWaitMs: timings.queueWaitMs,
+      launchMs: timings.launchMs,
+      reused: timings.reused,
+      navigationMs: value.navigationMs,
+      readyMs: value.readyMs,
+      decodeMs: value.decodeMs,
+      totalMs,
+    },
+    'card export timings',
+  );
+
+  return {
+    body: value.body,
+    contentType: value.contentType,
+  };
 }

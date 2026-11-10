@@ -9,6 +9,7 @@ import type { CardExportBrowserPayload } from '@/features/server-render-card/car
 import {
   assertMeasuredCardOutput,
   waitForArtworkState,
+  waitForStableElementBox,
 } from '@/features/workbench/lib/export-card-artwork';
 import { serializeArtworkLimitError } from '@/lib/artwork-limit-error';
 
@@ -94,9 +95,7 @@ async function runExportPipeline(
     return;
   }
   await waitForArtworkState(node, { generation: CARD_EXPORT_GENERATION });
-  await new Promise<void>((resolve) => {
-    setTimeout(resolve, 200);
-  });
+  await waitForStableElementBox(node);
   const dataUrl = await runHtmlToImageExport({
     node,
     format: payload.format,

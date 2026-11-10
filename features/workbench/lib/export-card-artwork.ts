@@ -277,6 +277,52 @@ export async function waitForArtworkState(
   throw new Error(artworkLimitCopy.artworkFailed);
 }
 
+export async function waitForStableElementBox(node: {
+  offsetWidth: number;
+  offsetHeight: number;
+}): Promise<void> {
+  const deadline = Date.now() + 5000;
+  let lastWidth = -1;
+  let lastHeight = -1;
+  let streak = 0;
+  return new Promise<void>((resolve, reject) => {
+    const tick = () => {
+      if (Date.now() >= deadline) {
+        reject(new Error(artworkLimitCopy.cardUnmeasured));
+        return;
+      }
+      requestAnimationFrame(() => {
+        if (Date.now() >= deadline) {
+          reject(new Error(artworkLimitCopy.cardUnmeasured));
+          return;
+        }
+        const width = node.offsetWidth;
+        const height = node.offsetHeight;
+        if (
+          width > 0 &&
+          height > 0 &&
+          width === lastWidth &&
+          height === lastHeight
+        ) {
+          streak += 1;
+          if (streak >= 2) {
+            resolve();
+            return;
+          }
+        } else if (width > 0 && height > 0) {
+          streak = 1;
+        } else {
+          streak = 0;
+        }
+        lastWidth = width;
+        lastHeight = height;
+        tick();
+      });
+    };
+    tick();
+  });
+}
+
 export function createCardExportLock(): {
   run: <T>(task: () => Promise<T>) => Promise<T>;
 } {

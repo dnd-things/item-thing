@@ -664,6 +664,7 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
   const previousApi = process.env.API_SECRET;
   const previousInternal = process.env.INTERNAL_SECRET;
   const previousConvex = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const previousVercel = process.env.VERCEL_ENV;
   globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
     frames.push(() => callback(0));
     return frames.length;
@@ -855,9 +856,15 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
       dom.state.images = [
         { complete: true, naturalWidth: mode === 'failed-image' ? 0 : 12 },
       ];
-      await frame();
-      if (mode === 'output-limit') {
-        await delay(250);
+      await flush();
+      for (let stableFrames = 0; stableFrames < 5; stableFrames += 1) {
+        await flush();
+        if (frames.length > 0) {
+          await frame();
+        }
+        if (view.__CARD_EXPORT_STATUS__ === 'error') {
+          break;
+        }
       }
       await flush();
       assert.equal(view.__CARD_EXPORT_STATUS__, 'error');
@@ -891,6 +898,7 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
       },
     };
     process.env.PUPPETEER_EXECUTABLE_PATH = '/mock/review-only';
+    process.env.VERCEL_ENV = 'preview';
     process.env.API_SECRET = 'test-secret';
     process.env.INTERNAL_SECRET = 'test-internal';
     process.env.NEXT_PUBLIC_CONVEX_URL = 'https://review.invalid';
@@ -1023,6 +1031,7 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
       env[name] = previous;
     };
     restoreEnv('PUPPETEER_EXECUTABLE_PATH', previousExecutable);
+    restoreEnv('VERCEL_ENV', previousVercel);
     restoreEnv('API_SECRET', previousApi);
     restoreEnv('INTERNAL_SECRET', previousInternal);
     restoreEnv('NEXT_PUBLIC_CONVEX_URL', previousConvex);

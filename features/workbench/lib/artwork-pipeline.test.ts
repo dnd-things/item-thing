@@ -48,6 +48,7 @@ import {
   createCardExportLock,
   prepareCapturedExport,
   waitForArtworkState,
+  waitForStableElementBox,
 } from './export-card-artwork.ts';
 import { readPreparedArtwork } from './read-image-preview-data.ts';
 import { defaultMagicItemWorkbenchState } from './workbench-options.ts';
@@ -948,6 +949,129 @@ describe('export readiness, measurement, and limit responses', () => {
         ),
         { message: artworkLimitCopy.artworkFailed },
       );
+    } finally {
+      Date.now = realNow;
+      globalThis.requestAnimationFrame = previousFrame;
+    }
+  });
+
+  test('stable box resolves on the second matching frame', async () => {
+    const frames: Array<() => void> = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(() => callback(0));
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    try {
+      const pending = waitForStableElementBox({
+        offsetWidth: 432,
+        offsetHeight: 600,
+      });
+      frames.shift()?.();
+      await Promise.resolve();
+      let settled = false;
+      void pending.then(() => {
+        settled = true;
+      });
+      await Promise.resolve();
+      assert.equal(settled, false);
+      frames.shift()?.();
+      await pending;
+    } finally {
+      globalThis.requestAnimationFrame = previousFrame;
+    }
+  });
+
+  test('stable box ignores a zero-sized frame', async () => {
+    const frames: Array<() => void> = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(() => callback(0));
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    try {
+      let width = 0;
+      let height = 0;
+      const node = {
+        get offsetWidth() {
+          return width;
+        },
+        get offsetHeight() {
+          return height;
+        },
+      };
+      const pending = waitForStableElementBox(node);
+      frames.shift()?.();
+      await Promise.resolve();
+      width = 432;
+      height = 600;
+      frames.shift()?.();
+      await Promise.resolve();
+      frames.shift()?.();
+      await Promise.resolve();
+      await pending;
+    } finally {
+      globalThis.requestAnimationFrame = previousFrame;
+    }
+  });
+
+  test('stable box resets after a size change', async () => {
+    const frames: Array<() => void> = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(() => callback(0));
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    try {
+      let width = 100;
+      let height = 600;
+      const node = {
+        get offsetWidth() {
+          return width;
+        },
+        get offsetHeight() {
+          return height;
+        },
+      };
+      const pending = waitForStableElementBox(node);
+      frames.shift()?.();
+      await Promise.resolve();
+      height = 500;
+      frames.shift()?.();
+      await Promise.resolve();
+      width = 432;
+      height = 600;
+      frames.shift()?.();
+      await Promise.resolve();
+      frames.shift()?.();
+      await Promise.resolve();
+      await pending;
+    } finally {
+      globalThis.requestAnimationFrame = previousFrame;
+    }
+  });
+
+  test('stable box throws cardUnmeasured after the deadline', async () => {
+    const frames: Array<() => void> = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      frames.push(() => callback(0));
+      return frames.length;
+    }) as typeof requestAnimationFrame;
+    const realNow = Date.now;
+    let now = 0;
+    Date.now = () => now;
+    try {
+      const pending = waitForStableElementBox({
+        offsetWidth: 10,
+        offsetHeight: 10,
+      });
+      now = 10_000;
+      frames.shift()?.();
+      await Promise.resolve();
+      await assert.rejects(pending, {
+        message: artworkLimitCopy.cardUnmeasured,
+      });
     } finally {
       Date.now = realNow;
       globalThis.requestAnimationFrame = previousFrame;
