@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { createFormControl } from 'react-hook-form';
+import { ArtworkLimitError } from '@/lib/artwork-limit-error';
 import {
   artworkLimitCopy,
   identityCrop,
   SOURCE_MAX_BYTES,
 } from './artwork-geometry.ts';
-import { createArtworkBundle } from './artwork-source.ts';
+import { type ArtworkBundle, createArtworkBundle } from './artwork-source.ts';
 import { prepareCapturedExport } from './export-card-artwork.ts';
 import type {
   WorkbenchArtworkStore,
@@ -27,12 +28,334 @@ import {
   previewDataUrlToBlob,
 } from './workbench-persistence.ts';
 import {
+  createWorkbenchAssetKey,
   createWorkbenchPersistenceSession,
   type WorkbenchClock,
   type WorkbenchHydration,
+  workbenchImageFailureNotice,
   workbenchPersistenceCopy,
 } from './workbench-persistence-session.ts';
 import { toWorkbenchSnapshotForExport } from './workbench-snapshot-for-export.ts';
+
+test('asset keys work without crypto.randomUUID', () => {
+  const key = createWorkbenchAssetKey({
+    getRandomValues(bytes: Uint8Array) {
+      bytes.fill(0xab);
+      return bytes;
+    },
+  } as Crypto);
+  assert.equal(key, 'abababab-abab-4bab-abab-abababababab');
+});
+
+describe('image preparation failure pauses saving', () => {
+  const pauseSuffix = workbenchPersistenceCopy.imageSavingPaused;
+
+  test('failure notices include generic, typed, conversion, and bundle paths', async () => {
+    const generic = await settledHarness();
+    const genericWatch = generic.session.beginImageWatch(
+      imageFile(pngBytes, 'generic.png'),
+    );
+    generic.session.failPreview(genericWatch.id);
+    assert.match(generic.session.getNotice() ?? '', new RegExp(pauseSuffix));
+
+    const limit = await settledHarness();
+    const limitMessage = new ArtworkLimitError(
+      'encoded_bytes',
+      artworkLimitCopy.encodedBytes,
+    ).message;
+    const limitWatch = limit.session.beginImageWatch(
+      imageFile(pngBytes, 'limit.png'),
+    );
+    limit.session.failPreview(limitWatch.id, limitMessage);
+    assert.equal(
+      limit.session.getNotice(),
+      workbenchImageFailureNotice(limitMessage),
+    );
+
+    const convertEnv = harness({ failConvert: true });
+    convertEnv.session.start();
+    await flush();
+    const convertFile = imageFile(pngBytes, 'convert.png');
+    const convertWatch = convertEnv.session.beginImageWatch(convertFile);
+    convertEnv.session.acceptPreview(convertWatch.id, {
+      file: convertFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+    });
+    await flush();
+    assert.match(convertEnv.session.getNotice() ?? '', new RegExp(pauseSuffix));
+
+    const bundleEnv = await settledHarness();
+    const bundleWatch = bundleEnv.session.beginImageWatch(
+      imageFile(pngBytes, 'bundle.png'),
+    );
+    bundleEnv.session.acceptPreview(bundleWatch.id, {
+      file: imageFile(pngBytes, 'bundle.png'),
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: { preview: new Blob(), source: new Blob() } as ArtworkBundle,
+    });
+    assert.match(bundleEnv.session.getNotice() ?? '', new RegExp(pauseSuffix));
+  });
+
+  test('failed image keeps durable artwork and resumes after a later pick', async () => {
+    const env = await settledHarness();
+    const firstFile = imageFile(pngBytes, 'a.png');
+    const firstWatch = env.session.beginImageWatch(firstFile);
+    env.session.acceptPreview(firstWatch.id, {
+      file: firstFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: artworkBundle(pngBytes),
+    });
+    await flush();
+    const metadataBefore = env.backing.calls.metadata;
+    const durableBlob = env.backing.blobs.get('asset-1');
+
+    const badWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'bad.png'),
+    );
+    env.session.failPreview(badWatch.id);
+    env.session.scheduleSnapshot(
+      stateWith({ itemName: 'Edited after failure' }),
+    );
+    env.clock.advance(400);
+    await flush();
+    assert.equal(env.backing.calls.metadata, metadataBefore);
+    assert.equal(
+      env.backing.record().json?.includes('Edited after failure'),
+      false,
+    );
+    assert.equal(env.backing.blobs.get('asset-1'), durableBlob);
+
+    const recoveryFile = imageFile(otherBytes, 'recovery.png');
+    const recoveryWatch = env.session.beginImageWatch(recoveryFile);
+    env.session.acceptPreview(recoveryWatch.id, {
+      file: recoveryFile,
+      previewUrl: dataUrlFrom(otherBytes),
+      aspectRatio: 1,
+      bundle: artworkBundle(otherBytes),
+    });
+    await flush();
+    assert.equal(env.session.getNotice(), null);
+    assert.equal(
+      env.backing.record().json?.includes('Edited after failure'),
+      true,
+    );
+  });
+
+  test('clearing the image after a failure clears the pause notice', async () => {
+    const env = await settledHarness();
+    const firstFile = imageFile(pngBytes, 'a.png');
+    const firstWatch = env.session.beginImageWatch(firstFile);
+    env.session.acceptPreview(firstWatch.id, {
+      file: firstFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: artworkBundle(pngBytes),
+    });
+    await flush();
+
+    const badWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'bad.png'),
+    );
+    env.session.failPreview(badWatch.id);
+    assert.match(env.session.getNotice() ?? '', new RegExp(pauseSuffix));
+
+    env.session.beginImageWatch(undefined);
+    env.session.commitClear(
+      stateWith({
+        imageFileName: '',
+        imagePreviewUrl: '',
+      }),
+    );
+    assert.equal(env.session.getNotice(), null);
+    await flush();
+    assert.equal(env.backing.blobs.size, 0);
+  });
+});
+
+describe('image failure notice policy (council round 2)', () => {
+  const pauseSuffix = workbenchPersistenceCopy.imageSavingPaused;
+
+  test('autosave retains pause notice through pending preparation and clears after replace commit', async () => {
+    const env = await settledHarness();
+    const firstFile = imageFile(pngBytes, 'a.png');
+    const firstWatch = env.session.beginImageWatch(firstFile);
+    env.session.acceptPreview(firstWatch.id, {
+      file: firstFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: artworkBundle(pngBytes),
+    });
+    await flush();
+
+    const badWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'bad.png'),
+    );
+    env.session.failPreview(badWatch.id);
+    const afterFail = env.session.getNotice();
+    assert.match(afterFail ?? '', new RegExp(pauseSuffix));
+
+    const recoveryFile = imageFile(otherBytes, 'recovery.png');
+    const recoveryWatch = env.session.beginImageWatch(recoveryFile);
+    assert.equal(env.session.getNotice(), afterFail);
+    assert.match(env.session.getNotice() ?? '', new RegExp(pauseSuffix));
+
+    const release = env.backing.holdSuccessfulCommit();
+    env.session.acceptPreview(recoveryWatch.id, {
+      file: recoveryFile,
+      previewUrl: dataUrlFrom(otherBytes),
+      aspectRatio: 1,
+      bundle: artworkBundle(otherBytes),
+    });
+    assert.match(env.session.getNotice() ?? '', new RegExp(pauseSuffix));
+    env.session.scheduleSnapshot(
+      stateWith({ itemName: 'During pending commit' }),
+    );
+    env.clock.advance(400);
+    await flush();
+    assert.match(env.session.getNotice() ?? '', new RegExp(pauseSuffix));
+    release();
+    await flush();
+    assert.equal(env.session.getNotice(), null);
+    assert.equal(
+      env.backing.record().json?.includes('During pending commit'),
+      true,
+    );
+  });
+
+  test('autosave retry replaces the prior image-failure lead without stacking', async () => {
+    const env = await settledHarness();
+    const watch = env.session.beginImageWatch(imageFile(pngBytes, 'a.png'));
+    env.session.failPreview(watch.id);
+    const generic = env.session.getNotice();
+    assert.ok(generic);
+    const limitMessage = new ArtworkLimitError(
+      'encoded_bytes',
+      artworkLimitCopy.encodedBytes,
+    ).message;
+    const retryWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'b.png'),
+    );
+    env.session.failPreview(retryWatch.id, limitMessage);
+    assert.equal(
+      env.session.getNotice(),
+      workbenchImageFailureNotice(limitMessage),
+    );
+    assert.notEqual(env.session.getNotice(), generic);
+  });
+
+  test('recover mode composes recovery base with typed failure and replaces on retry', async () => {
+    const bad = new Blob([Uint8Array.from([9, 9, 9])], { type: 'image/png' });
+    const env = harness({ decode: () => false });
+    env.backing.seed(
+      encodeWorkbenchEnvelopeV7(stateWith({ itemName: 'Before' }), 'bad-asset'),
+      [['bad-asset', bad]],
+    );
+    env.session.start();
+    await flush();
+    assert.equal(env.session.getNotice(), workbenchPersistenceCopy.corrupt);
+
+    const limitMessage = new ArtworkLimitError(
+      'encoded_bytes',
+      artworkLimitCopy.encodedBytes,
+    ).message;
+    const watch = env.session.beginImageWatch(imageFile(pngBytes, 'limit.png'));
+    env.session.failPreview(watch.id, limitMessage);
+    assert.equal(
+      env.session.getNotice(),
+      `${workbenchPersistenceCopy.corrupt} ${workbenchImageFailureNotice(limitMessage)}`,
+    );
+    env.session.scheduleSnapshot(stateWith({ itemName: 'Lost edit' }));
+    env.clock.advance(400);
+    await flush();
+    assert.equal(env.backing.calls.metadata, 0);
+
+    const genericWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'generic.png'),
+    );
+    env.session.failPreview(genericWatch.id);
+    assert.equal(
+      env.session.getNotice(),
+      `${workbenchPersistenceCopy.corrupt} ${workbenchImageFailureNotice()}`,
+    );
+    assert.doesNotMatch(
+      env.session.getNotice() ?? '',
+      new RegExp(`${limitMessage}.*${limitMessage}`),
+    );
+  });
+
+  test('frozen mode keeps storage notice across explicit, bundle, and conversion failures', async () => {
+    const quotaNotice = workbenchPersistenceCopy.quota;
+    const quota = await settledHarness();
+    quota.backing.failCommit('quota');
+    quota.session.scheduleSnapshot(stateWith({ itemName: 'Full' }));
+    quota.clock.advance(400);
+    await flush();
+    assert.equal(quota.session.getNotice(), quotaNotice);
+
+    const failWatch = quota.session.beginImageWatch(
+      imageFile(pngBytes, 'fail.png'),
+    );
+    quota.session.failPreview(failWatch.id, 'typed');
+    assert.equal(quota.session.getNotice(), quotaNotice);
+
+    const mimeRejected = createArtworkBundle({
+      preview: new Blob([pngBytes], { type: 'image/png' }),
+      source: new Blob([pngBytes], { type: 'application/octet-stream' }),
+      sourceWidth: 4,
+      sourceHeight: 4,
+      crop: identityCrop(4, 4),
+    });
+    const bundleWatch = quota.session.beginImageWatch(
+      imageFile(pngBytes, 'bundle.png'),
+    );
+    quota.session.acceptPreview(bundleWatch.id, {
+      file: imageFile(pngBytes, 'bundle.png'),
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: mimeRejected,
+    });
+    assert.equal(quota.session.getNotice(), quotaNotice);
+  });
+
+  test('a superseded successful replace commit does not clear a newer image warning', async () => {
+    const env = await settledHarness();
+    env.holdConvert();
+    const firstPreview = dataUrlFrom(pngBytes);
+    const secondPreview = dataUrlFrom(otherBytes);
+    const first = imageFile(pngBytes, 'a.png');
+    const firstWatch = env.session.beginImageWatch(first);
+    env.session.acceptPreview(firstWatch.id, {
+      file: first,
+      previewUrl: firstPreview,
+      aspectRatio: 1,
+    });
+    await flush();
+    const second = imageFile(otherBytes, 'b.png');
+    const secondWatch = env.session.beginImageWatch(second);
+    env.session.acceptPreview(secondWatch.id, {
+      file: second,
+      previewUrl: secondPreview,
+      aspectRatio: 1,
+    });
+    await flush();
+    env.finishConvert(secondPreview, false);
+    await flush();
+
+    const badWatch = env.session.beginImageWatch(
+      imageFile(otherBytes, 'bad.png'),
+    );
+    env.session.failPreview(badWatch.id);
+    const warning = env.session.getNotice();
+    assert.match(warning ?? '', new RegExp(pauseSuffix));
+
+    env.finishConvert(firstPreview, false);
+    await flush();
+    assert.equal(env.session.getNotice(), warning);
+  });
+});
 
 const pngBytes = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4]);
 const otherBytes = Uint8Array.from([

@@ -150,6 +150,7 @@ test('workbench lazy import source boundaries', () => {
   );
   assert.match(previewSource, /import\('\.\/workbench-settings-drawer'\)/);
   assert.match(previewSource, /ssr:\s*false/);
+  assert.match(previewSource, /hasOpenedSettings \|\| isDrawerOpen/);
 
   const cardExportSource = fs.readFileSync(
     path.join(root, 'app/internal/card-export/card-export-client.tsx'),

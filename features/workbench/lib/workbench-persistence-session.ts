@@ -64,7 +64,14 @@ export const workbenchPersistenceCopy = {
     'Could not clear saved artwork. The last save is unchanged. Reload to try again. Unsaved edits are lost on reload.',
   imageUnreadable: 'Could not read that image. Choose a different one.',
   imageTooLarge: artworkLimitCopy.savedTooLarge,
+  imageSavingPaused:
+    'Saving is paused. Edits will be lost on reload. Choose another image or clear it to resume saving.',
 } as const;
+
+export function workbenchImageFailureNotice(reason?: string): string {
+  const lead = reason?.trim() || workbenchPersistenceCopy.imageUnreadable;
+  return `${lead} ${workbenchPersistenceCopy.imageSavingPaused}`;
+}
 
 export interface WorkbenchClock {
   setTimeout(callback: () => void, delayMs: number): { cancel: () => void };
@@ -166,6 +173,22 @@ function messageFor(
   }
 }
 
+export function createWorkbenchAssetKey(webCrypto: Crypto = crypto): string {
+  if (typeof webCrypto.randomUUID === 'function') {
+    return webCrypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  webCrypto.getRandomValues(bytes);
+  const version = bytes[6] ?? 0;
+  const variant = bytes[8] ?? 0;
+  bytes[6] = (version & 0x0f) | 0x40;
+  bytes[8] = (variant & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function withoutPreview(
   state: MagicItemWorkbenchState,
 ): MagicItemWorkbenchState {
@@ -181,12 +204,14 @@ export function createWorkbenchPersistenceSession(
   const clock = deps.clock ?? systemWorkbenchClock();
   const loadTimeoutMs = deps.loadTimeoutMs ?? WORKBENCH_LOAD_TIMEOUT_MS;
   const autosaveMs = deps.autosaveMs ?? WORKBENCH_AUTOSAVE_DELAY_MS;
-  const createAssetKey = deps.createAssetKey ?? (() => crypto.randomUUID());
+  const createAssetKey =
+    deps.createAssetKey ?? (() => createWorkbenchAssetKey());
   const warn = deps.warn ?? ((message: string) => console.warn(message));
 
   let phase: 'loading' | 'settled' = 'loading';
   let mode: PersistenceMode = 'autosave';
   let notice: string | null = null;
+  let recoveryNoticeBase: string | null = null;
   let warned = false;
   let disposed = false;
   let started = false;
@@ -228,6 +253,19 @@ export function createWorkbenchPersistenceSession(
     }
     warned = true;
     warn(notice ?? workbenchPersistenceCopy.saveFailed);
+  };
+
+  const applyImageFailureNotice = (message?: string) => {
+    if (mode === 'frozen') {
+      return;
+    }
+    const failure = workbenchImageFailureNotice(message);
+    if (mode === 'recover' && recoveryNoticeBase) {
+      notice = `${recoveryNoticeBase} ${failure}`;
+    } else {
+      notice = failure;
+    }
+    emit();
   };
 
   const isCurrent = (generation: number) =>
@@ -307,6 +345,7 @@ export function createWorkbenchPersistenceSession(
     }
     mode = 'recover';
     notice = workbenchPersistenceCopy.corrupt;
+    recoveryNoticeBase = workbenchPersistenceCopy.corrupt;
     rememberWarning();
     currentBundle = null;
     publish(
@@ -345,6 +384,7 @@ export function createWorkbenchPersistenceSession(
     }
     mode = 'autosave';
     notice = null;
+    recoveryNoticeBase = null;
     emit();
     const state = latestState;
     if (!state || disposed) {
@@ -456,6 +496,7 @@ export function createWorkbenchPersistenceSession(
     }
     mode = 'recover';
     notice = workbenchPersistenceCopy.imageTooLarge;
+    recoveryNoticeBase = workbenchPersistenceCopy.imageTooLarge;
     rememberWarning();
     currentBundle = null;
     publish(
@@ -477,6 +518,7 @@ export function createWorkbenchPersistenceSession(
     }
     mode = 'recover';
     notice = artworkLimitCopy.displayEncode;
+    recoveryNoticeBase = artworkLimitCopy.displayEncode;
     rememberWarning();
     currentBundle = null;
     publish(
@@ -1057,6 +1099,10 @@ export function createWorkbenchPersistenceSession(
         watchKind = 'clear';
         preparation = 'idle';
         currentBundle = null;
+        if (mode === 'autosave') {
+          notice = null;
+          emit();
+        }
         invalidateQueue();
         return { id, kind: 'clear' };
       }
@@ -1064,9 +1110,6 @@ export function createWorkbenchPersistenceSession(
       preparation = 'pending';
       conversion = null;
       currentBundle = null;
-      if (mode === 'autosave') {
-        notice = null;
-      }
       invalidateQueue();
       return { id, kind: 'prepare' };
     },
@@ -1099,8 +1142,7 @@ export function createWorkbenchPersistenceSession(
         preparation = 'failed';
         failedGeneration = id;
         currentBundle = null;
-        notice = workbenchPersistenceCopy.imageUnreadable;
-        emit();
+        applyImageFailureNotice();
         return true;
       }
       if (provided) {
@@ -1164,10 +1206,7 @@ export function createWorkbenchPersistenceSession(
           }
           failedGeneration = epoch;
           preparation = 'failed';
-          if (!notice) {
-            notice = workbenchPersistenceCopy.imageUnreadable;
-            emit();
-          }
+          applyImageFailureNotice();
           return;
         }
         if (ticket !== queueTicket || epoch !== imageEpoch || disposed) {
@@ -1196,6 +1235,10 @@ export function createWorkbenchPersistenceSession(
           return;
         }
         currentBundle = artwork;
+        if (mode === 'autosave' && notice !== null) {
+          notice = null;
+          emit();
+        }
         recoverIfNeeded();
       });
       return true;
@@ -1207,12 +1250,7 @@ export function createWorkbenchPersistenceSession(
       }
       preparation = 'failed';
       failedGeneration = id;
-      if (!notice) {
-        notice = message?.trim()
-          ? message
-          : workbenchPersistenceCopy.imageUnreadable;
-        emit();
-      }
+      applyImageFailureNotice(message);
     },
 
     captureArtwork() {

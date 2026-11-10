@@ -114,6 +114,7 @@ export function PreviewColumn({
   artworkLogicalHeight,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hasOpenedSettings, setHasOpenedSettings] = useState(false);
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
     cardRef,
     workbenchState,
@@ -324,7 +325,10 @@ export function PreviewColumn({
             size="icon-sm"
             aria-label="Open card settings"
             className="shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={() => {
+              setHasOpenedSettings(true);
+              setIsDrawerOpen(true);
+            }}
           >
             <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
           </Button>
@@ -347,7 +351,7 @@ export function PreviewColumn({
           : {})}
       />
 
-      {showAdvancedWorkbenchControls ? (
+      {showAdvancedWorkbenchControls && (hasOpenedSettings || isDrawerOpen) ? (
         <WorkbenchSettingsDrawer
           artworkColorControlDisabled={isArtworkColorControlDisabled}
           artworkColorControlDisabledReason={artworkColorControlDisabledReason}

@@ -8,6 +8,7 @@ import {
   imageRightVerticalPositionDefaultForFluidSideLayout,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { readArtworkLimitError } from '@/lib/artwork-limit-error';
 import {
   DownloadControlsCard,
   type ItemExportCompletePayload,
@@ -218,10 +219,7 @@ export function ItemCardWorkbench({
           if (cancelled || isAbortError(error)) {
             return;
           }
-          session.failPreview(
-            watch.id,
-            error instanceof Error ? error.message : undefined,
-          );
+          session.failPreview(watch.id, readArtworkLimitError(error)?.message);
         });
     }
     return () => {
