@@ -29,8 +29,8 @@ async function readFileAsDataUrl(imageFile: File): Promise<string> {
   });
 }
 
-async function loadImageElementFromObjectUrl(
-  imageFile: File,
+export async function loadImageElementFromObjectUrl(
+  imageFile: Blob,
 ): Promise<HTMLImageElement> {
   return await new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(imageFile);

@@ -11,6 +11,30 @@ import { useEffect, useRef, useState } from 'react';
  * Canvas order: rotate first, then flips.
  */
 
+export function resolveTransformedObjectUrl(input: {
+  cancelled: boolean;
+  blob: Blob | null;
+  previousUrl: string | null;
+  sourceUrl: string;
+  createObjectURL: (blob: Blob) => string;
+  revokeObjectURL: (url: string) => void;
+}): { effectiveUrl: string; ownedUrl: string | null } {
+  if (input.cancelled) {
+    return { effectiveUrl: input.sourceUrl, ownedUrl: input.previousUrl };
+  }
+  if (!input.blob) {
+    if (input.previousUrl) {
+      input.revokeObjectURL(input.previousUrl);
+    }
+    return { effectiveUrl: input.sourceUrl, ownedUrl: null };
+  }
+  if (input.previousUrl) {
+    input.revokeObjectURL(input.previousUrl);
+  }
+  const ownedUrl = input.createObjectURL(input.blob);
+  return { effectiveUrl: ownedUrl, ownedUrl };
+}
+
 function normalizeRotationForCanvas(degrees: number): number {
   return ((degrees % 360) + 360) % 360;
 }
@@ -122,18 +146,19 @@ export function useFlippedImagePreviewUrl(
       const emitBlob = (canvas: HTMLCanvasElement) => {
         canvas.toBlob(
           (blob) => {
+            const resolved = resolveTransformedObjectUrl({
+              cancelled,
+              blob,
+              previousUrl: blobUrlRef.current,
+              sourceUrl: imagePreviewUrl,
+              createObjectURL: URL.createObjectURL.bind(URL),
+              revokeObjectURL: URL.revokeObjectURL.bind(URL),
+            });
             if (cancelled) {
               return;
             }
-            if (!blob) {
-              revokeBlobUrl();
-              setEffectiveUrl(imagePreviewUrl);
-              return;
-            }
-            revokeBlobUrl();
-            const nextUrl = URL.createObjectURL(blob);
-            blobUrlRef.current = nextUrl;
-            setEffectiveUrl(nextUrl);
+            blobUrlRef.current = resolved.ownedUrl;
+            setEffectiveUrl(resolved.effectiveUrl);
           },
           'image/png',
           1,
