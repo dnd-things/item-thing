@@ -6,6 +6,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import dynamic from 'next/dynamic';
 import type { RefObject } from 'react';
 import { Fragment, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,14 @@ import {
 import { ArtworkColorSourceControl } from './artwork-color-source-control';
 import { ItemPreviewPanel } from './item-preview-panel';
 import { ToggleField } from './workbench-field-controls';
-import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
+
+const WorkbenchSettingsDrawer = dynamic(
+  () =>
+    import('./workbench-settings-drawer').then(
+      (module) => module.WorkbenchSettingsDrawer,
+    ),
+  { ssr: false },
+);
 
 type QuickLayoutValue = 'stacked' | 'compact';
 
@@ -93,6 +101,8 @@ interface PreviewColumnProps {
   showAdvancedWorkbenchControls: boolean;
   workbenchState: MagicItemWorkbenchState;
   setWorkbenchField: WorkbenchFieldSetter;
+  artworkLogicalWidth?: number;
+  artworkLogicalHeight?: number;
 }
 
 export function PreviewColumn({
@@ -100,8 +110,11 @@ export function PreviewColumn({
   showAdvancedWorkbenchControls,
   workbenchState,
   setWorkbenchField,
+  artworkLogicalWidth,
+  artworkLogicalHeight,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hasOpenedSettings, setHasOpenedSettings] = useState(false);
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
     cardRef,
     workbenchState,
@@ -312,7 +325,10 @@ export function PreviewColumn({
             size="icon-sm"
             aria-label="Open card settings"
             className="shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => setIsDrawerOpen(true)}
+            onClick={() => {
+              setHasOpenedSettings(true);
+              setIsDrawerOpen(true);
+            }}
           >
             <HugeiconsIcon icon={Settings01Icon} strokeWidth={1.5} />
           </Button>
@@ -322,6 +338,10 @@ export function PreviewColumn({
       <ItemPreviewPanel
         cardRef={cardRef}
         workbenchState={workbenchState}
+        {...(artworkLogicalWidth !== undefined &&
+        artworkLogicalHeight !== undefined
+          ? { artworkLogicalWidth, artworkLogicalHeight }
+          : {})}
         {...(workbenchState.cardLayout === 'image-right' &&
         workbenchState.sideLayoutFlow === 'fixed'
           ? {
@@ -331,7 +351,7 @@ export function PreviewColumn({
           : {})}
       />
 
-      {showAdvancedWorkbenchControls ? (
+      {showAdvancedWorkbenchControls && (hasOpenedSettings || isDrawerOpen) ? (
         <WorkbenchSettingsDrawer
           artworkColorControlDisabled={isArtworkColorControlDisabled}
           artworkColorControlDisabledReason={artworkColorControlDisabledReason}

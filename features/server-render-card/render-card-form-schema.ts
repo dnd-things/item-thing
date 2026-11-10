@@ -220,6 +220,13 @@ export async function parseRenderCardMultipartFormData<
   if (artwork.size === 0) {
     return { ok: false, message: 'artwork is empty' };
   }
+  if (artwork.size > 32 * 1024 * 1024) {
+    return {
+      ok: false,
+      message:
+        'This image is over 32 MiB. Resize or compress it and try again.',
+    };
+  }
 
   const itemRaw = getFormEntry(formData, 'item');
   if (typeof itemRaw !== 'string') {

@@ -8,7 +8,10 @@ import {
   getResolvedCardWidthPx,
   type MagicItemCardRendererProps,
 } from '../lib/card-renderer-options';
-import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
+import {
+  artworkDataset,
+  useFlippedImagePreviewUrl,
+} from '../lib/use-flipped-image-preview-url';
 import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
 import { MechanicsMarkdown } from './mechanics-markdown';
 import styles from './minimal-magic-item-card.module.css';
@@ -63,6 +66,11 @@ export function MinimalMagicItemCard({
   imageRotationDegrees,
   imageFlipHorizontal,
   imageFlipVertical,
+  artworkDrawPolicy,
+  artworkLogicalWidth,
+  artworkLogicalHeight,
+  preparedArtworkTransformed,
+  exportGeneration,
   artworkColorSource,
   artworkCustomColor,
   itemName,
@@ -87,17 +95,29 @@ export function MinimalMagicItemCard({
   const decoBannerCapLeftClassName = styles.decoBannerCapLeft;
   const decoBannerCapRightClassName = styles.decoBannerCapRight;
   const decoBannerLabelClassName = styles.decoBannerLabel;
-  const renderImageUrl = useFlippedImagePreviewUrl(
+  const artwork = useFlippedImagePreviewUrl(
     imagePreviewUrl,
     imageRotationDegrees,
     imageFlipHorizontal,
     imageFlipVertical,
+    {
+      ...(artworkDrawPolicy ? { policy: artworkDrawPolicy } : {}),
+      ...(artworkLogicalWidth !== undefined
+        ? { logicalWidth: artworkLogicalWidth }
+        : {}),
+      ...(artworkLogicalHeight !== undefined
+        ? { logicalHeight: artworkLogicalHeight }
+        : {}),
+      ...(preparedArtworkTransformed ? { alreadyTransformed: true } : {}),
+    },
   );
-  const { theme: artworkTheme } = useMinimalArtworkTheme(
+  const renderImageUrl = artwork.effectiveUrl;
+  const { theme: artworkTheme, settled: themeSettled } = useMinimalArtworkTheme(
     renderImageUrl,
     artworkColorSource,
     artworkCustomColor,
   );
+  const readiness = artworkDataset(artwork, themeSettled, exportGeneration);
   const resolvedCardWidthPx = getResolvedCardWidthPx(
     'vertical',
     cardWidthAuto,
@@ -128,6 +148,7 @@ export function MinimalMagicItemCard({
         className,
       )}
       style={minimalCardStyle}
+      {...readiness}
     >
       <div aria-hidden className={styles.artDecoCardBorder}>
         <span

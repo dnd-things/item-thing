@@ -1,23 +1,34 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type UseFormReturn, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import {
   getImageRightVerticalPositionDefaultForFixedSideLayout,
   imageRightVerticalPositionDefaultForFluidSideLayout,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { readArtworkLimitError } from '@/lib/artwork-limit-error';
 import {
   DownloadControlsCard,
   type ItemExportCompletePayload,
 } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import {
+  createArtworkReadGate,
+  isAbortError,
+  markPreparedFile,
+} from './lib/artwork-source';
 import { normalizeWorkbenchStateForStyle } from './lib/card-style-capability-registry';
-import { readImagePreviewData } from './lib/read-image-preview-data';
+import { readDisplayedCardPreviewSurfaceHeight } from './lib/displayed-card-height';
+import type { CapturedCardExport } from './lib/export-card-artwork';
+import {
+  preparedArtworkBundle,
+  readPreparedArtwork,
+} from './lib/read-image-preview-data';
 import { usePersistItemExport } from './lib/use-persist-item-export';
+import { bindWorkbenchFormAutosave } from './lib/workbench-form-autosave';
 import {
   type WorkbenchItemDetailsFormValues,
   workbenchItemDetailsSchema,
@@ -26,62 +37,13 @@ import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
 } from './lib/workbench-options';
+import { readBlobAsDataUrl } from './lib/workbench-persistence';
 import {
-  dataUrlToFile,
-  loadMagicItemWorkbenchStateFromLocalStorage,
-  saveMagicItemWorkbenchStateToLocalStorage,
-} from './lib/workbench-persistence';
+  createBrowserWorkbenchPersistenceSession,
+  type WorkbenchPersistenceSession,
+  workbenchPersistenceCopy,
+} from './lib/workbench-persistence-session';
 import { toWorkbenchSnapshotForExport } from './lib/workbench-snapshot-for-export';
-
-const WORKBENCH_AUTOSAVE_DEBOUNCE_MS = 400 as const;
-
-async function imageFileFromPersistedWorkbenchState(
-  loaded: MagicItemWorkbenchState,
-): Promise<File | undefined> {
-  if (loaded.imagePreviewUrl.trim() === '') {
-    return undefined;
-  }
-
-  try {
-    return await dataUrlToFile(loaded.imagePreviewUrl, loaded.imageFileName);
-  } catch {
-    return undefined;
-  }
-}
-
-interface HydrateWorkbenchFromLocalStorageParams {
-  form: UseFormReturn<WorkbenchItemDetailsFormValues>;
-  setWorkbenchState: Dispatch<SetStateAction<MagicItemWorkbenchState>>;
-  isApplyingPersistenceLoadRef: MutableRefObject<boolean>;
-}
-
-async function hydrateWorkbenchFromLocalStorage(
-  params: HydrateWorkbenchFromLocalStorageParams,
-  shouldAbort: () => boolean,
-): Promise<void> {
-  const loaded = loadMagicItemWorkbenchStateFromLocalStorage();
-  if (!loaded) {
-    return;
-  }
-
-  params.isApplyingPersistenceLoadRef.current = true;
-
-  const nextImageFile = await imageFileFromPersistedWorkbenchState(loaded);
-
-  if (shouldAbort()) {
-    return;
-  }
-
-  params.form.reset({
-    itemName: loaded.itemName,
-    classificationAndRarity: loaded.classificationAndRarity,
-    requiresAttunement: loaded.requiresAttunement,
-    flavorDescription: loaded.flavorDescription,
-    mechanicalDescription: loaded.mechanicalDescription,
-    imageFile: nextImageFile,
-  });
-  params.setWorkbenchState(loaded);
-}
 
 const formDefaultValues: WorkbenchItemDetailsFormValues = {
   itemName: defaultMagicItemWorkbenchState.itemName,
@@ -103,14 +65,31 @@ export function ItemCardWorkbench({
   const [workbenchState, setWorkbenchState] = useState<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
-  const [restorationComplete, setRestorationComplete] = useState(false);
-  const persistItemExport = usePersistItemExport();
-  const imageReadRequestIdRef = useRef(0);
-  const isApplyingPersistenceLoadRef = useRef(false);
+  const [persistencePhase, setPersistencePhase] = useState<
+    'loading' | 'settled'
+  >('loading');
+  const [persistenceMessage, setPersistenceMessage] = useState<string | null>(
+    null,
+  );
+  const [hydrationEpoch, setHydrationEpoch] = useState(0);
+  const [artworkLogical, setArtworkLogical] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const { persistItemExport, captureReuseOwnership } = usePersistItemExport(
+    workbenchState.imagePreviewUrl,
+  );
+  const sessionRef = useRef<WorkbenchPersistenceSession | null>(null);
+  const hydrationFileRef = useRef<File | undefined | null>(null);
   const previewStateRef = useRef<MagicItemWorkbenchState>(
     defaultMagicItemWorkbenchState,
   );
   const cardRef = useRef<HTMLDivElement>(null);
+  const artworkReader = useRef(
+    createArtworkReadGate((file, isCancelled) =>
+      readPreparedArtwork(file, { isCancelled }),
+    ),
+  );
 
   const form = useForm<WorkbenchItemDetailsFormValues>({
     resolver: zodResolver(workbenchItemDetailsSchema),
@@ -122,64 +101,132 @@ export function ItemCardWorkbench({
 
   useEffect(() => {
     let cancelled = false;
-
-    void hydrateWorkbenchFromLocalStorage(
-      {
-        form,
-        setWorkbenchState,
-        isApplyingPersistenceLoadRef,
-      },
-      () => cancelled,
-    ).finally(() => {
-      if (!cancelled) {
-        setRestorationComplete(true);
+    const session = createBrowserWorkbenchPersistenceSession();
+    sessionRef.current = session;
+    const unsubscribe = session.subscribe(() => {
+      if (cancelled) {
+        return;
       }
+      const hydration = session.takeHydration();
+      if (hydration) {
+        hydrationFileRef.current = hydration.imageFile;
+        form.reset({
+          itemName: hydration.state.itemName,
+          classificationAndRarity: hydration.state.classificationAndRarity,
+          requiresAttunement: hydration.state.requiresAttunement,
+          flavorDescription: hydration.state.flavorDescription,
+          mechanicalDescription: hydration.state.mechanicalDescription,
+          imageFile: hydration.imageFile,
+        });
+        const restored = session.captureArtwork();
+        setArtworkLogical(
+          restored
+            ? { width: restored.crop.width, height: restored.crop.height }
+            : null,
+        );
+        setWorkbenchState(hydration.state);
+        setHydrationEpoch((value) => value + 1);
+      }
+      setPersistenceMessage(session.getNotice());
     });
-
+    session.start();
     return () => {
       cancelled = true;
+      unsubscribe();
+      session.dispose();
+      if (sessionRef.current === session) {
+        sessionRef.current = null;
+      }
     };
   }, [form]);
 
   useEffect(() => {
-    if (!imageFile) {
-      if (isApplyingPersistenceLoadRef.current) {
-        isApplyingPersistenceLoadRef.current = false;
-        return;
-      }
+    if (
+      hydrationEpoch === 0 ||
+      hydrationFileRef.current === null ||
+      persistencePhase === 'settled'
+    ) {
+      return;
+    }
+    const expectedFile = hydrationFileRef.current;
+    if (expectedFile instanceof File && imageFile !== expectedFile) {
+      return;
+    }
+    setPersistencePhase('settled');
+  }, [hydrationEpoch, imageFile, persistencePhase]);
+
+  useEffect(() => {
+    if (persistencePhase !== 'settled') {
+      return;
+    }
+    const session = sessionRef.current;
+    if (!session) {
+      return;
+    }
+    const watch = session.beginImageWatch(imageFile);
+    let cancelled = false;
+    if (watch.kind === 'clear') {
+      setArtworkLogical(null);
       setWorkbenchState((previousState) => ({
         ...previousState,
         imageFileName: '',
         imagePreviewUrl: '',
       }));
-      return;
+      session.commitClear({
+        ...previewStateRef.current,
+        imageFileName: '',
+        imagePreviewUrl: '',
+      });
+    } else if (watch.kind === 'prepare' && imageFile) {
+      const selectedFile = imageFile;
+      setArtworkLogical(null);
+      setWorkbenchState((previousState) => ({
+        ...previousState,
+        imageFileName: '',
+        imagePreviewUrl: '',
+      }));
+      void artworkReader.current
+        .submit(selectedFile, () => cancelled)
+        .then(async (prepared) => {
+          if (cancelled) {
+            return;
+          }
+          const previewUrl = await readBlobAsDataUrl(prepared.previewBlob);
+          if (cancelled) {
+            return;
+          }
+          const accepted = session.acceptPreview(watch.id, {
+            file: markPreparedFile(selectedFile),
+            previewUrl,
+            aspectRatio: prepared.aspectRatio,
+            bundle: preparedArtworkBundle(prepared),
+          });
+          if (!accepted || cancelled) {
+            return;
+          }
+          setArtworkLogical({
+            width: prepared.crop.width,
+            height: prepared.crop.height,
+          });
+          setWorkbenchState((previousState) => ({
+            ...previousState,
+            imageFileName: selectedFile.name,
+            imagePreviewUrl: previewUrl,
+            resolvedImageAspectRatio: prepared.aspectRatio,
+          }));
+        })
+        .catch((error: unknown) => {
+          if (cancelled || isAbortError(error)) {
+            return;
+          }
+          session.failPreview(watch.id, readArtworkLimitError(error)?.message);
+        });
     }
-
-    isApplyingPersistenceLoadRef.current = false;
-
-    const nextImageReadRequestId = imageReadRequestIdRef.current + 1;
-    imageReadRequestIdRef.current = nextImageReadRequestId;
-
-    void readImagePreviewData(imageFile).then(
-      ({ previewUrl, aspectRatio }) => {
-        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
-        setWorkbenchState((previousState) => ({
-          ...previousState,
-          imageFileName: imageFile.name,
-          imagePreviewUrl: previewUrl,
-          resolvedImageAspectRatio: aspectRatio,
-        }));
-      },
-      () => {
-        if (imageReadRequestIdRef.current !== nextImageReadRequestId) return;
-        setWorkbenchState((previousState) => ({
-          ...previousState,
-          imageFileName: imageFile.name,
-          imagePreviewUrl: '',
-        }));
-      },
-    );
-  }, [imageFile]);
+    return () => {
+      cancelled = true;
+      session.cancelImageWatch(watch.id);
+    };
+  }, [imageFile, persistencePhase]);
 
   const { imageFile: _imageFile, ...formValuesForPreview } = formValues;
   const previewState: MagicItemWorkbenchState = {
@@ -191,43 +238,31 @@ export function ItemCardWorkbench({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: workbenchState covers preview-only controls; form.watch only fires for form fields.
   useEffect(() => {
-    if (!restorationComplete) {
+    if (persistencePhase !== 'settled') {
+      return;
+    }
+    const session = sessionRef.current;
+    if (!session) {
       return;
     }
 
-    let timeoutId: number | undefined;
-
-    const scheduleAutosave = () => {
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
-      timeoutId = window.setTimeout(() => {
-        const result = saveMagicItemWorkbenchStateToLocalStorage(
-          previewStateRef.current,
-        );
-        if (!result.success) {
-          console.warn(
-            result.reason === 'quota'
-              ? 'Workbench autosave: not enough browser storage.'
-              : 'Workbench autosave: could not write to browser storage.',
-          );
-        }
-      }, WORKBENCH_AUTOSAVE_DEBOUNCE_MS);
-    };
-
-    const subscription = form.watch(() => {
-      scheduleAutosave();
+    const autosave = bindWorkbenchFormAutosave({
+      watch: (callback) => form.watch(callback),
+      getRenderedState: () => previewStateRef.current,
+      scheduleSnapshot: (state) => {
+        session.scheduleSnapshot(state);
+      },
+      onScheduled: () => {
+        setPersistenceMessage(session.getNotice());
+      },
     });
-
-    scheduleAutosave();
+    autosave.scheduleRendered();
 
     return () => {
-      subscription.unsubscribe();
-      if (timeoutId !== undefined) {
-        window.clearTimeout(timeoutId);
-      }
+      autosave.unsubscribe();
+      session.cancelDebounce();
     };
-  }, [form, restorationComplete, workbenchState]);
+  }, [form, persistencePhase, workbenchState]);
 
   const setWorkbenchField = useCallback(
     <TKey extends keyof MagicItemWorkbenchState>(
@@ -276,22 +311,46 @@ export function ItemCardWorkbench({
     [],
   );
 
-  const canDownload = isCardStyleSupported(workbenchState.cardStyle);
+  const previewReadyForFile =
+    !(imageFile instanceof File) ||
+    workbenchState.imagePreviewUrl.trim() !== '';
+  const canDownload =
+    isCardStyleSupported(workbenchState.cardStyle) && previewReadyForFile;
 
   const handleBeforeDownload = useCallback(async () => {
     const formValid = await form.trigger();
     return formValid;
   }, [form]);
 
+  const captureExport = useCallback(
+    (input: {
+      format: 'png' | 'jpg';
+      pixelRatio: 1 | 2;
+    }): CapturedCardExport => {
+      const state = { ...previewStateRef.current };
+      return {
+        state,
+        snapshot: toWorkbenchSnapshotForExport(state),
+        format: input.format,
+        pixelRatio: input.pixelRatio,
+        cardPreviewSurfaceHeightPx: readDisplayedCardPreviewSurfaceHeight(
+          cardRef.current,
+        ),
+        bundle: sessionRef.current?.captureArtwork() ?? null,
+        reuseEpoch: captureReuseOwnership(),
+      };
+    },
+    [captureReuseOwnership],
+  );
+
   const handleExportComplete = useCallback(
     (payload: ItemExportCompletePayload) => {
       void persistItemExport({
-        workbenchSnapshot: toWorkbenchSnapshotForExport(
-          previewStateRef.current,
-        ),
-        sourceImagePreviewDataUrl: previewStateRef.current.imagePreviewUrl,
+        workbenchSnapshot: payload.workbenchSnapshot,
+        sourceImagePreviewDataUrl: payload.sourceImagePreviewDataUrl,
         exportFormat: payload.exportFormat,
         exportPixelRatio: payload.exportPixelRatio,
+        reuseEpoch: payload.reuseEpoch,
       }).catch((error: unknown) => {
         console.error('Failed to persist export to Convex', error);
       });
@@ -301,36 +360,65 @@ export function ItemCardWorkbench({
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="grid auto-rows-fr gap-6 xl:grid-cols-[minmax(340px,2fr)_3fr]">
-        <div data-print-hide className="animate-entrance">
-          <ItemDetailsForm
-            control={form.control}
-            formErrors={form.formState.errors}
-            trigger={form.trigger}
-          />
-        </div>
-        <div className="animate-entrance animate-entrance-delay-1">
-          <PreviewColumn
-            cardRef={cardRef}
-            showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
-            workbenchState={previewState}
-            setWorkbenchField={setWorkbenchField}
-          />
-        </div>
-      </div>
+      {persistencePhase === 'loading' ? (
+        <p
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+          className="text-sm text-muted-foreground"
+        >
+          {workbenchPersistenceCopy.loading}
+        </p>
+      ) : (
+        <>
+          {persistenceMessage ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className="text-sm text-muted-foreground"
+            >
+              {persistenceMessage}
+            </p>
+          ) : null}
+          <div className="grid auto-rows-fr gap-6 xl:grid-cols-[minmax(340px,2fr)_3fr]">
+            <div data-print-hide className="animate-entrance">
+              <ItemDetailsForm
+                control={form.control}
+                formErrors={form.formState.errors}
+                trigger={form.trigger}
+              />
+            </div>
+            <div className="animate-entrance animate-entrance-delay-1">
+              <PreviewColumn
+                cardRef={cardRef}
+                showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
+                workbenchState={previewState}
+                setWorkbenchField={setWorkbenchField}
+                {...(artworkLogical
+                  ? {
+                      artworkLogicalWidth: artworkLogical.width,
+                      artworkLogicalHeight: artworkLogical.height,
+                    }
+                  : {})}
+              />
+            </div>
+          </div>
 
-      <div
-        data-print-hide
-        className="animate-entrance animate-entrance-delay-2"
-      >
-        <DownloadControlsCard
-          cardRef={cardRef}
-          getItemName={() => form.getValues('itemName')}
-          disabled={!canDownload}
-          onBeforeDownload={handleBeforeDownload}
-          onExportComplete={handleExportComplete}
-        />
-      </div>
+          <div
+            data-print-hide
+            className="animate-entrance animate-entrance-delay-2"
+          >
+            <DownloadControlsCard
+              cardRef={cardRef}
+              getItemName={() => form.getValues('itemName')}
+              disabled={!canDownload}
+              onBeforeDownload={handleBeforeDownload}
+              captureExport={captureExport}
+              onExportComplete={handleExportComplete}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

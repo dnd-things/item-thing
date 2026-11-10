@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   type ArtworkColorSource,
   type ArtworkColorSwatch,
@@ -203,6 +203,7 @@ export interface UseMinimalArtworkThemeResult {
   artworkColor: string;
   swatches: ReadonlyArray<ArtworkColorSwatch>;
   theme: MinimalArtworkTheme;
+  settled: boolean;
 }
 
 export function useMinimalArtworkTheme(
@@ -211,25 +212,40 @@ export function useMinimalArtworkTheme(
   customColor: string,
 ): UseMinimalArtworkThemeResult {
   const [accentColor, setAccentColor] = useState<HslColor | null>(null);
+  const [seenUrl, setSeenUrl] = useState(renderImageUrl);
+  const [settled, setSettled] = useState(renderImageUrl.trim() === '');
+  const requestRef = useRef(0);
+  if (seenUrl !== renderImageUrl) {
+    setSeenUrl(renderImageUrl);
+    setSettled(renderImageUrl.trim() === '');
+  }
 
   useEffect(() => {
     if (!renderImageUrl.trim()) {
       setAccentColor(null);
+      setSettled(true);
       return;
     }
 
+    const request = requestRef.current + 1;
+    requestRef.current = request;
+    setSettled(false);
     let cancelled = false;
 
     void deriveMinimalArtworkThemeFromUrl(renderImageUrl).then(
       (nextAccentColor) => {
-        if (!cancelled) {
-          setAccentColor(nextAccentColor);
+        if (cancelled || request !== requestRef.current) {
+          return;
         }
+        setAccentColor(nextAccentColor);
+        setSettled(true);
       },
       () => {
-        if (!cancelled) {
-          setAccentColor(null);
+        if (cancelled || request !== requestRef.current) {
+          return;
         }
+        setAccentColor(null);
+        setSettled(true);
       },
     );
 
@@ -243,6 +259,7 @@ export function useMinimalArtworkTheme(
     artworkColor: resolveArtworkColor(accentColor, source, customColor),
     swatches: getArtworkColorSwatches(accentColor),
     theme: resolveMinimalArtworkTheme(accentColor, source, customColor),
+    settled,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   getResolvedCardWidthPx,
   isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { DISPLAYED_CARD_SURFACE_HEIGHT_ATTR } from '../lib/displayed-card-height';
 import {
   cardStyleOptions,
   getOptionLabel,
@@ -17,12 +18,16 @@ interface PreviewSurfaceProps {
   cardRef: RefObject<HTMLDivElement | null>;
   workbenchState: MagicItemWorkbenchState;
   cardPreviewSurfaceHeightPx?: number;
+  artworkLogicalWidth?: number;
+  artworkLogicalHeight?: number;
 }
 
 export function PreviewSurface({
   cardRef,
   workbenchState,
   cardPreviewSurfaceHeightPx,
+  artworkLogicalWidth,
+  artworkLogicalHeight,
 }: PreviewSurfaceProps) {
   const selectedCardStyleLabel = getOptionLabel(
     cardStyleOptions,
@@ -43,10 +48,28 @@ export function PreviewSurface({
       <div data-print-hide className="preview-corner preview-corner--tr" />
       <div data-print-hide className="preview-corner preview-corner--bl" />
       <div data-print-hide className="preview-corner preview-corner--br" />
-      <div data-print-card ref={cardRef} className="relative z-1">
+      <div
+        data-print-card
+        ref={cardRef}
+        className="relative z-1"
+        {...(cardPreviewSurfaceHeightPx !== undefined
+          ? {
+              [DISPLAYED_CARD_SURFACE_HEIGHT_ATTR]: String(
+                cardPreviewSurfaceHeightPx,
+              ),
+            }
+          : {})}
+      >
         {isCardStyleSupported(workbenchState.cardStyle) ? (
           <CardRenderer
             {...workbenchState}
+            artworkDrawPolicy="display"
+            {...(artworkLogicalWidth !== undefined
+              ? { artworkLogicalWidth }
+              : {})}
+            {...(artworkLogicalHeight !== undefined
+              ? { artworkLogicalHeight }
+              : {})}
             {...(cardPreviewSurfaceHeightPx !== undefined
               ? { cardPreviewSurfaceHeightPx }
               : {})}

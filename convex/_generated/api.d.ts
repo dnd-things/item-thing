@@ -10,8 +10,11 @@
 
 import type * as health from "../health.js";
 import type * as itemExports from "../itemExports.js";
+import type * as lib_sourceOptimizerVersion from "../lib/sourceOptimizerVersion.js";
+import type * as lib_sourceReuse from "../lib/sourceReuse.js";
 import type * as lib_workbenchSnapshotValidators from "../lib/workbenchSnapshotValidators.js";
 import type * as optimizeSourceImage from "../optimizeSourceImage.js";
+import type * as optimizeSourcePng from "../optimizeSourcePng.js";
 import type * as storageContentHash from "../storageContentHash.js";
 
 import type {
@@ -23,8 +26,11 @@ import type {
 declare const fullApi: ApiFromModules<{
   health: typeof health;
   itemExports: typeof itemExports;
+  "lib/sourceOptimizerVersion": typeof lib_sourceOptimizerVersion;
+  "lib/sourceReuse": typeof lib_sourceReuse;
   "lib/workbenchSnapshotValidators": typeof lib_workbenchSnapshotValidators;
   optimizeSourceImage: typeof optimizeSourceImage;
+  optimizeSourcePng: typeof optimizeSourcePng;
   storageContentHash: typeof storageContentHash;
 }>;
 

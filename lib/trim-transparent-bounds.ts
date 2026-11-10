@@ -1,12 +1,17 @@
 import sharp from 'sharp';
+import { ArtworkLimitError } from '@/lib/artwork-limit-error';
 
 const MIN_VISIBLE_ALPHA = 8;
 const RGBA_CHANNEL_COUNT = 4;
 const MAX_ALPHA_TRIM_PIXELS = 16_777_216;
+const MAX_ARTWORK_EDGE_PX = 4096;
+const ARTWORK_TOO_LARGE =
+  'Image is too large. Resize it to at most 4096px on each side and try again.';
 
 export interface TrimTransparentBoundsResult {
   buffer: Buffer;
   mimeType: string;
+  originalMimeType: string;
   width: number;
   height: number;
 }
@@ -31,31 +36,55 @@ function getMimeTypeForFormat(format: string | undefined): string {
   return 'image/png';
 }
 
+function assertAdmittedDimensions(width: number, height: number): void {
+  if (
+    width > MAX_ARTWORK_EDGE_PX ||
+    height > MAX_ARTWORK_EDGE_PX ||
+    width * height > MAX_ALPHA_TRIM_PIXELS
+  ) {
+    throw new ArtworkLimitError('source_dimensions', ARTWORK_TOO_LARGE);
+  }
+}
+
 export async function trimTransparentBounds(
   input: Buffer,
 ): Promise<TrimTransparentBoundsResult> {
-  const image = sharp(input, { failOn: 'none' });
-  const metadata = await image.metadata();
+  let metadata: sharp.Metadata;
+  try {
+    metadata = await sharp(input, {
+      failOn: 'none',
+      limitInputPixels: MAX_ALPHA_TRIM_PIXELS,
+    }).metadata();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    if (message.toLowerCase().includes('pixel')) {
+      throw new ArtworkLimitError('source_dimensions', ARTWORK_TOO_LARGE);
+    }
+    throw error instanceof Error ? error : new Error(ARTWORK_TOO_LARGE);
+  }
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
+  const originalMimeType = getMimeTypeForFormat(metadata.format);
 
   if (width <= 0 || height <= 0) {
     throw new Error('Image dimensions are invalid.');
   }
+  assertAdmittedDimensions(width, height);
 
   if (!metadata.hasAlpha) {
     return {
       buffer: input,
-      mimeType: getMimeTypeForFormat(metadata.format),
+      mimeType: originalMimeType,
+      originalMimeType,
       width,
       height,
     };
   }
 
-  if (width * height > MAX_ALPHA_TRIM_PIXELS) {
-    throw new Error('Image is too large to inspect transparency safely.');
-  }
-
+  const image = sharp(input, {
+    failOn: 'none',
+    limitInputPixels: MAX_ALPHA_TRIM_PIXELS,
+  });
   const raw = await image.ensureAlpha().raw().toBuffer();
 
   let left = width;
@@ -79,7 +108,8 @@ export async function trimTransparentBounds(
   if (right < left || bottom < top) {
     return {
       buffer: input,
-      mimeType: getMimeTypeForFormat(metadata.format),
+      mimeType: originalMimeType,
+      originalMimeType,
       width,
       height,
     };
@@ -96,13 +126,17 @@ export async function trimTransparentBounds(
   ) {
     return {
       buffer: input,
-      mimeType: getMimeTypeForFormat(metadata.format),
+      mimeType: originalMimeType,
+      originalMimeType,
       width,
       height,
     };
   }
 
-  const trimmedBuffer = await sharp(input, { failOn: 'none' })
+  const trimmedBuffer = await sharp(input, {
+    failOn: 'none',
+    limitInputPixels: MAX_ALPHA_TRIM_PIXELS,
+  })
     .extract({
       left,
       top,
@@ -110,15 +144,17 @@ export async function trimTransparentBounds(
       height: trimmedHeight,
     })
     .png({
+      // True-colour crop: Sharp quantizes to a palette when effort is set unless palette is explicit.
+      palette: false,
       compressionLevel: 9,
       adaptiveFiltering: true,
-      effort: 10,
     })
     .toBuffer();
 
   return {
     buffer: trimmedBuffer,
     mimeType: 'image/png',
+    originalMimeType,
     width: trimmedWidth,
     height: trimmedHeight,
   };

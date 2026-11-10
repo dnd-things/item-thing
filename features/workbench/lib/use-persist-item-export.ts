@@ -1,10 +1,17 @@
 'use client';
 
-import { useAction, useMutation } from 'convex/react';
-import { useCallback } from 'react';
+import { useAction, useConvex, useMutation } from 'convex/react';
+import { useCallback, useEffect, useRef } from 'react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 
+import {
+  capturePreviewReuseOwnership,
+  type PreviewReuseSlot,
+  persistExportWithPreviewReuse,
+  releasePreviewReuseSlot,
+  syncPreviewReuseSlotOnArtworkChange,
+} from './persist-item-export-with-source-reuse';
 import {
   dataUrlToBlob,
   uploadBlobToConvexStorage,
@@ -16,40 +23,85 @@ export interface PersistItemExportParams {
   sourceImagePreviewDataUrl: string;
   exportFormat: 'png' | 'jpg';
   exportPixelRatio: 1 | 2;
+  reuseEpoch: number;
 }
 
-export function usePersistItemExport() {
+export function usePersistItemExport(sourceImagePreviewDataUrl: string) {
+  const convex = useConvex();
   const generateUploadUrl = useMutation(api.itemExports.generateUploadUrl);
   const createItemExport = useMutation(api.itemExports.createItemExport);
   const optimizeSourceImage = useAction(
     api.optimizeSourceImage.optimizeSourceImage,
   );
+  const slotRef = useRef<PreviewReuseSlot>(null);
+  const artworkPresentRef = useRef(false);
 
-  return useCallback(
-    async (params: PersistItemExportParams) => {
-      let sourceImageStorageId: Id<'_storage'> | undefined;
-      if (params.sourceImagePreviewDataUrl.trim() !== '') {
-        const uploadUrlForSource = await generateUploadUrl();
-        const sourceBlob = await dataUrlToBlob(
-          params.sourceImagePreviewDataUrl,
-        );
-        const rawStorageId = await uploadBlobToConvexStorage(
-          uploadUrlForSource,
-          sourceBlob,
-        );
-        sourceImageStorageId = await optimizeSourceImage({
-          sourceStorageId: rawStorageId,
-          mimeType: sourceBlob.type !== '' ? sourceBlob.type : 'image/png',
-        });
-      }
+  useEffect(() => {
+    syncPreviewReuseSlotOnArtworkChange(
+      slotRef,
+      artworkPresentRef,
+      sourceImagePreviewDataUrl,
+    );
+  }, [sourceImagePreviewDataUrl]);
 
-      await createItemExport({
-        workbenchSnapshot: params.workbenchSnapshot,
-        exportFormat: params.exportFormat,
-        exportPixelRatio: params.exportPixelRatio,
-        ...(sourceImageStorageId !== undefined ? { sourceImageStorageId } : {}),
-      });
-    },
-    [createItemExport, generateUploadUrl, optimizeSourceImage],
+  useEffect(() => {
+    const slot = slotRef;
+    return () => {
+      releasePreviewReuseSlot(slot);
+    };
+  }, []);
+
+  const persistItemExport = useCallback(
+    (params: PersistItemExportParams) =>
+      persistExportWithPreviewReuse(slotRef, params, {
+        prepare: async (dataUrl) => {
+          const discovered = await convex.query(
+            api.itemExports.getSourceReuseStatus,
+            {},
+          );
+          const uploadUrl = await generateUploadUrl();
+          const sourceBlob = await dataUrlToBlob(dataUrl);
+          const rawStorageId = await uploadBlobToConvexStorage(
+            uploadUrl,
+            sourceBlob,
+          );
+          const storageId = await optimizeSourceImage({
+            sourceStorageId: rawStorageId,
+            mimeType: sourceBlob.type !== '' ? sourceBlob.type : 'image/png',
+            expectedOptimizerVersion: discovered.optimizerVersion,
+          });
+          return {
+            storageId,
+            optimizerVersion: discovered.optimizerVersion,
+          };
+        },
+        validate: (prepared) =>
+          convex.query(api.itemExports.getSourceReuseStatus, {
+            storageId: prepared.storageId as Id<'_storage'>,
+            optimizerVersion: prepared.optimizerVersion,
+          }),
+        insert: async (record) => {
+          const sourceImageStorageId = record.sourceImageStorageId;
+          const sourceOptimizerVersion = record.sourceOptimizerVersion;
+          await createItemExport({
+            workbenchSnapshot: record.workbenchSnapshot,
+            exportFormat: record.exportFormat,
+            exportPixelRatio: record.exportPixelRatio,
+            ...(sourceImageStorageId !== undefined &&
+            sourceOptimizerVersion !== undefined
+              ? {
+                  sourceImageStorageId: sourceImageStorageId as Id<'_storage'>,
+                  sourceOptimizerVersion,
+                }
+              : {}),
+          });
+        },
+      }),
+    [convex, createItemExport, generateUploadUrl, optimizeSourceImage],
   );
+  const captureReuseOwnership = useCallback(
+    () => capturePreviewReuseOwnership(slotRef),
+    [],
+  );
+  return { persistItemExport, captureReuseOwnership };
 }
