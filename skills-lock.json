@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "skills": {
+    "be-lazy": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/be-lazy/SKILL.md",
+      "computedHash": "6f6c1741ef1d67f15964fd13b7efa38b8340671705cb88aa48a101c4209483fb"
+    },
+    "blast-radius": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/blast-radius/SKILL.md",
+      "computedHash": "1c8721d805783482c6759c41817c75e2588f943e8da54e47ebf196e04ee13e74"
+    },
+    "boundary-discipline": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/boundary-discipline/SKILL.md",
+      "computedHash": "b72e11edcb05a1206a8b9e41068915c0912bc9b11beb0eabd54ca2cff78b2fab"
+    },
+    "codebase-design": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/codebase-design/SKILL.md",
+      "computedHash": "3826e91a96ee77e47d25c262cb7b023acd8fbcb1200880e64ac6189d2253daa4"
+    },
+    "council": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/council/SKILL.md",
+      "computedHash": "8236c7f63c68a43b062f4cdddef7c0e56a13493a71106369cd93e8fa1d33e532"
+    },
+    "domain-modeling": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/domain-modeling/SKILL.md",
+      "computedHash": "8bb5ae4ceea63c37d03e0f431ed953cd33dcb4189f14a35400d85539d93212b5"
+    },
+    "encode-lessons-in-structure": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/encode-lessons-in-structure/SKILL.md",
+      "computedHash": "333061ffd3b14dfaba411f322f76f755cf908197d22c2415da9d25a16b910a6f"
+    },
+    "foundational-thinking": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/foundational-thinking/SKILL.md",
+      "computedHash": "7faf968941f9931216a82b561e99ed4e049ede35220c24d634147b6f3ddebb54"
+    },
+    "grilling": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/grilling/SKILL.md",
+      "computedHash": "5fb0983da28cb5720dff663d9ac846b5584e23d6f00bd10d43d810f2bd894cee"
+    },
+    "how": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/how/SKILL.md",
+      "computedHash": "9a09cf639af8bc6657860186229a3f43ce32cbd8c62e8ab922c4f2efb635e52e"
+    },
+    "improve-codebase": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/improve-codebase/SKILL.md",
+      "computedHash": "29c56bef446ae23898b917c69ee41a26465ec454364bab7a6055e9a73dcae24e"
+    },
+    "principle-fix-root-causes": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/fix-root-causes/SKILL.md",
+      "computedHash": "b9303e4bf0016d7dfe579784acfcc0a096255a6dfcc4ad6e488c54adc3e0f8d9"
+    },
+    "principle-model-the-domain": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/model-the-domain/SKILL.md",
+      "computedHash": "1837300911182eebd6ec39d695b2d5ed5a1dfa4b4d524f33b387c267f26cd5c1"
+    },
+    "principle-subtract-before-you-add": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/subtract-before-you-add/SKILL.md",
+      "computedHash": "1f1e1f72e7350e3b8e512c245d65f9dd131bef6919b9ea5547a2c3cde3a7ede5"
+    },
+    "test-behavior-not-implementation": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/test-behavior-not-implementation/SKILL.md",
+      "computedHash": "f1d1e4d5910a8c26ccf6d92b62178efdb2f74357aa950f1461bd9c229b1e7f05"
+    },
+    "type-system-discipline": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/principles/type-system-discipline/SKILL.md",
+      "computedHash": "4bd89da4cab83598b7e17f92ba9d2ad017646d823e2fba918ff8c08168d184b8"
+    },
+    "typescript-best-practices": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/typescript-best-practices/SKILL.md",
+      "computedHash": "36ffb696f36519c421106978e9015768cb5fba778481f3602675540a847a4450"
+    },
+    "unslop": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/unslop/SKILL.md",
+      "computedHash": "552b510f36e85d64dbc9605267b0562d7642d8d31d5daf1d105ffcc387ee4a6b"
+    },
+    "why": {
+      "source": "kucharskimaciej/skills-thing",
+      "sourceType": "github",
+      "skillPath": "skills/engineer/why/SKILL.md",
+      "computedHash": "e053ff63aa8474ef2bf6b3fba04c116682a4173a8e5419ceb3891bda39eb6b84"
+    }
+  }
+}

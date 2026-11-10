@@ -45,5 +45,6 @@ next-env.d.ts
 
 
 .agents
+.claude
 .cursor
 .worktrees/
