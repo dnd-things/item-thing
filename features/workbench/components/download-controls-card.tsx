@@ -2,7 +2,6 @@
 
 import { Download04Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { toJpeg, toPng } from 'html-to-image';
 import { type RefObject, useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -18,6 +17,7 @@ import {
   renderExportArtworkUrl,
   waitForArtworkState,
 } from '../lib/export-card-artwork';
+import { loadHtmlToImage } from '../lib/html-to-image-loader';
 import { type DownloadExtension, getCardDownloadFilename } from '../lib/slug';
 import type { WorkbenchSnapshotForExport } from '../lib/workbench-snapshot-for-export';
 import { CardExportSurface } from './card-export-surface';
@@ -113,6 +113,7 @@ export function DownloadControlsCard({
             node.offsetHeight,
             captured.pixelRatio,
           );
+          const { toPng, toJpeg } = await loadHtmlToImage();
           const dataUrl =
             captured.format === 'png'
               ? await toPng(node, {

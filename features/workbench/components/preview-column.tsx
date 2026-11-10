@@ -6,6 +6,7 @@ import {
   Settings01Icon,
 } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
+import dynamic from 'next/dynamic';
 import type { RefObject } from 'react';
 import { Fragment, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,14 @@ import {
 import { ArtworkColorSourceControl } from './artwork-color-source-control';
 import { ItemPreviewPanel } from './item-preview-panel';
 import { ToggleField } from './workbench-field-controls';
-import { WorkbenchSettingsDrawer } from './workbench-settings-drawer';
+
+const WorkbenchSettingsDrawer = dynamic(
+  () =>
+    import('./workbench-settings-drawer').then(
+      (module) => module.WorkbenchSettingsDrawer,
+    ),
+  { ssr: false },
+);
 
 type QuickLayoutValue = 'stacked' | 'compact';
 
