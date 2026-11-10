@@ -14,8 +14,18 @@ import {
 } from './components/download-controls-card';
 import { ItemDetailsForm } from './components/item-details-form';
 import { PreviewColumn } from './components/preview-column';
+import {
+  createArtworkReadGate,
+  isAbortError,
+  markPreparedFile,
+} from './lib/artwork-source';
 import { normalizeWorkbenchStateForStyle } from './lib/card-style-capability-registry';
-import { readImagePreviewData } from './lib/read-image-preview-data';
+import { readDisplayedCardPreviewSurfaceHeight } from './lib/displayed-card-height';
+import type { CapturedCardExport } from './lib/export-card-artwork';
+import {
+  preparedArtworkBundle,
+  readPreparedArtwork,
+} from './lib/read-image-preview-data';
 import { usePersistItemExport } from './lib/use-persist-item-export';
 import { bindWorkbenchFormAutosave } from './lib/workbench-form-autosave';
 import {
@@ -26,6 +36,7 @@ import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
 } from './lib/workbench-options';
+import { readBlobAsDataUrl } from './lib/workbench-persistence';
 import {
   createBrowserWorkbenchPersistenceSession,
   type WorkbenchPersistenceSession,
@@ -60,7 +71,11 @@ export function ItemCardWorkbench({
     null,
   );
   const [hydrationEpoch, setHydrationEpoch] = useState(0);
-  const persistItemExport = usePersistItemExport(
+  const [artworkLogical, setArtworkLogical] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  const { persistItemExport, captureReuseOwnership } = usePersistItemExport(
     workbenchState.imagePreviewUrl,
   );
   const sessionRef = useRef<WorkbenchPersistenceSession | null>(null);
@@ -69,6 +84,11 @@ export function ItemCardWorkbench({
     defaultMagicItemWorkbenchState,
   );
   const cardRef = useRef<HTMLDivElement>(null);
+  const artworkReader = useRef(
+    createArtworkReadGate((file, isCancelled) =>
+      readPreparedArtwork(file, { isCancelled }),
+    ),
+  );
 
   const form = useForm<WorkbenchItemDetailsFormValues>({
     resolver: zodResolver(workbenchItemDetailsSchema),
@@ -97,6 +117,12 @@ export function ItemCardWorkbench({
           mechanicalDescription: hydration.state.mechanicalDescription,
           imageFile: hydration.imageFile,
         });
+        const restored = session.captureArtwork();
+        setArtworkLogical(
+          restored
+            ? { width: restored.crop.width, height: restored.crop.height }
+            : null,
+        );
         setWorkbenchState(hydration.state);
         setHydrationEpoch((value) => value + 1);
       }
@@ -137,7 +163,9 @@ export function ItemCardWorkbench({
       return;
     }
     const watch = session.beginImageWatch(imageFile);
+    let cancelled = false;
     if (watch.kind === 'clear') {
+      setArtworkLogical(null);
       setWorkbenchState((previousState) => ({
         ...previousState,
         imageFileName: '',
@@ -150,34 +178,54 @@ export function ItemCardWorkbench({
       });
     } else if (watch.kind === 'prepare' && imageFile) {
       const selectedFile = imageFile;
+      setArtworkLogical(null);
       setWorkbenchState((previousState) => ({
         ...previousState,
         imageFileName: '',
         imagePreviewUrl: '',
       }));
-      void readImagePreviewData(selectedFile).then(
-        ({ previewUrl, aspectRatio }) => {
-          const accepted = session.acceptPreview(watch.id, {
-            file: selectedFile,
-            previewUrl,
-            aspectRatio,
-          });
-          if (!accepted) {
+      void artworkReader.current
+        .submit(selectedFile, () => cancelled)
+        .then(async (prepared) => {
+          if (cancelled) {
             return;
           }
+          const previewUrl = await readBlobAsDataUrl(prepared.previewBlob);
+          if (cancelled) {
+            return;
+          }
+          const accepted = session.acceptPreview(watch.id, {
+            file: markPreparedFile(selectedFile),
+            previewUrl,
+            aspectRatio: prepared.aspectRatio,
+            bundle: preparedArtworkBundle(prepared),
+          });
+          if (!accepted || cancelled) {
+            return;
+          }
+          setArtworkLogical({
+            width: prepared.crop.width,
+            height: prepared.crop.height,
+          });
           setWorkbenchState((previousState) => ({
             ...previousState,
             imageFileName: selectedFile.name,
             imagePreviewUrl: previewUrl,
-            resolvedImageAspectRatio: aspectRatio,
+            resolvedImageAspectRatio: prepared.aspectRatio,
           }));
-        },
-        () => {
-          session.failPreview(watch.id);
-        },
-      );
+        })
+        .catch((error: unknown) => {
+          if (cancelled || isAbortError(error)) {
+            return;
+          }
+          session.failPreview(
+            watch.id,
+            error instanceof Error ? error.message : undefined,
+          );
+        });
     }
     return () => {
+      cancelled = true;
       session.cancelImageWatch(watch.id);
     };
   }, [imageFile, persistencePhase]);
@@ -276,15 +324,35 @@ export function ItemCardWorkbench({
     return formValid;
   }, [form]);
 
+  const captureExport = useCallback(
+    (input: {
+      format: 'png' | 'jpg';
+      pixelRatio: 1 | 2;
+    }): CapturedCardExport => {
+      const state = { ...previewStateRef.current };
+      return {
+        state,
+        snapshot: toWorkbenchSnapshotForExport(state),
+        format: input.format,
+        pixelRatio: input.pixelRatio,
+        cardPreviewSurfaceHeightPx: readDisplayedCardPreviewSurfaceHeight(
+          cardRef.current,
+        ),
+        bundle: sessionRef.current?.captureArtwork() ?? null,
+        reuseEpoch: captureReuseOwnership(),
+      };
+    },
+    [captureReuseOwnership],
+  );
+
   const handleExportComplete = useCallback(
     (payload: ItemExportCompletePayload) => {
       void persistItemExport({
-        workbenchSnapshot: toWorkbenchSnapshotForExport(
-          previewStateRef.current,
-        ),
-        sourceImagePreviewDataUrl: previewStateRef.current.imagePreviewUrl,
+        workbenchSnapshot: payload.workbenchSnapshot,
+        sourceImagePreviewDataUrl: payload.sourceImagePreviewDataUrl,
         exportFormat: payload.exportFormat,
         exportPixelRatio: payload.exportPixelRatio,
+        reuseEpoch: payload.reuseEpoch,
       }).catch((error: unknown) => {
         console.error('Failed to persist export to Convex', error);
       });
@@ -328,6 +396,12 @@ export function ItemCardWorkbench({
                 showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
                 workbenchState={previewState}
                 setWorkbenchField={setWorkbenchField}
+                {...(artworkLogical
+                  ? {
+                      artworkLogicalWidth: artworkLogical.width,
+                      artworkLogicalHeight: artworkLogical.height,
+                    }
+                  : {})}
               />
             </div>
           </div>
@@ -341,6 +415,7 @@ export function ItemCardWorkbench({
               getItemName={() => form.getValues('itemName')}
               disabled={!canDownload}
               onBeforeDownload={handleBeforeDownload}
+              captureExport={captureExport}
               onExportComplete={handleExportComplete}
             />
           </div>

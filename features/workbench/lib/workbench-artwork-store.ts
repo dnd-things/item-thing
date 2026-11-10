@@ -19,7 +19,7 @@ export type WorkbenchStoreReason =
 
 export interface WorkbenchStoredRecord {
   json: string;
-  blob: Blob | null;
+  blob: unknown;
 }
 
 export type WorkbenchLoadResult =
@@ -41,7 +41,7 @@ export type WorkbenchCommitInput =
       json: string;
       assetKey: string | null;
       previousAssetKey: string | null;
-      newBlob?: Blob;
+      newBlob?: unknown;
     };
 
 export interface WorkbenchArtworkStore {
@@ -288,7 +288,7 @@ export function createWorkbenchArtworkStore(
               .get(assetKey);
             blobRequest.onsuccess = () => {
               const blob: unknown = blobRequest.result;
-              if (blob instanceof Blob) {
+              if (blob !== undefined) {
                 record = { json: value, blob };
               }
             };

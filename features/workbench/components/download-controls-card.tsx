@@ -3,11 +3,24 @@
 import { Download04Icon } from '@hugeicons/core-free-icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { toJpeg, toPng } from 'html-to-image';
-import type { RefObject } from 'react';
-import { useCallback, useState } from 'react';
+import { type RefObject, useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { artworkLimitCopy } from '../lib/artwork-geometry';
+import {
+  assertMeasuredCardOutput,
+  type CapturedCardExport,
+  completeCapturedExport,
+  createCardExportLock,
+  materializeBrowserCanonical,
+  type PreparedCardExport,
+  prepareCapturedExport,
+  renderExportArtworkUrl,
+  waitForArtworkState,
+} from '../lib/export-card-artwork';
 import { type DownloadExtension, getCardDownloadFilename } from '../lib/slug';
+import type { WorkbenchSnapshotForExport } from '../lib/workbench-snapshot-for-export';
+import { CardExportSurface } from './card-export-surface';
 
 const exportFormatOptions: ReadonlyArray<{
   value: DownloadExtension;
@@ -26,6 +39,9 @@ export interface ItemExportCompletePayload {
   exportDataUrl: string;
   exportFormat: DownloadExtension;
   exportPixelRatio: 1 | 2;
+  workbenchSnapshot: WorkbenchSnapshotForExport;
+  sourceImagePreviewDataUrl: string;
+  reuseEpoch: number;
 }
 
 interface DownloadControlsCardProps {
@@ -33,61 +49,124 @@ interface DownloadControlsCardProps {
   getItemName: () => string;
   disabled?: boolean;
   onBeforeDownload?: () => Promise<boolean>;
+  captureExport: (input: {
+    format: DownloadExtension;
+    pixelRatio: 1 | 2;
+  }) => CapturedCardExport;
   onExportComplete?: (
     payload: ItemExportCompletePayload,
   ) => void | Promise<void>;
 }
 
 export function DownloadControlsCard({
-  cardRef,
-  getItemName,
+  cardRef: _cardRef,
   disabled = false,
   onBeforeDownload,
+  captureExport,
   onExportComplete,
 }: DownloadControlsCardProps) {
   const [exportFormat, setExportFormat] = useState<DownloadExtension>('png');
   const [resolution, setResolution] = useState<1 | 2>(2);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [pending, setPending] = useState<PreparedCardExport | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const exportLock = useRef(createCardExportLock());
+  const exportSurfaceRef = useRef<HTMLDivElement>(null);
+  const exportGenerationRef = useRef(0);
 
   const handleDownload = useCallback(async () => {
-    const node = cardRef.current;
-    if (!node) return;
-
-    const itemName = getItemName();
-
     try {
-      let dataUrl: string;
-      if (exportFormat === 'png') {
-        dataUrl = await toPng(node, { pixelRatio: resolution });
-      } else {
-        dataUrl = await toJpeg(node, {
-          pixelRatio: resolution,
-          quality: 0.92,
-        });
-      }
-
-      const filename = getCardDownloadFilename(itemName, exportFormat);
-      const link = document.createElement('a');
-      link.download = filename;
-      link.href = dataUrl;
-      link.click();
-
-      onExportComplete?.({
-        exportDataUrl: dataUrl,
-        exportFormat,
-        exportPixelRatio: resolution,
+      await exportLock.current.run(async () => {
+        const exportId = exportGenerationRef.current + 1;
+        exportGenerationRef.current = exportId;
+        setExporting(true);
+        setExportError(null);
+        let prepared: PreparedCardExport | null = null;
+        try {
+          const captured = captureExport({
+            format: exportFormat,
+            pixelRatio: resolution,
+          });
+          const filename = getCardDownloadFilename(
+            captured.state.itemName,
+            captured.format,
+          );
+          prepared = await prepareCapturedExport(captured, {
+            materialize: materializeBrowserCanonical,
+            renderTransformedUrl: renderExportArtworkUrl,
+          });
+          setPending(prepared);
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => resolve());
+          });
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => resolve());
+          });
+          const node = exportSurfaceRef.current;
+          if (!node || exportGenerationRef.current !== exportId) {
+            throw new Error(artworkLimitCopy.cardUnmeasured);
+          }
+          await document.fonts.ready;
+          await waitForArtworkState(node, { generation: exportId });
+          assertMeasuredCardOutput(
+            node.offsetWidth,
+            node.offsetHeight,
+            captured.pixelRatio,
+          );
+          const dataUrl =
+            captured.format === 'png'
+              ? await toPng(node, {
+                  pixelRatio: captured.pixelRatio,
+                  skipAutoScale: true,
+                })
+              : await toJpeg(node, {
+                  pixelRatio: captured.pixelRatio,
+                  quality: 0.92,
+                  skipAutoScale: true,
+                });
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = dataUrl;
+          link.click();
+          await onExportComplete?.(completeCapturedExport(prepared, dataUrl));
+        } finally {
+          if (exportGenerationRef.current === exportId) {
+            prepared?.release();
+            setPending(null);
+            setExporting(false);
+          }
+        }
       });
-    } catch {
-      // TODO: surface error to user
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === artworkLimitCopy.exportBusy
+      ) {
+        return;
+      }
+      setExportError(
+        error instanceof Error ? error.message : artworkLimitCopy.artworkFailed,
+      );
     }
-  }, [cardRef, getItemName, exportFormat, resolution, onExportComplete]);
+  }, [captureExport, exportFormat, onExportComplete, resolution]);
 
   const handleDownloadClick = useCallback(async () => {
+    if (exporting) {
+      return;
+    }
     if (onBeforeDownload && !(await onBeforeDownload())) return;
     await handleDownload();
-  }, [onBeforeDownload, handleDownload]);
+  }, [exporting, onBeforeDownload, handleDownload]);
 
   return (
     <div className="export-dock rounded-2xl border border-primary/10 bg-[oklch(0.14_0.008_65/0.9)] px-5 py-4 shadow-[inset_0_1px_0_0_oklch(1_0_0/0.06),0_4px_24px_oklch(0_0_0/0.2)] ring-1 ring-foreground/4 backdrop-blur-2xl sm:px-6">
+      {pending ? (
+        <CardExportSurface
+          prepared={pending}
+          surfaceRef={exportSurfaceRef}
+          exportGeneration={exportGenerationRef.current}
+        />
+      ) : null}
       <div className="relative z-1 flex flex-wrap items-center justify-center gap-4 sm:justify-between sm:gap-6">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2.5">
@@ -153,9 +232,9 @@ export function DownloadControlsCard({
         <Button
           variant="accent"
           size="lg"
-          disabled={disabled}
+          disabled={disabled || exporting}
           onClick={() => void handleDownloadClick()}
-          aria-disabled={disabled}
+          aria-disabled={disabled || exporting}
           className="export-button gap-2 px-6 font-semibold"
         >
           <HugeiconsIcon
@@ -166,6 +245,14 @@ export function DownloadControlsCard({
           Export
         </Button>
       </div>
+      {exportError ? (
+        <p
+          role="alert"
+          className="relative z-1 mt-3 text-center text-sm text-red-300"
+        >
+          {exportError}
+        </p>
+      ) : null}
     </div>
   );
 }

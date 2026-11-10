@@ -6,6 +6,7 @@ import {
   STALE_SOURCE,
 } from '../../../convex/lib/sourceReuse.ts';
 import {
+  capturePreviewReuseOwnership,
   isRetryableSourceReuseError,
   type PreviewReuseSlot,
   persistExportWithPreviewReuse,
@@ -891,5 +892,155 @@ describe('browser preview source reuse', () => {
         ?.sourceImageStorageId,
       'retried',
     );
+  });
+
+  test('ownership captured before clear does not install or evict a later generation', async () => {
+    const holder = slot();
+    const artwork = { current: false };
+    const canonical = 'data:image/jpeg;base64,SAME';
+    syncPreviewReuseSlotOnArtworkChange(holder, artwork, 'preview-a');
+    const capturedEpoch = capturePreviewReuseOwnership(holder);
+    syncPreviewReuseSlotOnArtworkChange(holder, artwork, '');
+    syncPreviewReuseSlotOnArtworkChange(holder, artwork, 'preview-a');
+    const replacement = persistExportWithPreviewReuse(
+      holder,
+      {
+        workbenchSnapshot: 'B',
+        sourceImagePreviewDataUrl: canonical,
+        exportFormat: 'jpg',
+        exportPixelRatio: 2,
+        reuseEpoch: capturePreviewReuseOwnership(holder),
+      },
+      {
+        prepare: () =>
+          Promise.resolve({ storageId: 'newer-b', optimizerVersion: 'v' }),
+        validate: async () => ({ optimizerVersion: 'v', reusable: true }),
+        insert: async () => undefined,
+      },
+    );
+    await replacement;
+    assert.equal(holder.current?.dataUrl, canonical);
+    const retained = holder.current?.promise;
+    let prepares = 0;
+    let inserts = 0;
+    await persistExportWithPreviewReuse(
+      holder,
+      {
+        workbenchSnapshot: 'A',
+        sourceImagePreviewDataUrl: canonical,
+        exportFormat: 'png',
+        exportPixelRatio: 1,
+        reuseEpoch: capturedEpoch,
+      },
+      {
+        prepare: () => {
+          prepares += 1;
+          return Promise.resolve({
+            storageId: `stale-${prepares}`,
+            optimizerVersion: prepares === 1 ? 'old' : 'new',
+          });
+        },
+        validate: async () => ({ optimizerVersion: 'new', reusable: true }),
+        insert: async () => {
+          inserts += 1;
+          if (inserts === 1) {
+            throw new ConvexError({ code: STALE_SOURCE });
+          }
+        },
+      },
+    );
+    assert.equal(prepares, 2);
+    assert.equal(inserts, 2);
+    assert.equal(holder.current?.dataUrl, canonical);
+    assert.equal(holder.current?.promise, retained);
+    assert.equal((await retained)?.storageId, 'newer-b');
+
+    const reused = slot();
+    let reusePrepares = 0;
+    const firstEpoch = capturePreviewReuseOwnership(reused);
+    await persistExportWithPreviewReuse(
+      reused,
+      {
+        workbenchSnapshot: 'first',
+        sourceImagePreviewDataUrl: canonical,
+        exportFormat: 'png',
+        exportPixelRatio: 1,
+        reuseEpoch: firstEpoch,
+      },
+      {
+        prepare: () => {
+          reusePrepares += 1;
+          return Promise.resolve({ storageId: 'kept', optimizerVersion: 'v' });
+        },
+        validate: async () => ({ optimizerVersion: 'v', reusable: true }),
+        insert: async () => undefined,
+      },
+    );
+    await persistExportWithPreviewReuse(
+      reused,
+      {
+        workbenchSnapshot: 'second',
+        sourceImagePreviewDataUrl: canonical,
+        exportFormat: 'jpg',
+        exportPixelRatio: 2,
+        reuseEpoch: capturePreviewReuseOwnership(reused),
+      },
+      {
+        prepare: () => {
+          reusePrepares += 1;
+          return Promise.resolve({
+            storageId: 'should-not',
+            optimizerVersion: 'v',
+          });
+        },
+        validate: async () => ({ optimizerVersion: 'v', reusable: true }),
+        insert: async () => undefined,
+      },
+    );
+    assert.equal(reusePrepares, 1);
+    assert.equal(reused.current?.dataUrl, canonical);
+
+    const emptied = slot();
+    const emptiedArtwork = { current: false };
+    const earlyEpoch = capturePreviewReuseOwnership(emptied);
+    syncPreviewReuseSlotOnArtworkChange(emptied, emptiedArtwork, 'preview-a');
+    syncPreviewReuseSlotOnArtworkChange(emptied, emptiedArtwork, '');
+    syncPreviewReuseSlotOnArtworkChange(emptied, emptiedArtwork, 'preview-b');
+    await persistExportWithPreviewReuse(
+      emptied,
+      {
+        workbenchSnapshot: 'kept-b',
+        sourceImagePreviewDataUrl: canonical,
+        exportFormat: 'png',
+        exportPixelRatio: 1,
+        reuseEpoch: capturePreviewReuseOwnership(emptied),
+      },
+      {
+        prepare: async () => ({ storageId: 'live-b', optimizerVersion: 'v' }),
+        validate: async () => ({ optimizerVersion: 'v', reusable: true }),
+        insert: async () => undefined,
+      },
+    );
+    const live = emptied.current;
+    await persistExportWithPreviewReuse(
+      emptied,
+      {
+        workbenchSnapshot: 'stale-empty',
+        sourceImagePreviewDataUrl: ' ',
+        exportFormat: 'jpg',
+        exportPixelRatio: 1,
+        reuseEpoch: earlyEpoch,
+      },
+      {
+        prepare: async () => {
+          throw new Error('stale empty export should not prepare');
+        },
+        validate: async () => ({ optimizerVersion: 'v', reusable: true }),
+        insert: async (record) => {
+          assert.equal(record.sourceImageStorageId, undefined);
+        },
+      },
+    );
+    assert.equal(emptied.current, live);
   });
 });

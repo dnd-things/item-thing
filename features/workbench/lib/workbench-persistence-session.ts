@@ -1,6 +1,24 @@
 'use client';
 
 import {
+  artworkLimitCopy,
+  dataUrlEncodedByteLength,
+  fitsDisplayBudget,
+  SOURCE_MAX_BYTES,
+} from './artwork-geometry';
+import {
+  type ArtworkBundle,
+  bundleFromLegacyBlob,
+  isPreparedFile,
+  legacyBlobNeedsResize,
+  markPreparedFile,
+  readArtworkBundle,
+} from './artwork-source';
+import {
+  createBoundedPreviewBlob,
+  measureImageBlob,
+} from './read-image-preview-data';
+import {
   createWorkbenchArtworkStore,
   type WorkbenchArtworkStore,
   type WorkbenchCommitResult,
@@ -14,8 +32,7 @@ import {
 import {
   createBrowserLegacyWorkbenchStorage,
   decodeImageDataUrl,
-  encodeWorkbenchEnvelopeV7,
-  fileFromImageBytes,
+  encodeWorkbenchEnvelopeV8,
   type LegacyWorkbenchStorage,
   parseImageDataUrl,
   parseWorkbenchStorageJson,
@@ -46,6 +63,7 @@ export const workbenchPersistenceCopy = {
   clearFailed:
     'Could not clear saved artwork. The last save is unchanged. Reload to try again. Unsaved edits are lost on reload.',
   imageUnreadable: 'Could not read that image. Choose a different one.',
+  imageTooLarge: artworkLimitCopy.savedTooLarge,
 } as const;
 
 export interface WorkbenchClock {
@@ -68,6 +86,7 @@ export interface AcceptedPreview {
   file: File;
   previewUrl: string;
   aspectRatio: number;
+  bundle?: ArtworkBundle;
 }
 
 export interface WorkbenchPersistenceDeps {
@@ -76,6 +95,14 @@ export interface WorkbenchPersistenceDeps {
   convertPreviewToBlob: (dataUrl: string) => Promise<Blob>;
   blobToDataUrl: (blob: Blob) => Promise<string>;
   decodeImageDataUrl: (dataUrl: string) => Promise<boolean>;
+  measureImageDataUrl?: (
+    dataUrl: string,
+  ) => Promise<{ width: number; height: number } | null>;
+  createBoundedPreview?: (
+    blob: Blob,
+    width: number,
+    height: number,
+  ) => Promise<Blob>;
   clock?: WorkbenchClock;
   createAssetKey?: () => string;
   warn?: (message: string) => void;
@@ -94,7 +121,8 @@ export interface WorkbenchPersistenceSession {
   beginImageWatch(file: File | undefined): ImageWatch;
   cancelImageWatch(id: number): void;
   acceptPreview(id: number, preview: AcceptedPreview): boolean;
-  failPreview(id: number): void;
+  failPreview(id: number, message?: string): void;
+  captureArtwork(): ArtworkBundle | null;
   commitClear(state: MagicItemWorkbenchState): void;
   scheduleSnapshot(state: MagicItemWorkbenchState): void;
   cancelDebounce(): void;
@@ -173,6 +201,7 @@ export function createWorkbenchPersistenceSession(
   let restoredFile: File | undefined;
   let acceptedFile: File | undefined;
   let durableAssetKey: string | null = null;
+  let currentBundle: ArtworkBundle | null = null;
   let lastCommittedJson: string | null = null;
   let latestState: MagicItemWorkbenchState | null = null;
   let hydration: WorkbenchHydration | null = null;
@@ -264,6 +293,7 @@ export function createWorkbenchPersistenceSession(
     mode = 'frozen';
     notice = messageFor(reason);
     rememberWarning();
+    currentBundle = null;
     publish(generation, defaultMagicItemWorkbenchState, undefined, null, null);
   };
 
@@ -278,6 +308,7 @@ export function createWorkbenchPersistenceSession(
     mode = 'recover';
     notice = workbenchPersistenceCopy.corrupt;
     rememberWarning();
+    currentBundle = null;
     publish(
       generation,
       withoutPreview(state),
@@ -320,7 +351,7 @@ export function createWorkbenchPersistenceSession(
       return;
     }
     if (
-      encodeWorkbenchEnvelopeV7(state, durableAssetKey) !== lastCommittedJson
+      encodeWorkbenchEnvelopeV8(state, durableAssetKey) !== lastCommittedJson
     ) {
       enqueueMetadata();
     }
@@ -366,7 +397,7 @@ export function createWorkbenchPersistenceSession(
         return;
       }
       const assetKey = durableAssetKey;
-      const json = encodeWorkbenchEnvelopeV7(state, assetKey);
+      const json = encodeWorkbenchEnvelopeV8(state, assetKey);
       if (json === lastCommittedJson) {
         return;
       }
@@ -386,7 +417,7 @@ export function createWorkbenchPersistenceSession(
       const current = latestState;
       if (
         current &&
-        encodeWorkbenchEnvelopeV7(current, durableAssetKey) !== json &&
+        encodeWorkbenchEnvelopeV8(current, durableAssetKey) !== json &&
         mode === 'autosave'
       ) {
         enqueueMetadata();
@@ -394,47 +425,329 @@ export function createWorkbenchPersistenceSession(
     });
   };
 
-  const commitMigration = async (
+  const measureImage = async (dataUrl: string) => {
+    if (deps.measureImageDataUrl) {
+      return await deps.measureImageDataUrl(dataUrl);
+    }
+    return await measureImageBlob(previewDataUrlToBlob(dataUrl));
+  };
+
+  const resizeLegacyPreview = async (
+    blob: Blob,
+    width: number,
+    height: number,
+  ) => {
+    if (!legacyBlobNeedsResize(width, height)) {
+      return blob;
+    }
+    if (!deps.createBoundedPreview) {
+      throw new Error(artworkLimitCopy.displayEncode);
+    }
+    return await deps.createBoundedPreview(blob, width, height);
+  };
+
+  const reportLimit = (
     generation: number,
     state: MagicItemWorkbenchState,
-    file: File | undefined,
-    blob: Blob | null,
-    raw: string,
+    retainedAssetKey: string | null,
   ) => {
-    if (!isCurrent(generation)) {
+    if (!isCurrent(generation) || phase === 'settled') {
       return;
     }
-    const assetKey = blob ? createAssetKey() : null;
-    const json = encodeWorkbenchEnvelopeV7(state, assetKey);
+    mode = 'recover';
+    notice = workbenchPersistenceCopy.imageTooLarge;
+    rememberWarning();
+    currentBundle = null;
+    publish(
+      generation,
+      withoutPreview(state),
+      undefined,
+      null,
+      retainedAssetKey,
+    );
+  };
+
+  const failDisplayPreview = (
+    generation: number,
+    state: MagicItemWorkbenchState,
+    retainedAssetKey: string | null,
+  ) => {
+    if (!isCurrent(generation) || phase === 'settled') {
+      return;
+    }
+    mode = 'recover';
+    notice = artworkLimitCopy.displayEncode;
+    rememberWarning();
+    currentBundle = null;
+    publish(
+      generation,
+      withoutPreview(state),
+      undefined,
+      null,
+      retainedAssetKey,
+    );
+  };
+
+  const fileFromArtworkSource = (
+    bundle: ArtworkBundle,
+    fileName: string,
+    fallbackMime: string,
+  ) => {
+    return markPreparedFile(
+      new File([bundle.source], fileName.trim() || 'image.png', {
+        type: bundle.source.type || fallbackMime,
+      }),
+    );
+  };
+
+  const commitBundle = async (input: {
+    generation: number;
+    state: MagicItemWorkbenchState;
+    file: File | undefined;
+    bundle: ArtworkBundle | null;
+    assetKey: string | null;
+    previousAssetKey: string | null;
+    legacyRaw?: string;
+  }) => {
+    if (!isCurrent(input.generation)) {
+      return;
+    }
+    const json = encodeWorkbenchEnvelopeV8(input.state, input.assetKey);
     const result = await deps.store.commit({
       kind: 'replace',
       json,
-      assetKey,
-      previousAssetKey: null,
-      ...(blob ? { newBlob: blob } : {}),
+      assetKey: input.assetKey,
+      previousAssetKey: input.previousAssetKey,
+      ...(input.bundle ? { newBlob: input.bundle } : {}),
     });
     if (!result.ok) {
-      if (!isCurrent(generation)) {
+      if (!isCurrent(input.generation)) {
         return;
       }
       mode = 'frozen';
       notice = messageFor(result.reason);
       rememberWarning();
-      publish(generation, state, file, null, null);
+      currentBundle = input.bundle;
+      publish(input.generation, input.state, input.file, null, null);
       return;
     }
+    const publishCommitted = () => {
+      if (!isCurrent(input.generation)) {
+        durableAssetKey = input.assetKey;
+        lastCommittedJson = json;
+        return;
+      }
+      mode = 'autosave';
+      currentBundle = input.bundle;
+      publish(input.generation, input.state, input.file, json, input.assetKey);
+    };
+    if (input.legacyRaw !== undefined) {
+      try {
+        deps.legacy.removeIfUnchanged(input.legacyRaw);
+      } catch {
+        publishCommitted();
+        return;
+      }
+    }
+    publishCommitted();
+  };
+
+  const adoptProcessedBlob = async (
+    generation: number,
+    state: MagicItemWorkbenchState,
+    dataUrl: string,
+    blob: Blob,
+    mimeType: string,
+    retainedAssetKey: string | null,
+    legacyRaw?: string,
+  ) => {
+    const retainedKey = legacyRaw === undefined ? retainedAssetKey : null;
+    const recoverDisplay = () => {
+      failDisplayPreview(generation, state, retainedKey);
+    };
+    if (blob.size > 32 * 1024 * 1024) {
+      reportLimit(generation, state, retainedKey);
+      return;
+    }
+    let measured: { width: number; height: number } | null = null;
     try {
-      deps.legacy.removeIfUnchanged(raw);
+      measured = await measureImage(dataUrl);
     } catch {
-      return publish(generation, state, file, json, assetKey);
+      measured = null;
     }
     if (!isCurrent(generation)) {
-      durableAssetKey = assetKey;
-      lastCommittedJson = json;
       return;
     }
+    if (!measured) {
+      recoverDisplay();
+      return;
+    }
+    if (
+      measured.width > 4096 ||
+      measured.height > 4096 ||
+      measured.width * measured.height > 16_777_216
+    ) {
+      reportLimit(generation, state, retainedKey);
+      return;
+    }
+    let preview = blob;
+    try {
+      preview = await resizeLegacyPreview(
+        blob,
+        measured.width,
+        measured.height,
+      );
+    } catch {
+      if (!isCurrent(generation)) {
+        return;
+      }
+      recoverDisplay();
+      return;
+    }
+    if (!isCurrent(generation)) {
+      return;
+    }
+    let bundle: ArtworkBundle;
+    try {
+      bundle = bundleFromLegacyBlob(
+        blob,
+        measured.width,
+        measured.height,
+        preview,
+      );
+    } catch {
+      reportLimit(generation, state, retainedKey);
+      return;
+    }
+    let previewUrl = dataUrl;
+    if (preview !== blob) {
+      try {
+        previewUrl = await deps.blobToDataUrl(preview);
+      } catch {
+        if (!isCurrent(generation)) {
+          return;
+        }
+        recoverDisplay();
+        return;
+      }
+    }
+    if (!isCurrent(generation)) {
+      return;
+    }
+    if (preview !== blob) {
+      let decodedPreview = false;
+      try {
+        decodedPreview = await deps.decodeImageDataUrl(previewUrl);
+      } catch {
+        decodedPreview = false;
+      }
+      if (!isCurrent(generation)) {
+        return;
+      }
+      if (!decodedPreview) {
+        recoverDisplay();
+        return;
+      }
+    }
+    const file = fileFromArtworkSource(bundle, state.imageFileName, mimeType);
+    const nextState = { ...state, imagePreviewUrl: previewUrl };
+    if (legacyRaw !== undefined) {
+      await commitBundle({
+        generation,
+        state: nextState,
+        file,
+        bundle,
+        assetKey: createAssetKey(),
+        previousAssetKey: null,
+        legacyRaw,
+      });
+      return;
+    }
+    await commitBundle({
+      generation,
+      state: nextState,
+      file,
+      bundle,
+      assetKey: retainedAssetKey,
+      previousAssetKey: null,
+    });
+  };
+
+  const hydrateBundle = async (
+    generation: number,
+    state: MagicItemWorkbenchState,
+    assetKey: string | null,
+    rawJson: string,
+    artwork: unknown,
+  ) => {
+    if (assetKey === null) {
+      currentBundle = null;
+      mode = 'autosave';
+      publish(generation, state, undefined, rawJson, null);
+      return;
+    }
+    const bundle = readArtworkBundle(artwork);
+    if (!bundle) {
+      degrade(generation, state, assetKey);
+      return;
+    }
+    let dataUrl: string;
+    try {
+      dataUrl = await deps.blobToDataUrl(bundle.preview);
+    } catch {
+      if (isCurrent(generation)) {
+        degrade(generation, state, assetKey);
+      }
+      return;
+    }
+    if (!isCurrent(generation)) {
+      return;
+    }
+    const image = parseImageDataUrl(dataUrl);
+    if (!image.ok) {
+      degrade(generation, state, assetKey);
+      return;
+    }
+    let decoded = false;
+    try {
+      decoded = await deps.decodeImageDataUrl(dataUrl);
+    } catch {
+      decoded = false;
+    }
+    if (!isCurrent(generation)) {
+      return;
+    }
+    if (!decoded) {
+      degrade(generation, state, assetKey);
+      return;
+    }
+    let measured: { width: number; height: number } | null = null;
+    try {
+      measured = await measureImage(dataUrl);
+    } catch {
+      measured = null;
+    }
+    if (!isCurrent(generation)) {
+      return;
+    }
+    if (!measured || !fitsDisplayBudget(measured.width, measured.height)) {
+      degrade(generation, state, assetKey);
+      return;
+    }
+    const file = fileFromArtworkSource(
+      bundle,
+      state.imageFileName,
+      bundle.source.type || image.mimeType,
+    );
+    currentBundle = bundle;
     mode = 'autosave';
-    publish(generation, state, file, json, assetKey);
+    publish(
+      generation,
+      { ...state, imagePreviewUrl: dataUrl },
+      file,
+      rawJson,
+      assetKey,
+    );
   };
 
   const migrateLegacy = async (
@@ -443,12 +756,29 @@ export function createWorkbenchPersistenceSession(
     raw: string,
   ) => {
     if (state.imagePreviewUrl.trim() === '') {
-      await commitMigration(generation, state, undefined, null, raw);
+      await commitBundle({
+        generation,
+        state,
+        file: undefined,
+        bundle: null,
+        assetKey: null,
+        previousAssetKey: null,
+        legacyRaw: raw,
+      });
+      return;
+    }
+    const encodedBytes = dataUrlEncodedByteLength(state.imagePreviewUrl);
+    if (encodedBytes !== null && encodedBytes > SOURCE_MAX_BYTES) {
+      reportLimit(generation, state, null);
       return;
     }
     const image = parseImageDataUrl(state.imagePreviewUrl);
     if (!image.ok) {
       degrade(generation, state);
+      return;
+    }
+    if (image.bytes.byteLength > SOURCE_MAX_BYTES) {
+      reportLimit(generation, state, null);
       return;
     }
     let decoded = false;
@@ -471,12 +801,15 @@ export function createWorkbenchPersistenceSession(
       degrade(generation, state);
       return;
     }
-    const file = fileFromImageBytes(
-      image.bytes,
-      state.imageFileName,
+    await adoptProcessedBlob(
+      generation,
+      state,
+      state.imagePreviewUrl,
+      blob,
       image.mimeType,
+      null,
+      raw,
     );
-    await commitMigration(generation, state, file, blob, raw);
   };
 
   const hydrateStored = async (
@@ -485,6 +818,16 @@ export function createWorkbenchPersistenceSession(
   ) => {
     const parsed = parseWorkbenchStorageJson(record.json);
     if (!isCurrent(generation)) {
+      return;
+    }
+    if (parsed.kind === 'v8') {
+      await hydrateBundle(
+        generation,
+        parsed.state,
+        parsed.assetKey,
+        record.json,
+        record.blob,
+      );
       return;
     }
     if (parsed.kind !== 'v7') {
@@ -498,12 +841,17 @@ export function createWorkbenchPersistenceSession(
       return;
     }
     if (parsed.assetKey === null) {
+      currentBundle = null;
       mode = 'autosave';
       publish(generation, parsed.state, undefined, record.json, null);
       return;
     }
     if (!(record.blob instanceof Blob) || record.blob.size === 0) {
       degrade(generation, parsed.state, parsed.assetKey);
+      return;
+    }
+    if (record.blob.size > SOURCE_MAX_BYTES) {
+      reportLimit(generation, parsed.state, parsed.assetKey);
       return;
     }
     let dataUrl: string;
@@ -536,21 +884,12 @@ export function createWorkbenchPersistenceSession(
       degrade(generation, parsed.state, parsed.assetKey);
       return;
     }
-    const bytes = new Uint8Array(await record.blob.arrayBuffer());
-    if (!isCurrent(generation)) {
-      return;
-    }
-    const file = fileFromImageBytes(
-      bytes,
-      parsed.state.imageFileName,
-      record.blob.type || image.mimeType,
-    );
-    mode = 'autosave';
-    publish(
+    await adoptProcessedBlob(
       generation,
-      { ...parsed.state, imagePreviewUrl: dataUrl },
-      file,
-      record.json,
+      parsed.state,
+      dataUrl,
+      record.blob,
+      record.blob.type || image.mimeType,
       parsed.assetKey,
     );
   };
@@ -692,7 +1031,7 @@ export function createWorkbenchPersistenceSession(
       if (file === undefined) {
         return false;
       }
-      if (file === restoredFile) {
+      if (isPreparedFile(file) || file === restoredFile) {
         return true;
       }
       return file === acceptedFile && preparation !== 'pending';
@@ -717,12 +1056,14 @@ export function createWorkbenchPersistenceSession(
       if (file === undefined) {
         watchKind = 'clear';
         preparation = 'idle';
+        currentBundle = null;
         invalidateQueue();
         return { id, kind: 'clear' };
       }
       watchKind = 'prepare';
       preparation = 'pending';
       conversion = null;
+      currentBundle = null;
       if (mode === 'autosave') {
         notice = null;
       }
@@ -751,6 +1092,20 @@ export function createWorkbenchPersistenceSession(
       acceptedFile = preview.file;
       restoredFile = undefined;
       latestState = snapshotForPreview(preview);
+      const provided = preview.bundle
+        ? readArtworkBundle(preview.bundle)
+        : null;
+      if (preview.bundle && !provided) {
+        preparation = 'failed';
+        failedGeneration = id;
+        currentBundle = null;
+        notice = workbenchPersistenceCopy.imageUnreadable;
+        emit();
+        return true;
+      }
+      if (provided) {
+        currentBundle = provided;
+      }
       if (mode === 'frozen') {
         emit();
         return true;
@@ -758,7 +1113,7 @@ export function createWorkbenchPersistenceSession(
       const epoch = id;
       const ticket = queueTicket;
       let cached = conversion;
-      if (!cached || cached.epoch !== epoch) {
+      if (!provided && (!cached || cached.epoch !== epoch)) {
         cached = {
           epoch,
           assetKey: createAssetKey(),
@@ -766,7 +1121,13 @@ export function createWorkbenchPersistenceSession(
         };
         conversion = cached;
       }
-      const conversionPromise = cached.promise;
+      const assetKey = provided ? createAssetKey() : cached?.assetKey;
+      if (!assetKey) {
+        return false;
+      }
+      const conversionPromise: Promise<Blob | ArtworkBundle> = provided
+        ? Promise.resolve(provided)
+        : (cached?.promise ?? Promise.reject(new Error('missing artwork')));
       void conversionPromise.then(
         () => undefined,
         () => undefined,
@@ -790,9 +1151,13 @@ export function createWorkbenchPersistenceSession(
         if (ticket !== queueTicket || epoch !== imageEpoch || disposed) {
           return;
         }
-        let blob: Blob;
+        let artwork: ArtworkBundle;
         try {
-          blob = await Promise.race([conversionPromise, superseded]);
+          const converted = await Promise.race([
+            conversionPromise ?? Promise.reject(new Error('missing')),
+            superseded,
+          ]);
+          artwork = provided ?? bundleFromLegacyBlob(converted as Blob, 1, 1);
         } catch {
           if (epoch !== imageEpoch || disposed) {
             return;
@@ -810,14 +1175,14 @@ export function createWorkbenchPersistenceSession(
         }
         const state = snapshotForPreview(preview);
         latestState = state;
-        const assetKey = cached.assetKey;
-        const json = encodeWorkbenchEnvelopeV7(state, assetKey);
+        currentBundle = artwork;
+        const json = encodeWorkbenchEnvelopeV8(state, assetKey);
         const result = await deps.store.commit({
           kind: 'replace',
           json,
           assetKey,
           previousAssetKey: durableAssetKey,
-          newBlob: blob,
+          newBlob: artwork,
         });
         if (result.ok) {
           durableAssetKey = assetKey;
@@ -830,21 +1195,28 @@ export function createWorkbenchPersistenceSession(
           noteCommitFailure(result);
           return;
         }
+        currentBundle = artwork;
         recoverIfNeeded();
       });
       return true;
     },
 
-    failPreview(id) {
+    failPreview(id, message) {
       if (disposed || id !== imageEpoch) {
         return;
       }
       preparation = 'failed';
       failedGeneration = id;
       if (!notice) {
-        notice = workbenchPersistenceCopy.imageUnreadable;
+        notice = message?.trim()
+          ? message
+          : workbenchPersistenceCopy.imageUnreadable;
         emit();
       }
+    },
+
+    captureArtwork() {
+      return currentBundle;
     },
 
     commitClear(state) {
@@ -859,6 +1231,7 @@ export function createWorkbenchPersistenceSession(
       latestState = cleared;
       acceptedFile = undefined;
       restoredFile = undefined;
+      currentBundle = null;
       preparation = 'idle';
       failedGeneration = null;
       if (mode === 'frozen') {
@@ -875,7 +1248,7 @@ export function createWorkbenchPersistenceSession(
           imageFileName: '',
           imagePreviewUrl: '',
         };
-        const json = encodeWorkbenchEnvelopeV7(snapshot, null);
+        const json = encodeWorkbenchEnvelopeV8(snapshot, null);
         const result = await deps.store.commit({
           kind: 'replace',
           json,
@@ -947,6 +1320,9 @@ export function createBrowserWorkbenchPersistenceSession(): WorkbenchPersistence
     convertPreviewToBlob: async (dataUrl) => previewDataUrlToBlob(dataUrl),
     blobToDataUrl: readBlobAsDataUrl,
     decodeImageDataUrl,
+    measureImageDataUrl: async (dataUrl) =>
+      await measureImageBlob(previewDataUrlToBlob(dataUrl)),
+    createBoundedPreview: createBoundedPreviewBlob,
     warn(message) {
       console.warn(message);
     },

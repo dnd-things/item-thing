@@ -93,6 +93,8 @@ interface PreviewColumnProps {
   showAdvancedWorkbenchControls: boolean;
   workbenchState: MagicItemWorkbenchState;
   setWorkbenchField: WorkbenchFieldSetter;
+  artworkLogicalWidth?: number;
+  artworkLogicalHeight?: number;
 }
 
 export function PreviewColumn({
@@ -100,6 +102,8 @@ export function PreviewColumn({
   showAdvancedWorkbenchControls,
   workbenchState,
   setWorkbenchField,
+  artworkLogicalWidth,
+  artworkLogicalHeight,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
@@ -322,6 +326,10 @@ export function PreviewColumn({
       <ItemPreviewPanel
         cardRef={cardRef}
         workbenchState={workbenchState}
+        {...(artworkLogicalWidth !== undefined &&
+        artworkLogicalHeight !== undefined
+          ? { artworkLogicalWidth, artworkLogicalHeight }
+          : {})}
         {...(workbenchState.cardLayout === 'image-right' &&
         workbenchState.sideLayoutFlow === 'fixed'
           ? {

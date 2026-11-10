@@ -2,6 +2,7 @@ import chromium from '@sparticuz/chromium-min';
 import type { Browser } from 'puppeteer-core';
 import puppeteer from 'puppeteer-core';
 
+import { artworkLimitErrorFromSerialized } from '@/lib/artwork-limit-error';
 import { serverLogger } from '@/lib/server-logger';
 
 import type { CardExportBrowserPayload } from './card-export-payload';
@@ -144,6 +145,10 @@ export async function runPuppeteerCardExport(
     });
 
     if (outcome.status !== 'ok' || outcome.result === undefined) {
+      const limit = artworkLimitErrorFromSerialized(outcome.error);
+      if (limit) {
+        throw limit;
+      }
       throw new Error(outcome.error ?? 'card_export_failed');
     }
 

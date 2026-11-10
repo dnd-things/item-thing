@@ -1,246 +1,336 @@
 'use client';
 
+import {
+  artworkLimitCopy,
+  assertDecodedArtworkDimensions,
+  assertEncodedArtworkBytes,
+  findVisibleAlphaBounds,
+  getInspectionDimensions,
+  type IntegerCrop,
+  identityCrop,
+  isFullSourceCrop,
+  mapInspectionCropToSource,
+} from './artwork-geometry';
+import {
+  browserCanvasFactory,
+  type CanvasFactory,
+  canvasToPngBlob,
+  type Drawable,
+  type DrawCanvas,
+  displayCropSize,
+} from './artwork-raster';
+import { createArtworkBundle, type PreparedArtwork } from './artwork-source';
+
 export interface ImagePreviewData {
   previewUrl: string;
   aspectRatio: number;
 }
 
-const MIN_VISIBLE_ALPHA = 8;
-const MAX_INSPECTION_DIMENSION_PX = 2048;
-
-async function readFileAsDataUrl(imageFile: File): Promise<string> {
-  return await new Promise((resolve, reject) => {
-    const fileReader = new FileReader();
-
-    fileReader.onerror = () => {
-      reject(new Error('Failed to read image file.'));
-    };
-
-    fileReader.onload = () => {
-      if (typeof fileReader.result === 'string') {
-        resolve(fileReader.result);
-        return;
-      }
-
-      reject(new Error('Image preview did not produce a data URL.'));
-    };
-
-    fileReader.readAsDataURL(imageFile);
-  });
+function throwIfCancelled(isCancelled?: () => boolean): void {
+  if (isCancelled?.()) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
 }
 
 export async function loadImageElementFromObjectUrl(
   imageFile: Blob,
+  signal?: AbortSignal,
 ): Promise<HTMLImageElement> {
+  if (signal?.aborted) {
+    throw new DOMException('The operation was aborted.', 'AbortError');
+  }
   return await new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(imageFile);
     const image = new Image();
+    let settled = false;
 
-    const cleanup = () => {
+    const finish = () => {
+      image.onload = null;
+      image.onerror = null;
       URL.revokeObjectURL(objectUrl);
     };
+    const rejectOnce = (error: unknown) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      finish();
+      reject(error);
+    };
+    const onAbort = () => {
+      image.src = '';
+      rejectOnce(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+
+    if (signal) {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
 
     image.onerror = () => {
-      cleanup();
-      reject(new Error('Failed to decode image file.'));
+      signal?.removeEventListener('abort', onAbort);
+      rejectOnce(new Error('Failed to decode image file.'));
     };
-
     image.onload = () => {
-      cleanup();
+      signal?.removeEventListener('abort', onAbort);
+      if (settled) {
+        return;
+      }
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
+      settled = true;
+      finish();
       resolve(image);
     };
-
     image.src = objectUrl;
   });
 }
 
-function findVisibleAlphaBounds(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number,
-): { left: number; top: number; width: number; height: number } | null {
-  let left = width;
-  let right = -1;
-  let top = height;
-  let bottom = -1;
-
-  for (let y = 0; y < height; y += 1) {
-    for (let x = 0; x < width; x += 1) {
-      const alpha = data[(y * width + x) * 4 + 3];
-      if (alpha === undefined || alpha < MIN_VISIBLE_ALPHA) {
-        continue;
-      }
-      left = Math.min(left, x);
-      right = Math.max(right, x);
-      top = Math.min(top, y);
-      bottom = Math.max(bottom, y);
+export async function measureImageBlob(
+  blob: Blob,
+): Promise<{ width: number; height: number } | null> {
+  try {
+    const image = await loadImageElementFromObjectUrl(blob);
+    const width = image.naturalWidth;
+    const height = image.naturalHeight;
+    image.src = '';
+    if (width <= 0 || height <= 0) {
+      return null;
     }
-  }
-
-  if (right < left || bottom < top) {
+    return { width, height };
+  } catch {
     return null;
   }
-
-  return {
-    left,
-    top,
-    width: right - left + 1,
-    height: bottom - top + 1,
-  };
 }
 
-function getInspectionDimensions(
+async function inspectCrop(
+  image: Drawable,
+  sourceWidth: number,
+  sourceHeight: number,
+  factory: CanvasFactory,
+  readPixels: (
+    canvas: DrawCanvas,
+    width: number,
+    height: number,
+  ) => Uint8ClampedArray | 'fallback',
+  isCancelled?: () => boolean,
+): Promise<IntegerCrop> {
+  throwIfCancelled(isCancelled);
+  const inspection = getInspectionDimensions(sourceWidth, sourceHeight);
+  const canvas = factory.create(inspection.width, inspection.height);
+  try {
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) {
+      throw new Error(artworkLimitCopy.displayEncode);
+    }
+    context.drawImage(image, 0, 0, inspection.width, inspection.height);
+    throwIfCancelled(isCancelled);
+    let pixels: Uint8ClampedArray | 'fallback';
+    try {
+      pixels = readPixels(canvas, inspection.width, inspection.height);
+    } catch {
+      return identityCrop(sourceWidth, sourceHeight);
+    }
+    if (pixels === 'fallback') {
+      return identityCrop(sourceWidth, sourceHeight);
+    }
+    const scaled = findVisibleAlphaBounds(
+      pixels,
+      inspection.width,
+      inspection.height,
+    );
+    if (
+      scaled === null ||
+      isFullSourceCrop(scaled, inspection.width, inspection.height)
+    ) {
+      return identityCrop(sourceWidth, sourceHeight);
+    }
+    const mapped = mapInspectionCropToSource(
+      scaled,
+      sourceWidth,
+      sourceHeight,
+      inspection.width,
+      inspection.height,
+    );
+    if (isFullSourceCrop(mapped, sourceWidth, sourceHeight)) {
+      return identityCrop(sourceWidth, sourceHeight);
+    }
+    return mapped;
+  } finally {
+    factory.release(canvas);
+  }
+}
+
+async function renderBoundedPreview(
+  image: Drawable,
+  crop: IntegerCrop,
+  factory: CanvasFactory,
+  isCancelled?: () => boolean,
+): Promise<Blob> {
+  throwIfCancelled(isCancelled);
+  const size = displayCropSize(crop);
+  const canvas = factory.create(size.width, size.height);
+  try {
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error(artworkLimitCopy.displayEncode);
+    }
+    context.drawImage(
+      image,
+      crop.left,
+      crop.top,
+      crop.width,
+      crop.height,
+      0,
+      0,
+      size.width,
+      size.height,
+    );
+    throwIfCancelled(isCancelled);
+    return await canvasToPngBlob(canvas);
+  } finally {
+    factory.release(canvas);
+  }
+}
+
+export interface ReadPreparedArtworkDeps {
+  isCancelled?: () => boolean;
+  signal?: AbortSignal;
+  factory?: CanvasFactory;
+  decode?: (file: Blob, signal?: AbortSignal) => Promise<HTMLImageElement>;
+  readPixels?: (
+    canvas: DrawCanvas,
+    width: number,
+    height: number,
+  ) => Uint8ClampedArray | 'fallback';
+}
+
+function defaultReadPixels(
+  canvas: DrawCanvas,
   width: number,
   height: number,
-): {
-  width: number;
-  height: number;
-} {
-  const scale = Math.min(
-    1,
-    MAX_INSPECTION_DIMENSION_PX / Math.max(width, height),
-  );
-
-  return {
-    width: Math.max(1, Math.round(width * scale)),
-    height: Math.max(1, Math.round(height * scale)),
-  };
+): Uint8ClampedArray | 'fallback' {
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    throw new Error(artworkLimitCopy.displayEncode);
+  }
+  try {
+    return context.getImageData(0, 0, width, height).data;
+  } catch {
+    return 'fallback';
+  }
 }
 
-export async function readImagePreviewData(
+export async function readPreparedArtwork(
   imageFile: File,
-): Promise<ImagePreviewData> {
-  const image = await loadImageElementFromObjectUrl(imageFile);
-  const width = image.naturalWidth;
-  const height = image.naturalHeight;
-
-  if (width <= 0 || height <= 0) {
-    throw new Error('Image dimensions are invalid.');
-  }
-
-  const sourceCanvas = document.createElement('canvas');
-  const inspectionDimensions = getInspectionDimensions(width, height);
-  sourceCanvas.width = inspectionDimensions.width;
-  sourceCanvas.height = inspectionDimensions.height;
-
-  const sourceContext = sourceCanvas.getContext('2d', {
-    willReadFrequently: true,
-  });
-  if (!sourceContext) {
-    throw new Error('Failed to inspect image transparency.');
-  }
-
-  sourceContext.drawImage(
-    image,
-    0,
-    0,
-    inspectionDimensions.width,
-    inspectionDimensions.height,
-  );
-
-  let bounds: {
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  } | null;
+  deps: ReadPreparedArtworkDeps = {},
+): Promise<PreparedArtwork> {
+  assertEncodedArtworkBytes(imageFile.size);
+  throwIfCancelled(deps.isCancelled);
+  const decode = deps.decode ?? loadImageElementFromObjectUrl;
+  const factory = deps.factory ?? browserCanvasFactory();
+  const readPixels = deps.readPixels ?? defaultReadPixels;
+  const image = await decode(imageFile, deps.signal);
   try {
-    const imageData = sourceContext.getImageData(
-      0,
-      0,
-      inspectionDimensions.width,
-      inspectionDimensions.height,
+    throwIfCancelled(deps.isCancelled);
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    assertDecodedArtworkDimensions(sourceWidth, sourceHeight);
+    const crop = await inspectCrop(
+      image,
+      sourceWidth,
+      sourceHeight,
+      factory,
+      readPixels,
+      deps.isCancelled,
     );
-    const scaledBounds = findVisibleAlphaBounds(
-      imageData.data,
-      inspectionDimensions.width,
-      inspectionDimensions.height,
+    const previewBlob = await renderBoundedPreview(
+      image,
+      crop,
+      factory,
+      deps.isCancelled,
     );
-
-    bounds =
-      scaledBounds === null
-        ? null
-        : {
-            left: Math.max(
-              0,
-              Math.floor(
-                (scaledBounds.left * width) / inspectionDimensions.width,
-              ),
-            ),
-            top: Math.max(
-              0,
-              Math.floor(
-                (scaledBounds.top * height) / inspectionDimensions.height,
-              ),
-            ),
-            width:
-              Math.min(
-                width,
-                Math.ceil(
-                  ((scaledBounds.left + scaledBounds.width) * width) /
-                    inspectionDimensions.width,
-                ),
-              ) -
-              Math.max(
-                0,
-                Math.floor(
-                  (scaledBounds.left * width) / inspectionDimensions.width,
-                ),
-              ),
-            height:
-              Math.min(
-                height,
-                Math.ceil(
-                  ((scaledBounds.top + scaledBounds.height) * height) /
-                    inspectionDimensions.height,
-                ),
-              ) -
-              Math.max(
-                0,
-                Math.floor(
-                  (scaledBounds.top * height) / inspectionDimensions.height,
-                ),
-              ),
-          };
-  } catch {
-    const previewUrl = await readFileAsDataUrl(imageFile);
-    return { previewUrl, aspectRatio: width / height };
+    throwIfCancelled(deps.isCancelled);
+    return {
+      previewBlob,
+      sourceBlob: imageFile,
+      sourceWidth,
+      sourceHeight,
+      crop,
+      aspectRatio: crop.width / crop.height,
+    };
+  } finally {
+    image.src = '';
   }
+}
 
-  if (
-    bounds === null ||
-    (bounds.left === 0 &&
-      bounds.top === 0 &&
-      bounds.width === width &&
-      bounds.height === height)
-  ) {
-    const previewUrl = await readFileAsDataUrl(imageFile);
-    return { previewUrl, aspectRatio: width / height };
+export async function createBoundedPreviewBlob(
+  blob: Blob,
+  width: number,
+  height: number,
+): Promise<Blob> {
+  assertDecodedArtworkDimensions(width, height);
+  const image = await loadImageElementFromObjectUrl(blob);
+  try {
+    const factory = browserCanvasFactory();
+    return await renderBoundedPreview(
+      image,
+      identityCrop(width, height),
+      factory,
+    );
+  } finally {
+    image.src = '';
   }
+}
 
-  const outputCanvas = document.createElement('canvas');
-  outputCanvas.width = bounds.width;
-  outputCanvas.height = bounds.height;
-  const outputContext = outputCanvas.getContext('2d');
-  if (!outputContext) {
-    throw new Error('Failed to crop image preview.');
+export async function rasterizeNativeCrop(bundle: {
+  source: Blob;
+  sourceWidth: number;
+  sourceHeight: number;
+  crop: IntegerCrop;
+}): Promise<Blob> {
+  const image = await loadImageElementFromObjectUrl(bundle.source);
+  try {
+    if (
+      image.naturalWidth !== bundle.sourceWidth ||
+      image.naturalHeight !== bundle.sourceHeight
+    ) {
+      throw new Error(artworkLimitCopy.sourceMismatch);
+    }
+    const factory = browserCanvasFactory();
+    const canvas = factory.create(bundle.crop.width, bundle.crop.height);
+    try {
+      const context = canvas.getContext('2d');
+      if (!context) {
+        throw new Error(artworkLimitCopy.displayEncode);
+      }
+      context.drawImage(
+        image,
+        bundle.crop.left,
+        bundle.crop.top,
+        bundle.crop.width,
+        bundle.crop.height,
+        0,
+        0,
+        bundle.crop.width,
+        bundle.crop.height,
+      );
+      return await canvasToPngBlob(canvas);
+    } finally {
+      factory.release(canvas);
+    }
+  } finally {
+    image.src = '';
   }
+}
 
-  outputContext.drawImage(
-    image,
-    bounds.left,
-    bounds.top,
-    bounds.width,
-    bounds.height,
-    0,
-    0,
-    bounds.width,
-    bounds.height,
-  );
-
-  const previewUrl = outputCanvas.toDataURL('image/png');
-  return {
-    previewUrl,
-    aspectRatio: bounds.width / bounds.height,
-  };
+export function preparedArtworkBundle(artwork: PreparedArtwork) {
+  return createArtworkBundle({
+    preview: artwork.previewBlob,
+    source: artwork.sourceBlob,
+    sourceWidth: artwork.sourceWidth,
+    sourceHeight: artwork.sourceHeight,
+    crop: artwork.crop,
+  });
 }

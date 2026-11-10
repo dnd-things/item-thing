@@ -50,6 +50,11 @@ export interface MagicItemCardRendererProps {
   artworkCustomColor: string;
   imageFileName: string;
   imagePreviewUrl: string;
+  artworkDrawPolicy?: 'display' | 'export';
+  artworkLogicalWidth?: number;
+  artworkLogicalHeight?: number;
+  preparedArtworkTransformed?: boolean;
+  exportGeneration?: number;
   itemName: string;
   classificationAndRarity: string;
   requiresAttunement: boolean;

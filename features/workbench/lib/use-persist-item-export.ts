@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
 
 import {
+  capturePreviewReuseOwnership,
   type PreviewReuseSlot,
   persistExportWithPreviewReuse,
   releasePreviewReuseSlot,
@@ -22,6 +23,7 @@ export interface PersistItemExportParams {
   sourceImagePreviewDataUrl: string;
   exportFormat: 'png' | 'jpg';
   exportPixelRatio: 1 | 2;
+  reuseEpoch: number;
 }
 
 export function usePersistItemExport(sourceImagePreviewDataUrl: string) {
@@ -49,7 +51,7 @@ export function usePersistItemExport(sourceImagePreviewDataUrl: string) {
     };
   }, []);
 
-  return useCallback(
+  const persistItemExport = useCallback(
     (params: PersistItemExportParams) =>
       persistExportWithPreviewReuse(slotRef, params, {
         prepare: async (dataUrl) => {
@@ -97,4 +99,9 @@ export function usePersistItemExport(sourceImagePreviewDataUrl: string) {
       }),
     [convex, createItemExport, generateUploadUrl, optimizeSourceImage],
   );
+  const captureReuseOwnership = useCallback(
+    () => capturePreviewReuseOwnership(slotRef),
+    [],
+  );
+  return { persistItemExport, captureReuseOwnership };
 }

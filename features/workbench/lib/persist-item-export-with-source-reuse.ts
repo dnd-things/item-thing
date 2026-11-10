@@ -33,6 +33,20 @@ function slotEpoch(slotRef: SlotRef): number {
   return slotEpochs.get(slotRef) ?? 0;
 }
 
+export function capturePreviewReuseOwnership(slotRef: SlotRef): number {
+  return slotEpoch(slotRef);
+}
+
+function ownedReuseEpoch(
+  slotRef: SlotRef,
+  reuseEpoch: number | undefined,
+): number {
+  if (reuseEpoch === undefined) {
+    return slotEpoch(slotRef);
+  }
+  return reuseEpoch;
+}
+
 function installPreparation(
   slotRef: SlotRef,
   dataUrl: string,
@@ -113,14 +127,19 @@ export function releasePreviewReuseSlot(slotRef: SlotRef): void {
 
 export function syncPreviewReuseSlotOnArtworkChange(
   slotRef: SlotRef,
-  artworkPresent: { current: boolean },
+  artworkPresent: { current: boolean; url?: string },
   sourcePreviewDataUrl: string,
 ): void {
-  const present = sourcePreviewDataUrl.trim() !== '';
-  if (artworkPresent.current && !present) {
+  const next = sourcePreviewDataUrl.trim();
+  const previous = artworkPresent.url ?? '';
+  if (
+    artworkPresent.current &&
+    (next === '' || (previous !== '' && next !== previous))
+  ) {
     releasePreviewReuseSlot(slotRef);
   }
-  artworkPresent.current = present;
+  artworkPresent.current = next !== '';
+  artworkPresent.url = next;
 }
 
 export function isRetryableSourceReuseError(error: unknown): boolean {
@@ -142,6 +161,7 @@ export async function persistExportWithPreviewReuse<TSnapshot>(
     sourceImagePreviewDataUrl: string;
     exportFormat: 'png' | 'jpg';
     exportPixelRatio: 1 | 2;
+    reuseEpoch?: number;
   },
   deps: PreviewReuseDeps & {
     insert: (record: {
@@ -154,7 +174,7 @@ export async function persistExportWithPreviewReuse<TSnapshot>(
   },
 ): Promise<void> {
   const dataUrl = input.sourceImagePreviewDataUrl;
-  const epoch = slotEpoch(slotRef);
+  const epoch = ownedReuseEpoch(slotRef, input.reuseEpoch);
   let token: Promise<PreparedSource> | null = null;
 
   const run = async (
@@ -162,7 +182,9 @@ export async function persistExportWithPreviewReuse<TSnapshot>(
     failedToken: Promise<PreparedSource> | null,
   ): Promise<void> => {
     if (dataUrl.trim() === '') {
-      releasePreviewReuseSlot(slotRef);
+      if (slotEpoch(slotRef) === epoch) {
+        releasePreviewReuseSlot(slotRef);
+      }
       await deps.insert({
         workbenchSnapshot: input.workbenchSnapshot,
         exportFormat: input.exportFormat,

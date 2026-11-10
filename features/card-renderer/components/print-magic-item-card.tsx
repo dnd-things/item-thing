@@ -11,7 +11,10 @@ import {
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
 } from '../lib/card-renderer-options';
-import { useFlippedImagePreviewUrl } from '../lib/use-flipped-image-preview-url';
+import {
+  artworkDataset,
+  useFlippedImagePreviewUrl,
+} from '../lib/use-flipped-image-preview-url';
 import { useMinimalArtworkTheme } from '../lib/use-minimal-artwork-theme';
 import {
   buildMagicItemPrintCardSlots,
@@ -45,6 +48,11 @@ export function PrintMagicItemCard({
   imageRotationDegrees,
   imageFlipHorizontal,
   imageFlipVertical,
+  artworkDrawPolicy,
+  artworkLogicalWidth,
+  artworkLogicalHeight,
+  preparedArtworkTransformed,
+  exportGeneration,
   itemName,
   classificationAndRarity,
   requiresAttunement,
@@ -52,17 +60,29 @@ export function PrintMagicItemCard({
   mechanicalDescription,
   cardPreviewSurfaceHeightPx,
 }: PrintMagicItemCardProps) {
-  const renderImageUrl = useFlippedImagePreviewUrl(
+  const artwork = useFlippedImagePreviewUrl(
     imagePreviewUrl,
     imageRotationDegrees,
     imageFlipHorizontal,
     imageFlipVertical,
+    {
+      ...(artworkDrawPolicy ? { policy: artworkDrawPolicy } : {}),
+      ...(artworkLogicalWidth !== undefined
+        ? { logicalWidth: artworkLogicalWidth }
+        : {}),
+      ...(artworkLogicalHeight !== undefined
+        ? { logicalHeight: artworkLogicalHeight }
+        : {}),
+      ...(preparedArtworkTransformed ? { alreadyTransformed: true } : {}),
+    },
   );
-  const { artworkColor } = useMinimalArtworkTheme(
+  const renderImageUrl = artwork.effectiveUrl;
+  const { artworkColor, settled: themeSettled } = useMinimalArtworkTheme(
     renderImageUrl,
     artworkColorSource,
     artworkCustomColor,
   );
+  const readiness = artworkDataset(artwork, themeSettled, exportGeneration);
 
   const layoutImageAspectRatio = getEffectiveImageAspectRatioForLayout(
     imageAspectRatio,
@@ -123,7 +143,7 @@ export function PrintMagicItemCard({
 
   if (!isSideLayout) {
     return (
-      <div className={surfaceClassName} style={surfaceStyle}>
+      <div className={surfaceClassName} style={surfaceStyle} {...readiness}>
         <MagicItemVerticalPrintLayout.Root
           imageAspectRatio={layoutImageAspectRatio}
           resolvedImageAspectRatio={resolvedImageAspectRatio}
@@ -163,7 +183,7 @@ export function PrintMagicItemCard({
   const showSideMediaColumn = !shouldUseWrappedSideLayout;
 
   return (
-    <div className={surfaceClassName} style={surfaceStyle}>
+    <div className={surfaceClassName} style={surfaceStyle} {...readiness}>
       <MagicItemSidePrintLayout.Root
         imageAspectRatio={layoutImageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}

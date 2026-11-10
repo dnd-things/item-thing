@@ -455,7 +455,7 @@ describe('workbench persistence codec', () => {
       assert.equal(unsupported.state.imagePreviewUrl, '');
     }
     assert.equal(
-      parseWorkbenchStorageJson('{"version":8,"state":{}}').kind,
+      parseWorkbenchStorageJson('{"version":9,"state":{}}').kind,
       'degraded',
     );
     assert.equal(parseWorkbenchStorageJson('{').kind, 'malformed');

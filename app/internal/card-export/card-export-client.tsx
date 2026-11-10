@@ -6,6 +6,11 @@ import { useEffect, useRef, useState } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
 import type { CardExportBrowserPayload } from '@/features/server-render-card/card-export-payload';
+import {
+  assertMeasuredCardOutput,
+  waitForArtworkState,
+} from '@/features/workbench/lib/export-card-artwork';
+import { serializeArtworkLimitError } from '@/lib/artwork-limit-error';
 
 interface CardExportWindowGlobals {
   __MAGIC_ITEM_CARD_EXPORT__?: CardExportBrowserPayload;
@@ -38,20 +43,12 @@ async function waitForNextAnimationFrames(count: number): Promise<void> {
   }
 }
 
-async function waitForImagesInNode(node: HTMLElement): Promise<void> {
-  const imgs = node.querySelectorAll('img');
-  await Promise.all(
-    [...imgs].map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if (img.complete) {
-            resolve();
-            return;
-          }
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-        }),
-    ),
+const CARD_EXPORT_GENERATION = 1;
+
+function exportFailureText(error: unknown): string {
+  return (
+    serializeArtworkLimitError(error) ??
+    (error instanceof Error ? error.message : String(error))
   );
 }
 
@@ -60,12 +57,21 @@ async function runHtmlToImageExport(params: {
   format: 'png' | 'jpg';
   pixelRatio: 1 | 2;
 }): Promise<string> {
+  assertMeasuredCardOutput(
+    params.node.offsetWidth,
+    params.node.offsetHeight,
+    params.pixelRatio,
+  );
   if (params.format === 'png') {
-    return await toPng(params.node, { pixelRatio: params.pixelRatio });
+    return await toPng(params.node, {
+      pixelRatio: params.pixelRatio,
+      skipAutoScale: true,
+    });
   }
   return await toJpeg(params.node, {
     pixelRatio: params.pixelRatio,
     quality: 0.92,
+    skipAutoScale: true,
   });
 }
 
@@ -87,7 +93,7 @@ async function runExportPipeline(
     globals.__CARD_EXPORT_ERROR__ = 'unsupported_card_style';
     return;
   }
-  await waitForImagesInNode(node);
+  await waitForArtworkState(node, { generation: CARD_EXPORT_GENERATION });
   await new Promise<void>((resolve) => {
     setTimeout(resolve, 200);
   });
@@ -126,8 +132,7 @@ export function CardExportClient() {
         await runExportPipeline(payload, cardRef);
       } catch (error) {
         globals.__CARD_EXPORT_STATUS__ = 'error';
-        globals.__CARD_EXPORT_ERROR__ =
-          error instanceof Error ? error.message : String(error);
+        globals.__CARD_EXPORT_ERROR__ = exportFailureText(error);
       }
     };
 
@@ -141,7 +146,11 @@ export function CardExportClient() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-900 p-8">
       <div data-print-card ref={cardRef} className="relative">
-        <CardRenderer {...payload.state} />
+        <CardRenderer
+          {...payload.state}
+          artworkDrawPolicy="export"
+          exportGeneration={CARD_EXPORT_GENERATION}
+        />
       </div>
     </div>
   );

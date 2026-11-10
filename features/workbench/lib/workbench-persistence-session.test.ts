@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { createFormControl } from 'react-hook-form';
+import {
+  artworkLimitCopy,
+  identityCrop,
+  SOURCE_MAX_BYTES,
+} from './artwork-geometry.ts';
+import { createArtworkBundle } from './artwork-source.ts';
+import { prepareCapturedExport } from './export-card-artwork.ts';
 import type {
   WorkbenchArtworkStore,
   WorkbenchCommitInput,
@@ -15,6 +22,7 @@ import {
 } from './workbench-options.ts';
 import {
   encodeWorkbenchEnvelopeV7,
+  encodeWorkbenchEnvelopeV8,
   fileFromImageBytes,
   previewDataUrlToBlob,
 } from './workbench-persistence.ts';
@@ -41,6 +49,23 @@ function encodeBase64(bytes: Uint8Array): string {
 
 function dataUrlFrom(bytes: Uint8Array, mimeType = 'image/png'): string {
   return `data:${mimeType};base64,${encodeBase64(bytes)}`;
+}
+
+function artworkBundle(bytes: Uint8Array, type = 'image/png') {
+  const blob = new Blob([Uint8Array.from(bytes)], { type });
+  return createArtworkBundle({
+    preview: blob,
+    source: blob,
+    sourceWidth: 4,
+    sourceHeight: 4,
+    crop: identityCrop(4, 4),
+  });
+}
+
+async function storedSourceBytes(value: unknown): Promise<Uint8Array> {
+  const blob =
+    value instanceof Blob ? value : (value as { source: Blob }).source;
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 function imageFile(bytes: Uint8Array, name: string): File {
@@ -107,11 +132,12 @@ function manualClock(): {
 
 function memoryStore() {
   let json: string | null = null;
-  const blobs = new Map<string, Blob>();
+  const blobs = new Map<string, unknown>();
   let gate: Promise<void> = Promise.resolve();
   let commitGate: Promise<void> = Promise.resolve();
   let loadFailure: WorkbenchStoreReason | null = null;
   let commitFailure: WorkbenchStoreReason | null = null;
+  let ignoreAbort = false;
   let active: { aborted: boolean } | null = null;
   const calls = {
     load: 0,
@@ -147,7 +173,7 @@ function memoryStore() {
       active = token;
       await gate;
       await commitGate;
-      if (token.aborted) {
+      if (token.aborted && !ignoreAbort) {
         return { ok: false as const, reason: 'aborted' as const };
       }
       if (commitFailure) {
@@ -209,6 +235,17 @@ function memoryStore() {
         release();
       };
     },
+    holdSuccessfulCommit() {
+      ignoreAbort = true;
+      let release: () => void = () => undefined;
+      commitGate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return () => {
+        commitGate = Promise.resolve();
+        release();
+      };
+    },
     failLoad(reason: WorkbenchStoreReason | null) {
       loadFailure = reason;
     },
@@ -218,7 +255,7 @@ function memoryStore() {
     record() {
       return { json, blobs };
     },
-    seed(nextJson: string, seeded?: Array<[string, Blob]>) {
+    seed(nextJson: string, seeded?: Array<[string, unknown]>) {
       json = nextJson;
       blobs.clear();
       for (const [key, blob] of seeded ?? []) {
@@ -232,6 +269,13 @@ function harness(options?: {
   raw?: string | null;
   decode?: (dataUrl: string) => boolean;
   failConvert?: boolean;
+  measure?: (dataUrl: string) => { width: number; height: number } | null;
+  createBoundedPreview?: (
+    blob: Blob,
+    width: number,
+    height: number,
+  ) => Promise<Blob>;
+  rejectBlobToDataUrl?: (blob: Blob) => boolean;
 }) {
   const backing = memoryStore();
   const legacy = {
@@ -244,6 +288,7 @@ function harness(options?: {
   const warnings: string[] = [];
   const converts: string[] = [];
   const decodes: string[] = [];
+  const blobReads: number[] = [];
   const convertGate: Promise<void> = Promise.resolve();
   let rejectConvert = false;
   let manualConverts = false;
@@ -289,6 +334,10 @@ function harness(options?: {
       return previewDataUrlToBlob(dataUrl);
     },
     async blobToDataUrl(blob) {
+      if (options?.rejectBlobToDataUrl?.(blob)) {
+        throw new Error('preview FileReader failure');
+      }
+      blobReads.push(blob.size);
       const bytes = new Uint8Array(await blob.arrayBuffer());
       return dataUrlFrom(bytes, blob.type || 'image/png');
     },
@@ -296,6 +345,15 @@ function harness(options?: {
       decodes.push(dataUrl);
       return options?.decode?.(dataUrl) ?? true;
     },
+    async measureImageDataUrl(dataUrl) {
+      if (options?.measure) {
+        return options.measure(dataUrl);
+      }
+      return { width: 4, height: 4 };
+    },
+    ...(options?.createBoundedPreview
+      ? { createBoundedPreview: options.createBoundedPreview }
+      : {}),
     clock: clock.clock,
     createAssetKey() {
       assetCount += 1;
@@ -318,6 +376,7 @@ function harness(options?: {
     warnings,
     converts,
     decodes,
+    blobReads,
     clock,
     applied,
     holdConvert() {
@@ -424,9 +483,9 @@ describe('workbench persistence session counts and roundtrip', () => {
       imagePreviewUrl: preview,
     });
     const env = harness();
-    const blob = new Blob([pngBytes], { type: 'image/png' });
-    env.backing.seed(encodeWorkbenchEnvelopeV7(source, 'kept'), [
-      ['kept', blob],
+    const bundle = artworkBundle(pngBytes);
+    env.backing.seed(encodeWorkbenchEnvelopeV8(source, 'kept'), [
+      ['kept', bundle],
     ]);
     env.session.start();
     await flush();
@@ -534,10 +593,7 @@ describe('workbench persistence session races', () => {
     assert.equal(env.backing.calls.blobPuts, 1);
     const blob = [...env.backing.blobs.values()][0];
     assert.ok(blob);
-    assert.deepEqual(
-      new Uint8Array(await blob.arrayBuffer()),
-      Uint8Array.from([9, 9, 9]),
-    );
+    assert.deepEqual(await storedSourceBytes(blob), Uint8Array.from([9, 9, 9]));
   });
 
   test('clear during conversion and replacement during save keep one durable record', async () => {
@@ -585,7 +641,7 @@ describe('workbench persistence session races', () => {
     assert.equal(env.backing.calls.blobPuts, 1);
     const stored = [...record.blobs.values()][0];
     assert.ok(stored);
-    assert.deepEqual(new Uint8Array(await stored.arrayBuffer()), otherBytes);
+    assert.deepEqual(await storedSourceBytes(stored), otherBytes);
   });
 
   test('dispose and a second mount ignore a late hydration', async () => {
@@ -645,7 +701,7 @@ describe('workbench persistence session races', () => {
     assert.equal(env.backing.calls.blobPuts, 1);
     const stored = [...env.backing.blobs.values()][0];
     assert.ok(stored);
-    assert.deepEqual(new Uint8Array(await stored.arrayBuffer()), otherBytes);
+    assert.deepEqual(await storedSourceBytes(stored), otherBytes);
     env.session.scheduleSnapshot(stateWith({ itemName: 'After' }));
     env.clock.advance(400);
     await flush();
@@ -953,10 +1009,10 @@ describe('workbench persistence failures', () => {
 
   test('failed clear leaves the previous record and does not loop', async () => {
     const env = harness();
-    const blob = new Blob([pngBytes], { type: 'image/png' });
+    const bundle = artworkBundle(pngBytes);
     env.backing.seed(
-      encodeWorkbenchEnvelopeV7(stateWith({ itemName: 'Safe' }), 'asset-a'),
-      [['asset-a', blob]],
+      encodeWorkbenchEnvelopeV8(stateWith({ itemName: 'Safe' }), 'asset-a'),
+      [['asset-a', bundle]],
     );
     env.session.start();
     await flush();
@@ -966,7 +1022,7 @@ describe('workbench persistence failures', () => {
     env.session.commitClear(stateWith({ itemName: 'Safe' }));
     await flush();
     assert.equal(env.backing.record().json?.includes('Safe'), true);
-    assert.equal(env.backing.blobs.has('asset-a'), true);
+    assert.equal(env.backing.blobs.get('asset-a'), bundle);
     assert.equal(env.session.getNotice(), workbenchPersistenceCopy.clearFailed);
     env.session.scheduleSnapshot(stateWith({ itemName: 'After failure' }));
     env.clock.advance(400);
@@ -1012,9 +1068,9 @@ describe('workbench form autosave', () => {
       requiresAttunement: true,
     });
     const env = harness();
-    const blob = new Blob([pngBytes], { type: 'image/png' });
-    env.backing.seed(encodeWorkbenchEnvelopeV7(source, 'asset-a'), [
-      ['asset-a', blob],
+    const bundle = artworkBundle(pngBytes);
+    env.backing.seed(encodeWorkbenchEnvelopeV8(source, 'asset-a'), [
+      ['asset-a', bundle],
     ]);
     env.session.start();
     await flush();
@@ -1083,7 +1139,7 @@ describe('workbench form autosave', () => {
     const stored = env.backing.record().json;
     assert.ok(stored);
     const reloaded = harness();
-    reloaded.backing.seed(stored, [['asset-a', blob]]);
+    reloaded.backing.seed(stored, [['asset-a', bundle]]);
     reloaded.session.start();
     await flush();
     assert.equal(reloaded.applied[0]?.state.itemName, 'After');
@@ -1408,4 +1464,570 @@ describe('workbench recovery and abort', () => {
       );
     });
   }
+});
+
+describe('v8 artwork bundles', () => {
+  test('v7 migrates once by resize only and a healthy v8 restore does not write', async () => {
+    const preview = dataUrlFrom(pngBytes);
+    const source = stateWith({
+      imagePreviewUrl: preview,
+      resolvedImageAspectRatio: 0.8,
+    });
+    const env = harness();
+    const blob = new Blob([pngBytes], { type: 'image/png' });
+    env.backing.seed(encodeWorkbenchEnvelopeV7(source, 'kept'), [
+      ['kept', blob],
+    ]);
+    env.session.start();
+    await flush();
+    assert.equal(env.backing.calls.replace, 1);
+    assert.equal(env.backing.calls.blobPuts, 1);
+    assert.equal(env.decodes.length, 1);
+    const stored = env.backing.blobs.get('kept');
+    assert.ok(stored);
+    assert.deepEqual(await storedSourceBytes(stored), pngBytes);
+    const bundle = stored as {
+      preview: Blob;
+      source: Blob;
+      crop: { left: number; top: number; width: number; height: number };
+    };
+    assert.equal(bundle.preview, blob);
+    assert.equal(bundle.source, blob);
+    assert.deepEqual(bundle.crop, { left: 0, top: 0, width: 4, height: 4 });
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, preview);
+    assert.equal(env.applied[0]?.state.resolvedImageAspectRatio, 0.8);
+    const json = env.backing.record().json ?? '';
+    assert.equal(json.includes('"version":8'), true);
+    const reloaded = harness();
+    reloaded.backing.seed(json, [['kept', stored]]);
+    reloaded.session.start();
+    await flush();
+    assert.equal(reloaded.backing.calls.replace, 0);
+    assert.equal(reloaded.backing.calls.blobPuts, 0);
+    assert.equal(reloaded.backing.calls.metadata, 0);
+    assert.equal(reloaded.applied[0]?.state.imagePreviewUrl, preview);
+    assert.equal(
+      reloaded.session.shouldSkipImageProcessing(
+        reloaded.applied[0]?.imageFile,
+      ),
+      true,
+    );
+  });
+
+  test('an over-limit legacy source is kept and not rewritten', async () => {
+    const env = harness({
+      measure: () => ({ width: 4097, height: 2 }),
+    });
+    const blob = new Blob([pngBytes], { type: 'image/png' });
+    env.backing.seed(
+      encodeWorkbenchEnvelopeV7(stateWith({ itemName: 'Wide' }), 'kept'),
+      [['kept', blob]],
+    );
+    env.session.start();
+    await flush();
+    assert.equal(env.backing.calls.replace, 0);
+    assert.equal(env.backing.calls.blobPuts, 0);
+    assert.equal(env.backing.blobs.get('kept'), blob);
+    assert.equal(env.applied[0]?.state.itemName, 'Wide');
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, '');
+    assert.equal(
+      env.session.getNotice(),
+      workbenchPersistenceCopy.imageTooLarge,
+    );
+    env.session.scheduleSnapshot(stateWith({ itemName: 'Edited' }));
+    env.clock.advance(400);
+    await flush();
+    assert.equal(env.backing.calls.metadata, 0);
+  });
+
+  test('unavailable storage keeps a validated bundle for export', async () => {
+    const env = harness();
+    env.backing.failLoad('unavailable');
+    env.session.start();
+    await flush();
+    const file = imageFile(pngBytes, 'art.png');
+    const bundle = artworkBundle(pngBytes);
+    const watch = env.session.beginImageWatch(file);
+    assert.equal(
+      env.session.acceptPreview(watch.id, {
+        file,
+        previewUrl: dataUrlFrom(pngBytes),
+        aspectRatio: 1,
+        bundle,
+      }),
+      true,
+    );
+    const captured = env.session.captureArtwork();
+    assert.equal(captured?.source, bundle.source);
+    const state = stateWith({ imagePreviewUrl: dataUrlFrom(pngBytes) });
+    const prepared = await prepareCapturedExport(
+      {
+        state,
+        snapshot: toWorkbenchSnapshotForExport(state),
+        format: 'png',
+        pixelRatio: 1,
+        cardPreviewSurfaceHeightPx: 400,
+        bundle: captured,
+        reuseEpoch: 0,
+      },
+      {
+        materialize: async () => ({
+          blob: bundle.source,
+          mimeType: 'image/png',
+          dataUrl: 'data:image/png;base64,kept',
+        }),
+        renderTransformedUrl: async () => {
+          throw new Error('unexpected transform');
+        },
+      },
+    );
+    assert.equal(prepared.preparedUrl, 'data:image/png;base64,kept');
+    assert.equal(prepared.sourceDataUrl, 'data:image/png;base64,kept');
+    assert.equal(env.backing.calls.replace, 0);
+  });
+
+  test('a failed v7 migration keeps the validated runtime bundle', async () => {
+    const env = harness();
+    const blob = new Blob([pngBytes], { type: 'image/png' });
+    env.backing.seed(
+      encodeWorkbenchEnvelopeV7(
+        stateWith({ imagePreviewUrl: dataUrlFrom(pngBytes) }),
+        'old',
+      ),
+      [['old', blob]],
+    );
+    env.backing.failCommit('quota');
+    env.session.start();
+    await flush();
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, dataUrlFrom(pngBytes));
+    assert.equal(env.session.captureArtwork()?.source, blob);
+    assert.equal(env.session.getNotice(), workbenchPersistenceCopy.quota);
+    assert.equal(env.backing.record().json?.includes('"version":7'), true);
+    assert.equal(env.backing.blobs.get('old'), blob);
+    assert.equal(env.backing.calls.blobPuts, 0);
+  });
+
+  test('a second selection after quota replaces the runtime bundle', async () => {
+    const env = await settledHarness();
+    env.backing.failCommit('quota');
+    const firstFile = imageFile(pngBytes, 'a.png');
+    const firstBundle = artworkBundle(pngBytes);
+    const firstWatch = env.session.beginImageWatch(firstFile);
+    env.session.acceptPreview(firstWatch.id, {
+      file: firstFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: firstBundle,
+    });
+    await flush();
+    assert.equal(env.session.captureArtwork()?.source, firstBundle.source);
+    const secondFile = imageFile(otherBytes, 'b.png');
+    const secondBundle = artworkBundle(otherBytes);
+    const secondWatch = env.session.beginImageWatch(secondFile);
+    env.session.acceptPreview(secondWatch.id, {
+      file: secondFile,
+      previewUrl: dataUrlFrom(otherBytes),
+      aspectRatio: 1,
+      bundle: secondBundle,
+    });
+    assert.equal(env.session.captureArtwork()?.source, secondBundle.source);
+    await flush();
+    assert.equal(env.session.captureArtwork()?.source, secondBundle.source);
+  });
+
+  test('a finished save does not restore artwork cleared or replaced while it was committing', async () => {
+    const cleared = await settledHarness();
+    const releaseClear = cleared.backing.holdCommit();
+    const clearFile = imageFile(pngBytes, 'a.png');
+    const clearBundle = artworkBundle(pngBytes);
+    const clearWatch = cleared.session.beginImageWatch(clearFile);
+    cleared.session.acceptPreview(clearWatch.id, {
+      file: clearFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: clearBundle,
+    });
+    await flush();
+    cleared.session.cancelImageWatch(clearWatch.id);
+    cleared.session.beginImageWatch(undefined);
+    cleared.session.commitClear(stateWith({ imagePreviewUrl: '' }));
+    assert.equal(cleared.session.captureArtwork(), null);
+    releaseClear();
+    await Promise.resolve();
+    assert.equal(cleared.session.captureArtwork(), null);
+    await flush();
+    assert.equal(cleared.session.captureArtwork(), null);
+
+    const replaced = await settledHarness();
+    const releaseReplace = replaced.backing.holdCommit();
+    const oldFile = imageFile(pngBytes, 'a.png');
+    const oldBundle = artworkBundle(pngBytes);
+    const oldWatch = replaced.session.beginImageWatch(oldFile);
+    replaced.session.acceptPreview(oldWatch.id, {
+      file: oldFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: oldBundle,
+    });
+    await flush();
+    replaced.session.cancelImageWatch(oldWatch.id);
+    const nextFile = imageFile(otherBytes, 'b.png');
+    const nextBundle = artworkBundle(otherBytes);
+    const nextWatch = replaced.session.beginImageWatch(nextFile);
+    replaced.session.acceptPreview(nextWatch.id, {
+      file: nextFile,
+      previewUrl: dataUrlFrom(otherBytes),
+      aspectRatio: 1,
+      bundle: nextBundle,
+    });
+    assert.equal(replaced.session.captureArtwork()?.source, nextBundle.source);
+    releaseReplace();
+    await Promise.resolve();
+    assert.equal(replaced.session.captureArtwork()?.source, nextBundle.source);
+    await flush();
+    assert.equal(replaced.session.captureArtwork()?.source, nextBundle.source);
+  });
+
+  test('an over-limit stored v7 blob is not converted or decoded', async () => {
+    const env = harness();
+    const blob = new Blob([pngBytes], { type: 'image/png' });
+    Object.defineProperty(blob, 'size', { value: SOURCE_MAX_BYTES + 1 });
+    env.backing.seed(
+      encodeWorkbenchEnvelopeV7(stateWith({ itemName: 'Huge' }), 'kept'),
+      [['kept', blob]],
+    );
+    env.session.start();
+    await flush();
+    assert.deepEqual(env.blobReads, []);
+    assert.deepEqual(env.decodes, []);
+    assert.equal(env.applied[0]?.state.itemName, 'Huge');
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, '');
+    assert.equal(env.session.captureArtwork(), null);
+    assert.equal(env.backing.blobs.get('kept'), blob);
+    assert.equal(env.backing.calls.replace, 0);
+    assert.equal(
+      env.session.getNotice(),
+      workbenchPersistenceCopy.imageTooLarge,
+    );
+  });
+
+  test('an over-limit legacy data URL is not natively decoded', async () => {
+    const payloadLength = Math.ceil((SOURCE_MAX_BYTES + 1) / 3) * 4;
+    const preview = `data:image/png;base64,${'A'.repeat(payloadLength)}`;
+    const raw = JSON.stringify({
+      version: 6,
+      state: {
+        itemName: 'Legacy huge',
+        imagePreviewUrl: preview,
+        imageFileName: 'huge.png',
+      },
+    });
+    const env = harness({ raw });
+    env.session.start();
+    await flush();
+    assert.deepEqual(env.decodes, []);
+    assert.equal(env.applied[0]?.state.itemName, 'Legacy huge');
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, '');
+    assert.equal(env.session.captureArtwork(), null);
+    assert.equal(env.legacy.raw, raw);
+    assert.equal(
+      env.session.getNotice(),
+      workbenchPersistenceCopy.imageTooLarge,
+    );
+  });
+
+  test('a non-abortable finished save does not restore artwork cleared or replaced while it was committing', async () => {
+    const cleared = await settledHarness();
+    const releaseClear = cleared.backing.holdSuccessfulCommit();
+    const clearFile = imageFile(pngBytes, 'a.png');
+    const clearBundle = artworkBundle(pngBytes);
+    const clearWatch = cleared.session.beginImageWatch(clearFile);
+    cleared.session.acceptPreview(clearWatch.id, {
+      file: clearFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: clearBundle,
+    });
+    await flush();
+    cleared.session.cancelImageWatch(clearWatch.id);
+    cleared.session.beginImageWatch(undefined);
+    cleared.session.commitClear(stateWith({ imagePreviewUrl: '' }));
+    assert.equal(cleared.session.captureArtwork(), null);
+    releaseClear();
+    await flush();
+    assert.equal(cleared.session.captureArtwork(), null);
+
+    const replaced = await settledHarness();
+    const releaseReplace = replaced.backing.holdSuccessfulCommit();
+    const oldFile = imageFile(pngBytes, 'a.png');
+    const oldBundle = artworkBundle(pngBytes);
+    const oldWatch = replaced.session.beginImageWatch(oldFile);
+    replaced.session.acceptPreview(oldWatch.id, {
+      file: oldFile,
+      previewUrl: dataUrlFrom(pngBytes),
+      aspectRatio: 1,
+      bundle: oldBundle,
+    });
+    await flush();
+    replaced.session.cancelImageWatch(oldWatch.id);
+    const nextFile = imageFile(otherBytes, 'b.png');
+    const nextBundle = artworkBundle(otherBytes);
+    const nextWatch = replaced.session.beginImageWatch(nextFile);
+    replaced.session.acceptPreview(nextWatch.id, {
+      file: nextFile,
+      previewUrl: dataUrlFrom(otherBytes),
+      aspectRatio: 1,
+      bundle: nextBundle,
+    });
+    assert.equal(replaced.session.captureArtwork()?.source, nextBundle.source);
+    replaced.session.dispose();
+    releaseReplace();
+    await flush();
+    assert.equal(replaced.session.captureArtwork()?.source, nextBundle.source);
+  });
+
+  test('migration display failures keep salvaged text and do not publish the original', async () => {
+    const original = dataUrlFrom(pngBytes);
+    const saved = {
+      itemName: 'Salvaged text',
+      mechanicalDescription: 'Keep this description.',
+      imagePreviewUrl: original,
+      imageFileName: 'source.png',
+    };
+    for (const version of [7, 6] as const) {
+      for (const failure of [
+        'measure-null',
+        'measure-throw',
+        'encode',
+        'conversion',
+        'decode',
+        'decode-throw',
+      ] as const) {
+        const previewBlob = new Blob([otherBytes], { type: 'image/png' });
+        let previewCalls = 0;
+        const env = harness({
+          raw:
+            version === 6 ? JSON.stringify({ version: 6, state: saved }) : null,
+          measure: () => {
+            if (failure === 'measure-throw') {
+              throw new Error('second native decode failed');
+            }
+            if (failure === 'measure-null') {
+              return null;
+            }
+            return { width: 2048, height: 1024 };
+          },
+          decode: (dataUrl) => {
+            if (failure === 'decode-throw' && dataUrl !== original) {
+              throw new Error('preview decode failed');
+            }
+            return dataUrl === original;
+          },
+          ...(failure === 'conversion'
+            ? {
+                rejectBlobToDataUrl: (blob: Blob) => blob === previewBlob,
+              }
+            : {}),
+          createBoundedPreview: async () => {
+            previewCalls += 1;
+            if (failure === 'encode') {
+              throw new Error('canvas PNG encode failed');
+            }
+            return previewBlob;
+          },
+        });
+        const sourceBlob = new Blob([pngBytes], { type: 'image/png' });
+        if (version === 7) {
+          env.backing.seed(
+            encodeWorkbenchEnvelopeV7(stateWith(saved), 'kept'),
+            [['kept', sourceBlob]],
+          );
+        }
+        env.session.start();
+        await flush();
+        const hydration = env.applied[0];
+        assert.equal(hydration?.state.itemName, 'Salvaged text');
+        assert.equal(
+          hydration?.state.mechanicalDescription,
+          'Keep this description.',
+        );
+        assert.equal(hydration?.state.imagePreviewUrl, '');
+        assert.equal(hydration?.imageFile, undefined);
+        assert.equal(
+          env.session.shouldSkipImageProcessing(hydration?.imageFile),
+          false,
+        );
+        assert.equal(env.session.captureArtwork(), null);
+        assert.equal(env.session.getNotice(), artworkLimitCopy.displayEncode);
+        assert.equal(
+          previewCalls,
+          failure === 'measure-null' || failure === 'measure-throw' ? 0 : 1,
+        );
+        assert.equal(env.backing.calls.replace, 0);
+        assert.equal(env.backing.calls.blobPuts, 0);
+        assert.equal(env.backing.calls.metadata, 0);
+        const previewDecoded =
+          failure === 'decode' || failure === 'decode-throw';
+        assert.equal(env.decodes.length, previewDecoded ? 2 : 1);
+        if (version === 7) {
+          assert.equal(env.backing.blobs.get('kept'), sourceBlob);
+          assert.equal(env.blobReads.length, previewDecoded ? 2 : 1);
+        } else {
+          assert.equal(env.legacy.raw?.includes(original), true);
+          assert.deepEqual(env.legacy.removed, []);
+          assert.equal(env.blobReads.length, previewDecoded ? 1 : 0);
+        }
+        const prepared = await prepareCapturedExport(
+          {
+            state: hydration?.state ?? stateWith({}),
+            snapshot: toWorkbenchSnapshotForExport(
+              hydration?.state ?? stateWith({}),
+            ),
+            format: 'png',
+            pixelRatio: 1,
+            cardPreviewSurfaceHeightPx: 0,
+            bundle: env.session.captureArtwork(),
+            reuseEpoch: 0,
+          },
+          {
+            materialize: async () => {
+              throw new Error('unexpected materialize');
+            },
+            renderTransformedUrl: async () => {
+              throw new Error('unexpected transform');
+            },
+          },
+        );
+        assert.equal(prepared.preparedUrl, '');
+        assert.equal(prepared.sourceDataUrl, '');
+        env.session.scheduleSnapshot(stateWith({ itemName: 'Do not save' }));
+        env.clock.advance(400);
+        await flush();
+        assert.equal(env.backing.calls.metadata, 0);
+        assert.equal(env.backing.calls.replace, 0);
+        assert.equal(env.backing.calls.blobPuts, 0);
+      }
+    }
+  });
+
+  test('a late legacy migration cannot replace artwork accepted after timeout when cleanup throws', async () => {
+    const raw = JSON.stringify({
+      version: 6,
+      state: {
+        itemName: 'A',
+        imagePreviewUrl: dataUrlFrom(pngBytes),
+        imageFileName: 'a.png',
+      },
+    });
+    for (const variant of ['replace', 'dispose'] as const) {
+      const env = harness({ raw });
+      const release = env.backing.holdSuccessfulCommit();
+      env.session.start();
+      await flush();
+      assert.equal(env.backing.calls.replace, 1);
+      assert.equal(env.session.getPhase(), 'loading');
+      env.clock.advance(5000);
+      assert.equal(env.session.getPhase(), 'settled');
+      assert.equal(env.applied.length, 1);
+      assert.equal(env.applied[0]?.state.itemName, '');
+      const bFile = imageFile(otherBytes, 'b.png');
+      const bBundle = artworkBundle(otherBytes);
+      const watch = env.session.beginImageWatch(bFile);
+      assert.equal(
+        env.session.acceptPreview(watch.id, {
+          file: bFile,
+          previewUrl: dataUrlFrom(otherBytes),
+          aspectRatio: 1,
+          bundle: bBundle,
+        }),
+        true,
+      );
+      assert.equal(env.session.captureArtwork()?.source, bBundle.source);
+      env.legacy.throwOnRemove = true;
+      if (variant === 'dispose') {
+        env.session.dispose();
+      }
+      release();
+      await flush();
+      assert.equal(env.applied.length, 1);
+      assert.equal(env.session.captureArtwork()?.source, bBundle.source);
+      assert.equal(env.legacy.raw, raw);
+      assert.deepEqual(env.legacy.removed, []);
+      assert.equal(env.backing.calls.replace, 1);
+      assert.equal(env.backing.calls.blobPuts, 1);
+      const stored = [...env.backing.blobs.values()][0];
+      assert.deepEqual(await storedSourceBytes(stored), pngBytes);
+      assert.match(env.backing.record().json ?? '', /"itemName":"A"/);
+      const prepared = await prepareCapturedExport(
+        {
+          state: stateWith({
+            itemName: 'B',
+            imagePreviewUrl: dataUrlFrom(otherBytes),
+          }),
+          snapshot: toWorkbenchSnapshotForExport(stateWith({ itemName: 'B' })),
+          format: 'png',
+          pixelRatio: 1,
+          cardPreviewSurfaceHeightPx: 0,
+          bundle: env.session.captureArtwork(),
+          reuseEpoch: 0,
+        },
+        {
+          materialize: async (bundle) => ({
+            blob: bundle.source,
+            mimeType: bundle.source.type || 'image/png',
+            dataUrl: dataUrlFrom(
+              new Uint8Array(await bundle.source.arrayBuffer()),
+            ),
+          }),
+          renderTransformedUrl: async () => {
+            throw new Error('unexpected transform');
+          },
+        },
+      );
+      assert.equal(prepared.captured.snapshot.itemName, 'B');
+      assert.equal(prepared.sourceDataUrl, dataUrlFrom(otherBytes));
+      assert.equal(prepared.preparedUrl, dataUrlFrom(otherBytes));
+      env.session.scheduleSnapshot(stateWith({ itemName: 'Later' }));
+      env.clock.advance(400);
+      await flush();
+      assert.equal(env.backing.calls.metadata, 0);
+      assert.equal(env.backing.calls.replace, 1);
+      assert.equal(env.session.captureArtwork()?.source, bBundle.source);
+    }
+  });
+
+  test('an oversized v8 preview is rejected before conversion or decode', async () => {
+    const env = harness();
+    const preview = new Blob([pngBytes], { type: 'image/png' });
+    Object.defineProperty(preview, 'size', { value: SOURCE_MAX_BYTES + 1 });
+    const source = new Blob([otherBytes], { type: 'image/png' });
+    const bundle = createArtworkBundle({
+      preview,
+      source,
+      sourceWidth: 4,
+      sourceHeight: 4,
+      crop: identityCrop(4, 4),
+    });
+    env.backing.seed(
+      encodeWorkbenchEnvelopeV8(
+        stateWith({ itemName: 'Oversized preview' }),
+        'kept',
+      ),
+      [['kept', bundle]],
+    );
+    env.session.start();
+    await flush();
+    assert.deepEqual(env.blobReads, []);
+    assert.deepEqual(env.decodes, []);
+    assert.equal(env.applied[0]?.state.itemName, 'Oversized preview');
+    assert.equal(env.applied[0]?.state.imagePreviewUrl, '');
+    assert.equal(env.session.captureArtwork(), null);
+    assert.equal(env.session.getNotice(), workbenchPersistenceCopy.corrupt);
+    assert.equal(env.backing.blobs.get('kept'), bundle);
+    assert.equal(env.backing.calls.replace, 0);
+    env.session.scheduleSnapshot(stateWith({ itemName: 'Do not save' }));
+    env.clock.advance(400);
+    await flush();
+    assert.equal(env.backing.calls.metadata, 0);
+  });
 });

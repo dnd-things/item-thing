@@ -254,6 +254,7 @@ test('returns the original jpeg buffer when the input has no alpha', async () =>
   const result = await trimTransparentBounds(input);
   assert.equal(result.buffer, input);
   assert.equal(result.mimeType, 'image/jpeg');
+  assert.equal(result.originalMimeType, 'image/jpeg');
   assert.equal(result.width, width);
   assert.equal(result.height, height);
 });
@@ -322,7 +323,7 @@ test('returns the original buffer when every alpha sample is below 8', async () 
   assert.equal(result.height, height);
 });
 
-test('rejects alpha images above the pixel guard and bypasses oversized images without alpha', {
+test('rejects alpha and opaque images above the pixel guard', {
   timeout: 120_000,
 }, async () => {
   const width = 4096;
@@ -349,8 +350,9 @@ test('rejects alpha images above the pixel guard and bypasses oversized images w
   assert.equal(alphaMetadata.height, height);
 
   await assert.rejects(() => trimTransparentBounds(alphaPng), {
-    name: 'Error',
-    message: 'Image is too large to inspect transparency safely.',
+    name: 'ArtworkLimitError',
+    message:
+      'Image is too large. Resize it to at most 4096px on each side and try again.',
   });
 
   const opaquePng = await sharp({
@@ -372,9 +374,9 @@ test('rejects alpha images above the pixel guard and bypasses oversized images w
   assert.equal(opaqueMetadata.width, width);
   assert.equal(opaqueMetadata.height, height);
 
-  const result = await trimTransparentBounds(opaquePng);
-  assert.equal(result.buffer, opaquePng);
-  assert.equal(result.mimeType, 'image/png');
-  assert.equal(result.width, width);
-  assert.equal(result.height, height);
+  await assert.rejects(() => trimTransparentBounds(opaquePng), {
+    name: 'ArtworkLimitError',
+    message:
+      'Image is too large. Resize it to at most 4096px on each side and try again.',
+  });
 });

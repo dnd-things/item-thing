@@ -20,6 +20,8 @@ export interface MapRenderRequestToWorkbenchStateInput<
 }
 
 export interface MapRenderRequestToWorkbenchStateResult {
+  originalMimeType: string;
+  renderMimeType: string;
   sourceMimeType: string;
   workbenchState: MagicItemWorkbenchState;
 }
@@ -59,12 +61,16 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
   const heightPx = trimmedArtwork.height;
   const resolvedImageAspectRatio = heightPx > 0 ? widthPx / heightPx : 1;
 
-  const mimeType =
+  const renderMimeType =
     trimmedArtwork.mimeType.trim() !== ''
       ? trimmedArtwork.mimeType
       : getMimeTypeForDataUrl(undefined, input.artworkFileName);
+  const originalMimeType =
+    trimmedArtwork.originalMimeType.trim() !== ''
+      ? trimmedArtwork.originalMimeType
+      : renderMimeType;
   const base64 = trimmedArtwork.buffer.toString('base64');
-  const imagePreviewUrl = `data:${mimeType};base64,${base64}`;
+  const imagePreviewUrl = `data:${renderMimeType};base64,${base64}`;
 
   const safeFileName =
     input.artworkFileName.trim().length > 0
@@ -86,7 +92,9 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
   });
 
   return {
-    sourceMimeType: mimeType,
+    originalMimeType,
+    renderMimeType,
+    sourceMimeType: originalMimeType,
     workbenchState,
   };
 }

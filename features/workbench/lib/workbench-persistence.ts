@@ -17,7 +17,8 @@ import {
 export const MAGIC_ITEM_WORKBENCH_STORAGE_KEY =
   'item-card-workbench:v1' as const;
 
-export const WORKBENCH_PERSISTENCE_VERSION = 7 as const;
+export const WORKBENCH_PERSISTENCE_VERSION = 8 as const;
+export const WORKBENCH_PERSISTENCE_VERSION_V7 = 7 as const;
 
 const LEGACY_PERSISTENCE_VERSIONS = [1, 2, 3, 5, 6] as const;
 
@@ -109,6 +110,11 @@ export type ParsedWorkbenchStorage =
     }
   | {
       kind: 'v7';
+      state: MagicItemWorkbenchState;
+      assetKey: string | null;
+    }
+  | {
+      kind: 'v8';
       state: MagicItemWorkbenchState;
       assetKey: string | null;
     }
@@ -281,15 +287,38 @@ export function projectPersistedWorkbenchState(
   };
 }
 
+export function encodeWorkbenchEnvelope(
+  state: MagicItemWorkbenchState,
+  assetKey: string | null,
+  version: 7 | 8,
+): string {
+  return JSON.stringify({
+    version,
+    state: projectPersistedWorkbenchState(state),
+    assetKey,
+  });
+}
+
 export function encodeWorkbenchEnvelopeV7(
   state: MagicItemWorkbenchState,
   assetKey: string | null,
 ): string {
-  return JSON.stringify({
-    version: WORKBENCH_PERSISTENCE_VERSION,
-    state: projectPersistedWorkbenchState(state),
+  return encodeWorkbenchEnvelope(
+    state,
     assetKey,
-  });
+    WORKBENCH_PERSISTENCE_VERSION_V7,
+  );
+}
+
+export function encodeWorkbenchEnvelopeV8(
+  state: MagicItemWorkbenchState,
+  assetKey: string | null,
+): string {
+  return encodeWorkbenchEnvelope(
+    state,
+    assetKey,
+    WORKBENCH_PERSISTENCE_VERSION,
+  );
 }
 
 export function parseWorkbenchStorageJson(raw: string): ParsedWorkbenchStorage {
@@ -312,7 +341,10 @@ export function parseWorkbenchStorageJson(raw: string): ParsedWorkbenchStorage {
   const version = record.version;
   const read = readPersistedFields(record.state);
 
-  if (version === WORKBENCH_PERSISTENCE_VERSION) {
+  if (
+    version === WORKBENCH_PERSISTENCE_VERSION ||
+    version === WORKBENCH_PERSISTENCE_VERSION_V7
+  ) {
     const assetKey = record.assetKey;
     const normalizedAssetKey =
       assetKey === null
@@ -328,7 +360,7 @@ export function parseWorkbenchStorageJson(raw: string): ParsedWorkbenchStorage {
       };
     }
     return {
-      kind: 'v7',
+      kind: version === WORKBENCH_PERSISTENCE_VERSION ? 'v8' : 'v7',
       assetKey: normalizedAssetKey,
       state: normalizeParsedWorkbenchFields(read.fields, version, false),
     };

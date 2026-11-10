@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
+import { artworkLimitHttpResponse } from '@/lib/artwork-limit-error';
 import { serverLogger } from '@/lib/server-logger';
 
 import { getConvexDeploymentUrl } from './get-convex-deployment-url';
@@ -66,7 +67,11 @@ export async function handleRenderCardRoute(
       item: parsed.item,
       style,
     });
-  } catch {
+  } catch (error) {
+    const limit = artworkLimitHttpResponse(error);
+    if (limit) {
+      return NextResponse.json(limit.body, { status: limit.status });
+    }
     return NextResponse.json(
       { error: 'artwork_processing_failed' },
       { status: 400 },
@@ -107,7 +112,7 @@ export async function handleRenderCardRoute(
           exportFormat: format,
           exportPixelRatio: pixelRatio,
           sourceArtworkBuffer: parsed.artworkBuffer,
-          sourceMimeType: mapped.sourceMimeType,
+          sourceMimeType: mapped.originalMimeType,
           workbenchState: mapped.workbenchState,
         });
       } catch (error) {
@@ -120,6 +125,10 @@ export async function handleRenderCardRoute(
 
     return response;
   } catch (error) {
+    const limit = artworkLimitHttpResponse(error);
+    if (limit) {
+      return NextResponse.json(limit.body, { status: limit.status });
+    }
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       { error: 'render_failed', message },
