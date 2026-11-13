@@ -31,6 +31,8 @@ import {
 import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
+  withArtworkChoice,
+  withItemDetails,
 } from './lib/workbench-options';
 import { readBlobAsDataUrl } from './lib/workbench-persistence';
 import {
@@ -162,24 +164,16 @@ export function ItemCardWorkbench({
     let cancelled = false;
     if (watch.kind === 'clear') {
       setArtworkLogical(null);
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      }));
-      session.commitClear({
-        ...previewStateRef.current,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      });
+      setWorkbenchState((previousState) =>
+        withArtworkChoice(previousState, null),
+      );
+      session.commitClear(previewStateRef.current);
     } else if (watch.kind === 'prepare' && imageFile) {
       const selectedFile = imageFile;
       setArtworkLogical(null);
-      setWorkbenchState((previousState) => ({
-        ...previousState,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      }));
+      setWorkbenchState((previousState) =>
+        withArtworkChoice(previousState, null),
+      );
       void artworkReader.current
         .submit(selectedFile, () => cancelled)
         .then(async (prepared) => {
@@ -203,12 +197,13 @@ export function ItemCardWorkbench({
             width: prepared.crop.width,
             height: prepared.crop.height,
           });
-          setWorkbenchState((previousState) => ({
-            ...previousState,
-            imageFileName: selectedFile.name,
-            imagePreviewUrl: previewUrl,
-            resolvedImageAspectRatio: prepared.aspectRatio,
-          }));
+          setWorkbenchState((previousState) =>
+            withArtworkChoice(previousState, {
+              imageFileName: selectedFile.name,
+              imagePreviewUrl: previewUrl,
+              resolvedImageAspectRatio: prepared.aspectRatio,
+            }),
+          );
         })
         .catch((error: unknown) => {
           if (cancelled || isAbortError(error)) {
@@ -224,10 +219,10 @@ export function ItemCardWorkbench({
   }, [imageFile, persistencePhase]);
 
   const { imageFile: _imageFile, ...formValuesForPreview } = formValues;
-  const previewState: MagicItemWorkbenchState = {
-    ...workbenchState,
-    ...formValuesForPreview,
-  };
+  const previewState: MagicItemWorkbenchState = withItemDetails(
+    workbenchState,
+    formValuesForPreview,
+  );
 
   previewStateRef.current = previewState;
 

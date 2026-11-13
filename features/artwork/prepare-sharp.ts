@@ -20,6 +20,7 @@ export interface TrimTransparentBoundsResult {
   originalMimeType: string;
   width: number;
   height: number;
+  aspectRatio: number;
 }
 
 function getMimeTypeForFormat(format: string | undefined): string {
@@ -195,6 +196,7 @@ export async function prepareArtworkFromBuffer(
     originalMimeType,
     width: prepared.displayWidth,
     height: prepared.displayHeight,
+    aspectRatio: prepared.aspectRatio,
   };
 }
 

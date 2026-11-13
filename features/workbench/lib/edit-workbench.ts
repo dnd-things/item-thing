@@ -10,7 +10,10 @@ import {
   getImageFramePresetFieldValues,
   type ImageFramePresetValue,
 } from './image-frame-preset';
-import type { MagicItemWorkbenchState } from './workbench-options';
+import {
+  type MagicItemWorkbenchState,
+  withItemDetails,
+} from './workbench-options';
 
 export type WorkbenchEditHandler = (edit: WorkbenchEdit) => void;
 
@@ -24,20 +27,6 @@ export type WorkbenchEdit =
   | { kind: 'card-width-px'; value: number }
   | { kind: 'artwork-custom-color'; value: string }
   | { kind: 'image-frame'; value: ImageFramePresetValue };
-
-function mergeRenderedFormFields(
-  previous: MagicItemWorkbenchState,
-  rendered: MagicItemWorkbenchState,
-): MagicItemWorkbenchState {
-  return {
-    ...previous,
-    itemName: rendered.itemName,
-    classificationAndRarity: rendered.classificationAndRarity,
-    requiresAttunement: rendered.requiresAttunement,
-    flavorDescription: rendered.flavorDescription,
-    mechanicalDescription: rendered.mechanicalDescription,
-  };
-}
 
 function applyImageRightVerticalPositionForFlow(
   state: MagicItemWorkbenchState,
@@ -115,7 +104,7 @@ export function editWorkbench(
   rendered: MagicItemWorkbenchState,
   edit: WorkbenchEdit,
 ): MagicItemWorkbenchState {
-  const base = mergeRenderedFormFields(previous, rendered);
+  const base = withItemDetails(previous, rendered);
   let next: MagicItemWorkbenchState;
 
   switch (edit.kind) {

@@ -21,6 +21,21 @@ export type MagicItemWorkbenchState = DurableCardState & {
   imagePreviewUrl: string;
 };
 
+export type WorkbenchItemDetails = Pick<
+  MagicItemWorkbenchState,
+  | 'itemName'
+  | 'classificationAndRarity'
+  | 'requiresAttunement'
+  | 'flavorDescription'
+  | 'mechanicalDescription'
+>;
+
+export type WorkbenchArtworkChoice = {
+  imageFileName: string;
+  imagePreviewUrl: string;
+  resolvedImageAspectRatio: number;
+};
+
 export type WorkbenchFieldSetter = <TKey extends keyof MagicItemWorkbenchState>(
   fieldName: TKey,
   fieldValue: MagicItemWorkbenchState[TKey],
@@ -107,4 +122,37 @@ export function getOptionLabel<TValue extends string>(
   value: TValue,
 ): string {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+export function withItemDetails(
+  state: MagicItemWorkbenchState,
+  details: WorkbenchItemDetails,
+): MagicItemWorkbenchState {
+  return {
+    ...state,
+    itemName: details.itemName,
+    classificationAndRarity: details.classificationAndRarity,
+    requiresAttunement: details.requiresAttunement,
+    flavorDescription: details.flavorDescription,
+    mechanicalDescription: details.mechanicalDescription,
+  };
+}
+
+export function withArtworkChoice(
+  state: MagicItemWorkbenchState,
+  choice: WorkbenchArtworkChoice | null,
+): MagicItemWorkbenchState {
+  if (choice === null) {
+    return {
+      ...state,
+      imageFileName: '',
+      imagePreviewUrl: '',
+    };
+  }
+  return {
+    ...state,
+    imageFileName: choice.imageFileName,
+    imagePreviewUrl: choice.imagePreviewUrl,
+    resolvedImageAspectRatio: choice.resolvedImageAspectRatio,
+  };
 }

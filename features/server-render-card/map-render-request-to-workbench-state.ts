@@ -1,8 +1,12 @@
 import { prepareArtworkFromBuffer } from '@/features/artwork/prepare-sharp';
 import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
 import { normalizeWorkbenchStateForStyle } from '@/features/workbench/lib/card-style-capability-registry';
-import type { MagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
-import { defaultMagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
+import {
+  defaultMagicItemWorkbenchState,
+  type MagicItemWorkbenchState,
+  withArtworkChoice,
+  withItemDetails,
+} from '@/features/workbench/lib/workbench-options';
 
 import type {
   RenderCardItemJson,
@@ -57,9 +61,6 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
   input: MapRenderRequestToWorkbenchStateInput<TStyle>,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {
   const trimmedArtwork = await prepareArtworkFromBuffer(input.artworkBuffer);
-  const widthPx = trimmedArtwork.width;
-  const heightPx = trimmedArtwork.height;
-  const resolvedImageAspectRatio = heightPx > 0 ? widthPx / heightPx : 1;
 
   const renderMimeType =
     trimmedArtwork.mimeType.trim() !== ''
@@ -83,17 +84,22 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
     ...cardFields
   } = input.fields;
   const workbenchState = normalizeWorkbenchStateForStyle({
-    ...defaultMagicItemWorkbenchState,
+    ...withArtworkChoice(
+      withItemDetails(defaultMagicItemWorkbenchState, {
+        itemName: input.item.itemName,
+        classificationAndRarity: input.item.classificationAndRarity,
+        requiresAttunement: input.item.requiresAttunement,
+        flavorDescription: input.item.flavorDescription,
+        mechanicalDescription: input.item.mechanicalDescription,
+      }),
+      {
+        imageFileName: safeFileName,
+        imagePreviewUrl,
+        resolvedImageAspectRatio: trimmedArtwork.aspectRatio,
+      },
+    ),
     ...cardFields,
     cardStyle: input.style,
-    resolvedImageAspectRatio,
-    imageFileName: safeFileName,
-    imagePreviewUrl,
-    itemName: input.item.itemName,
-    classificationAndRarity: input.item.classificationAndRarity,
-    requiresAttunement: input.item.requiresAttunement,
-    flavorDescription: input.item.flavorDescription,
-    mechanicalDescription: input.item.mechanicalDescription,
   });
 
   return {
