@@ -22,7 +22,6 @@ import {
   cardWidthPxStep,
   clampImageBorderWidthPx,
   getCardWidthPxRange,
-  getDefaultCardWidthPx,
   imageBorderRadiusRange,
   imageBorderWidthPxRange,
   imageRightVerticalPositionRange,
@@ -34,6 +33,7 @@ import {
   getWorkbenchControlsForPlacement,
   type WorkbenchControlId,
 } from '../lib/card-style-capability-registry';
+import type { WorkbenchEditHandler } from '../lib/edit-workbench';
 import type { ImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardBorderRadiusOptions,
@@ -55,7 +55,7 @@ import { ToggleField, ToolbarSelectField } from './workbench-field-controls';
 interface WorkbenchSettingsDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  setWorkbenchField: WorkbenchFieldSetter;
+  onWorkbenchEdit: WorkbenchEditHandler;
   workbenchState: MagicItemWorkbenchState;
   artworkColorControlDisabled: boolean;
   artworkColorControlDisabledReason?: string | undefined;
@@ -66,7 +66,7 @@ interface WorkbenchSettingsDrawerProps {
 export function WorkbenchSettingsDrawer({
   open,
   onOpenChange,
-  setWorkbenchField,
+  onWorkbenchEdit,
   workbenchState,
   artworkColorControlDisabled,
   artworkColorControlDisabledReason,
@@ -88,6 +88,10 @@ export function WorkbenchSettingsDrawer({
     imageRightVerticalPositionBounds?.max ??
     imageRightVerticalPositionRange.max;
 
+  const setWorkbenchField: WorkbenchFieldSetter = (fieldName, fieldValue) => {
+    onWorkbenchEdit({ kind: 'field', key: fieldName, value: fieldValue });
+  };
+
   function renderAdvancedControl(controlId: WorkbenchControlId) {
     switch (controlId) {
       case 'cardBorderRadius':
@@ -108,11 +112,7 @@ export function WorkbenchSettingsDrawer({
             options={cardLayoutOptions}
             value={workbenchState.cardLayout}
             onValueChange={(value) => {
-              setWorkbenchField('cardLayout', value);
-              setWorkbenchField('cardWidthPx', getDefaultCardWidthPx(value));
-              if (value === 'vertical') {
-                setWorkbenchField('sideLayoutFlow', 'fixed');
-              }
+              onWorkbenchEdit({ kind: 'field', key: 'cardLayout', value });
             }}
           />
         );
@@ -124,7 +124,7 @@ export function WorkbenchSettingsDrawer({
             value={workbenchState.sideLayoutFlow}
             disabled={isTopImageLayout}
             onValueChange={(value) => {
-              setWorkbenchField('sideLayoutFlow', value);
+              onWorkbenchEdit({ kind: 'field', key: 'sideLayoutFlow', value });
             }}
           />
         );
@@ -239,13 +239,11 @@ export function WorkbenchSettingsDrawer({
                 pressed={workbenchState.cardWidthAuto}
                 variant="outline"
                 onPressedChange={(pressed) => {
-                  setWorkbenchField('cardWidthAuto', pressed);
-                  if (pressed) {
-                    setWorkbenchField(
-                      'cardWidthPx',
-                      getDefaultCardWidthPx(workbenchState.cardLayout),
-                    );
-                  }
+                  onWorkbenchEdit({
+                    kind: 'field',
+                    key: 'cardWidthAuto',
+                    value: pressed,
+                  });
                 }}
               >
                 Auto
@@ -264,8 +262,10 @@ export function WorkbenchSettingsDrawer({
                       ? nextValue[0]
                       : nextValue;
                     if (typeof nextCardWidth === 'number') {
-                      setWorkbenchField('cardWidthAuto', false);
-                      setWorkbenchField('cardWidthPx', nextCardWidth);
+                      onWorkbenchEdit({
+                        kind: 'card-width-px',
+                        value: nextCardWidth,
+                      });
                     }
                   }}
                 />
@@ -445,11 +445,14 @@ export function WorkbenchSettingsDrawer({
             source={workbenchState.artworkColorSource}
             swatches={artworkColorSwatches}
             onCustomColorChange={(value) => {
-              setWorkbenchField('artworkCustomColor', value);
-              setWorkbenchField('artworkColorSource', 'custom');
+              onWorkbenchEdit({ kind: 'artwork-custom-color', value });
             }}
             onSourceChange={(value) => {
-              setWorkbenchField('artworkColorSource', value);
+              onWorkbenchEdit({
+                kind: 'field',
+                key: 'artworkColorSource',
+                value,
+              });
             }}
           />
         );

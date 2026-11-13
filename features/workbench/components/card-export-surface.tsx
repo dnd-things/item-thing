@@ -46,9 +46,6 @@ export function CardExportSurface({
           {...(exportGeneration !== undefined ? { exportGeneration } : {})}
           cardWidthAuto={false}
           cardWidthPx={width}
-          cardPreviewSurfaceHeightPx={
-            prepared.captured.cardPreviewSurfaceHeightPx
-          }
           {...(bundle
             ? {
                 artworkLogicalWidth: bundle.crop.width,

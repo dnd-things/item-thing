@@ -309,6 +309,7 @@ test('layout effect still calls both vertical position state setters', () => {
       '}, [cardRef, setWorkbenchField, workbenchStateTriggerKey]);',
     ),
   );
-  assert.match(effectBody, /setMeasuredCardSurfaceHeightPx\(/);
+  assert.doesNotMatch(effectBody, /setMeasuredCardSurfaceHeightPx\(/);
   assert.match(effectBody, /setVerticalPositionMax\(/);
+  assert.match(effectBody, /setWorkbenchField\('imageRightVerticalPosition'/);
 });

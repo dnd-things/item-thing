@@ -1,65 +1,21 @@
-import type { ArtworkColorSource } from './artwork-color-source';
+import type { DurableCardState } from '@/lib/durable-card-state';
 
-export type CardLayoutOption = 'vertical' | 'image-right';
+export type CardLayoutOption = DurableCardState['cardLayout'];
 
-export type CardStyleOption = 'print' | 'minimal' | 'classic';
+export type CardStyleOption = DurableCardState['cardStyle'];
 
-export type CardBorderRadiusOption = 'none' | 'small' | 'large';
-export type SideLayoutFlowOption = 'fixed' | 'fluid';
+export type CardBorderRadiusOption = DurableCardState['cardBorderRadius'];
+export type SideLayoutFlowOption = DurableCardState['sideLayoutFlow'];
 
-export type ImageAspectRatioOption =
-  | 'based-on-image'
-  | 'square'
-  | 'portrait'
-  | 'portrait-3-4'
-  | 'portrait-2-3'
-  | 'portrait-9-16'
-  | 'landscape'
-  | 'widescreen';
+export type ImageAspectRatioOption = DurableCardState['imageAspectRatio'];
 
-export interface MagicItemCardRendererProps {
-  cardLayout: CardLayoutOption;
-  sideLayoutFlow: SideLayoutFlowOption;
-  cardStyle: CardStyleOption;
-  cardBorderRadius: CardBorderRadiusOption;
-  cardWidthAuto: boolean;
-  cardWidthPx: number;
-  imageSize: number;
-  imageAspectRatio: ImageAspectRatioOption;
-  resolvedImageAspectRatio: number;
-  imageBorderRadius: number;
-  /** 0 = no border; otherwise CSS border width in pixels (soft slate ring + shadow). */
-  imageBorderWidthPx: number;
-  /**
-   * Image-right vertical offset; workbench maps 0–100 linearly across min…max internal integers.
-   * **Fluid**: margin-top = `value / 2` rem. **Fixed**: **50 → 0**, **0 / 100 → ∓X rem** where X scales
-   * with measured preview card height (see `IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX`).
-   * Bounds: `getImageRightVerticalPositionMin`; fluid max from preview height, fixed max
-   * `imageRightVerticalPositionRange.max`.
-   */
-  imageRightVerticalPosition: number;
-  /**
-   * Clockwise rotation in degrees. Workbench uses 0–360 in 15° steps. Baked into the preview blob
-   * with flips so `shape-outside: url()` and `<Image src>` stay identical.
-   */
-  imageRotationDegrees: number;
-  /** When true, artwork is mirrored for display; use flipped bitmap for `shape-outside: url()` alignment. */
-  imageFlipHorizontal: boolean;
-  imageFlipVertical: boolean;
-  artworkColorSource: ArtworkColorSource;
-  artworkCustomColor: string;
-  imageFileName: string;
+export interface MagicItemCardRendererProps extends DurableCardState {
   imagePreviewUrl: string;
   artworkDrawPolicy?: 'display' | 'export';
   artworkLogicalWidth?: number;
   artworkLogicalHeight?: number;
   preparedArtworkTransformed?: boolean;
   exportGeneration?: number;
-  itemName: string;
-  classificationAndRarity: string;
-  requiresAttunement: boolean;
-  flavorDescription: string;
-  mechanicalDescription: string;
 }
 
 export interface CardImageDimensions {
@@ -179,50 +135,6 @@ export function getImageRightVerticalPositionMin(
 
 /** Default internal position when entering image-right + fluid (0rem margin-top). */
 export const imageRightVerticalPositionDefaultForFluidSideLayout = 0 as const;
-
-export function computeImageRightFixedVerticalMarginHalfRangeRem(
-  cardPreviewSurfaceHeightPx: number,
-  boundsMin: number,
-  boundsMax: number,
-): number {
-  if (cardPreviewSurfaceHeightPx > 0) {
-    return (
-      (cardPreviewSurfaceHeightPx /
-        IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX) *
-      IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_HALF_RANGE_REM_AT_REFERENCE
-    );
-  }
-  const span = boundsMax - boundsMin;
-  return span / 4;
-}
-
-/**
- * Image-right artwork `margin-top` in rem. **Fluid**: `position / 2`. **Fixed**: slider 50% → **0**;
- * 0% / 100% → **∓X** with X from `computeImageRightFixedVerticalMarginHalfRangeRem` when
- * `cardPreviewSurfaceHeightPx` is known, else static fallback `(boundsMax - boundsMin) / 4`.
- */
-export function getImageRightImageMarginTopRem(
-  position: number,
-  sideLayoutFlow: SideLayoutFlowOption,
-  classificationAndRarity: string,
-  cardPreviewSurfaceHeightPx?: number,
-): number {
-  if (sideLayoutFlow === 'fluid') {
-    return position / 2;
-  }
-  const boundsMin = getImageRightVerticalPositionMin(classificationAndRarity);
-  const boundsMax = imageRightVerticalPositionRange.max;
-  const span = boundsMax - boundsMin;
-  if (span <= 0) {
-    return 0;
-  }
-  const halfRangeRem = computeImageRightFixedVerticalMarginHalfRangeRem(
-    cardPreviewSurfaceHeightPx ?? 0,
-    boundsMin,
-    boundsMax,
-  );
-  return ((2 * (position - boundsMin)) / span - 1) * halfRangeRem;
-}
 
 export function mapImageRightVerticalPositionToUserPercent(
   position: number,

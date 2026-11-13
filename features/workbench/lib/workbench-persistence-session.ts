@@ -1,23 +1,14 @@
 'use client';
 
-import {
-  artworkLimitCopy,
-  dataUrlEncodedByteLength,
-  fitsDisplayBudget,
-  SOURCE_MAX_BYTES,
-} from './artwork-geometry';
+import { artworkLimitCopy, fitsDisplayBudget } from './artwork-geometry';
 import {
   type ArtworkBundle,
   bundleFromLegacyBlob,
   isPreparedFile,
-  legacyBlobNeedsResize,
   markPreparedFile,
   readArtworkBundle,
 } from './artwork-source';
-import {
-  createBoundedPreviewBlob,
-  measureImageBlob,
-} from './read-image-preview-data';
+import { measureImageBlob } from './read-image-preview-data';
 import {
   createWorkbenchArtworkStore,
   type WorkbenchArtworkStore,
@@ -30,10 +21,8 @@ import {
   type MagicItemWorkbenchState,
 } from './workbench-options';
 import {
-  createBrowserLegacyWorkbenchStorage,
   decodeImageDataUrl,
   encodeWorkbenchEnvelopeV8,
-  type LegacyWorkbenchStorage,
   parseImageDataUrl,
   parseWorkbenchStorageJson,
   peekWorkbenchAssetKey,
@@ -56,6 +45,7 @@ export const workbenchPersistenceCopy = {
     'Browser storage is full. You can still edit and export this tab. Reload to try again. Unsaved edits are lost on reload.',
   conflict:
     'This tab is out of date. Reload to keep saving. You can still export this tab. Unsaved edits are lost on reload.',
+  reset: 'An older saved card was cleared. You are editing a new card.',
   corrupt:
     'Saved artwork cannot be read. Reload, or replace the image, to save again. You can still export this tab.',
   saveFailed:
@@ -98,18 +88,12 @@ export interface AcceptedPreview {
 
 export interface WorkbenchPersistenceDeps {
   store: WorkbenchArtworkStore;
-  legacy: LegacyWorkbenchStorage;
   convertPreviewToBlob: (dataUrl: string) => Promise<Blob>;
   blobToDataUrl: (blob: Blob) => Promise<string>;
   decodeImageDataUrl: (dataUrl: string) => Promise<boolean>;
   measureImageDataUrl?: (
     dataUrl: string,
   ) => Promise<{ width: number; height: number } | null>;
-  createBoundedPreview?: (
-    blob: Blob,
-    width: number,
-    height: number,
-  ) => Promise<Blob>;
   clock?: WorkbenchClock;
   createAssetKey?: () => string;
   warn?: (message: string) => void;
@@ -454,6 +438,10 @@ export function createWorkbenchPersistenceSession(
         return;
       }
       lastCommittedJson = json;
+      if (mode === 'autosave' && notice !== null) {
+        notice = null;
+        emit();
+      }
       const current = latestState;
       if (
         current &&
@@ -472,64 +460,6 @@ export function createWorkbenchPersistenceSession(
     return await measureImageBlob(previewDataUrlToBlob(dataUrl));
   };
 
-  const resizeLegacyPreview = async (
-    blob: Blob,
-    width: number,
-    height: number,
-  ) => {
-    if (!legacyBlobNeedsResize(width, height)) {
-      return blob;
-    }
-    if (!deps.createBoundedPreview) {
-      throw new Error(artworkLimitCopy.displayEncode);
-    }
-    return await deps.createBoundedPreview(blob, width, height);
-  };
-
-  const reportLimit = (
-    generation: number,
-    state: MagicItemWorkbenchState,
-    retainedAssetKey: string | null,
-  ) => {
-    if (!isCurrent(generation) || phase === 'settled') {
-      return;
-    }
-    mode = 'recover';
-    notice = workbenchPersistenceCopy.imageTooLarge;
-    recoveryNoticeBase = workbenchPersistenceCopy.imageTooLarge;
-    rememberWarning();
-    currentBundle = null;
-    publish(
-      generation,
-      withoutPreview(state),
-      undefined,
-      null,
-      retainedAssetKey,
-    );
-  };
-
-  const failDisplayPreview = (
-    generation: number,
-    state: MagicItemWorkbenchState,
-    retainedAssetKey: string | null,
-  ) => {
-    if (!isCurrent(generation) || phase === 'settled') {
-      return;
-    }
-    mode = 'recover';
-    notice = artworkLimitCopy.displayEncode;
-    recoveryNoticeBase = artworkLimitCopy.displayEncode;
-    rememberWarning();
-    currentBundle = null;
-    publish(
-      generation,
-      withoutPreview(state),
-      undefined,
-      null,
-      retainedAssetKey,
-    );
-  };
-
   const fileFromArtworkSource = (
     bundle: ArtworkBundle,
     fileName: string,
@@ -540,179 +470,6 @@ export function createWorkbenchPersistenceSession(
         type: bundle.source.type || fallbackMime,
       }),
     );
-  };
-
-  const commitBundle = async (input: {
-    generation: number;
-    state: MagicItemWorkbenchState;
-    file: File | undefined;
-    bundle: ArtworkBundle | null;
-    assetKey: string | null;
-    previousAssetKey: string | null;
-    legacyRaw?: string;
-  }) => {
-    if (!isCurrent(input.generation)) {
-      return;
-    }
-    const json = encodeWorkbenchEnvelopeV8(input.state, input.assetKey);
-    const result = await deps.store.commit({
-      kind: 'replace',
-      json,
-      assetKey: input.assetKey,
-      previousAssetKey: input.previousAssetKey,
-      ...(input.bundle ? { newBlob: input.bundle } : {}),
-    });
-    if (!result.ok) {
-      if (!isCurrent(input.generation)) {
-        return;
-      }
-      mode = 'frozen';
-      notice = messageFor(result.reason);
-      rememberWarning();
-      currentBundle = input.bundle;
-      publish(input.generation, input.state, input.file, null, null);
-      return;
-    }
-    const publishCommitted = () => {
-      if (!isCurrent(input.generation)) {
-        durableAssetKey = input.assetKey;
-        lastCommittedJson = json;
-        return;
-      }
-      mode = 'autosave';
-      currentBundle = input.bundle;
-      publish(input.generation, input.state, input.file, json, input.assetKey);
-    };
-    if (input.legacyRaw !== undefined) {
-      try {
-        deps.legacy.removeIfUnchanged(input.legacyRaw);
-      } catch {
-        publishCommitted();
-        return;
-      }
-    }
-    publishCommitted();
-  };
-
-  const adoptProcessedBlob = async (
-    generation: number,
-    state: MagicItemWorkbenchState,
-    dataUrl: string,
-    blob: Blob,
-    mimeType: string,
-    retainedAssetKey: string | null,
-    legacyRaw?: string,
-  ) => {
-    const retainedKey = legacyRaw === undefined ? retainedAssetKey : null;
-    const recoverDisplay = () => {
-      failDisplayPreview(generation, state, retainedKey);
-    };
-    if (blob.size > 32 * 1024 * 1024) {
-      reportLimit(generation, state, retainedKey);
-      return;
-    }
-    let measured: { width: number; height: number } | null = null;
-    try {
-      measured = await measureImage(dataUrl);
-    } catch {
-      measured = null;
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    if (!measured) {
-      recoverDisplay();
-      return;
-    }
-    if (
-      measured.width > 4096 ||
-      measured.height > 4096 ||
-      measured.width * measured.height > 16_777_216
-    ) {
-      reportLimit(generation, state, retainedKey);
-      return;
-    }
-    let preview = blob;
-    try {
-      preview = await resizeLegacyPreview(
-        blob,
-        measured.width,
-        measured.height,
-      );
-    } catch {
-      if (!isCurrent(generation)) {
-        return;
-      }
-      recoverDisplay();
-      return;
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    let bundle: ArtworkBundle;
-    try {
-      bundle = bundleFromLegacyBlob(
-        blob,
-        measured.width,
-        measured.height,
-        preview,
-      );
-    } catch {
-      reportLimit(generation, state, retainedKey);
-      return;
-    }
-    let previewUrl = dataUrl;
-    if (preview !== blob) {
-      try {
-        previewUrl = await deps.blobToDataUrl(preview);
-      } catch {
-        if (!isCurrent(generation)) {
-          return;
-        }
-        recoverDisplay();
-        return;
-      }
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    if (preview !== blob) {
-      let decodedPreview = false;
-      try {
-        decodedPreview = await deps.decodeImageDataUrl(previewUrl);
-      } catch {
-        decodedPreview = false;
-      }
-      if (!isCurrent(generation)) {
-        return;
-      }
-      if (!decodedPreview) {
-        recoverDisplay();
-        return;
-      }
-    }
-    const file = fileFromArtworkSource(bundle, state.imageFileName, mimeType);
-    const nextState = { ...state, imagePreviewUrl: previewUrl };
-    if (legacyRaw !== undefined) {
-      await commitBundle({
-        generation,
-        state: nextState,
-        file,
-        bundle,
-        assetKey: createAssetKey(),
-        previousAssetKey: null,
-        legacyRaw,
-      });
-      return;
-    }
-    await commitBundle({
-      generation,
-      state: nextState,
-      file,
-      bundle,
-      assetKey: retainedAssetKey,
-      previousAssetKey: null,
-    });
   };
 
   const hydrateBundle = async (
@@ -792,76 +549,13 @@ export function createWorkbenchPersistenceSession(
     );
   };
 
-  const migrateLegacy = async (
-    generation: number,
-    state: MagicItemWorkbenchState,
-    raw: string,
-  ) => {
-    if (state.imagePreviewUrl.trim() === '') {
-      await commitBundle({
-        generation,
-        state,
-        file: undefined,
-        bundle: null,
-        assetKey: null,
-        previousAssetKey: null,
-        legacyRaw: raw,
-      });
-      return;
-    }
-    const encodedBytes = dataUrlEncodedByteLength(state.imagePreviewUrl);
-    if (encodedBytes !== null && encodedBytes > SOURCE_MAX_BYTES) {
-      reportLimit(generation, state, null);
-      return;
-    }
-    const image = parseImageDataUrl(state.imagePreviewUrl);
-    if (!image.ok) {
-      degrade(generation, state);
-      return;
-    }
-    if (image.bytes.byteLength > SOURCE_MAX_BYTES) {
-      reportLimit(generation, state, null);
-      return;
-    }
-    let decoded = false;
-    try {
-      decoded = await deps.decodeImageDataUrl(state.imagePreviewUrl);
-    } catch {
-      decoded = false;
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    if (!decoded) {
-      degrade(generation, state);
-      return;
-    }
-    let blob: Blob;
-    try {
-      blob = previewDataUrlToBlob(state.imagePreviewUrl);
-    } catch {
-      degrade(generation, state);
-      return;
-    }
-    await adoptProcessedBlob(
-      generation,
-      state,
-      state.imagePreviewUrl,
-      blob,
-      image.mimeType,
-      null,
-      raw,
-    );
-  };
-
   const hydrateStored = async (
     generation: number,
     record: WorkbenchStoredRecord,
+    seen: Set<string> = new Set(),
   ) => {
     const parsed = parseWorkbenchStorageJson(record.json);
-    if (!isCurrent(generation)) {
-      return;
-    }
+    if (!isCurrent(generation)) return;
     if (parsed.kind === 'v8') {
       await hydrateBundle(
         generation,
@@ -872,104 +566,52 @@ export function createWorkbenchPersistenceSession(
       );
       return;
     }
-    if (parsed.kind !== 'v7') {
-      degrade(
-        generation,
-        parsed.kind === 'malformed'
-          ? defaultMagicItemWorkbenchState
-          : parsed.state,
-        peekWorkbenchAssetKey(record.json) ?? null,
-      );
+    if (seen.has(record.json)) {
+      failClosed(generation, 'conflict');
       return;
     }
-    if (parsed.assetKey === null) {
-      currentBundle = null;
-      mode = 'autosave';
-      publish(generation, parsed.state, undefined, record.json, null);
-      return;
-    }
-    if (!(record.blob instanceof Blob) || record.blob.size === 0) {
-      degrade(generation, parsed.state, parsed.assetKey);
-      return;
-    }
-    if (record.blob.size > SOURCE_MAX_BYTES) {
-      reportLimit(generation, parsed.state, parsed.assetKey);
-      return;
-    }
-    let dataUrl: string;
-    try {
-      dataUrl = await deps.blobToDataUrl(record.blob);
-    } catch {
-      if (isCurrent(generation)) {
-        degrade(generation, parsed.state, parsed.assetKey);
+    seen.add(record.json);
+    const result = await deps.store.commit({
+      kind: 'reset',
+      expectedJson: record.json,
+      json: encodeWorkbenchEnvelopeV8(defaultMagicItemWorkbenchState, null),
+      previousAssetKey: peekWorkbenchAssetKey(record.json) ?? null,
+    });
+    if (!isCurrent(generation)) return;
+    if (!result.ok) {
+      if (result.reason === 'conflict') {
+        const reloaded = await deps.store.load();
+        if (!isCurrent(generation)) return;
+        if (!reloaded.ok) {
+          failClosed(generation, reloaded.reason);
+          return;
+        }
+        if (reloaded.record) {
+          await hydrateStored(generation, reloaded.record, seen);
+          return;
+        }
+        mode = 'autosave';
+        publish(
+          generation,
+          defaultMagicItemWorkbenchState,
+          undefined,
+          null,
+          null,
+        );
+        return;
       }
+      failClosed(generation, result.reason);
       return;
     }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    const image = parseImageDataUrl(dataUrl);
-    if (!image.ok) {
-      degrade(generation, parsed.state, parsed.assetKey);
-      return;
-    }
-    let decoded = false;
-    try {
-      decoded = await deps.decodeImageDataUrl(dataUrl);
-    } catch {
-      decoded = false;
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    if (!decoded) {
-      degrade(generation, parsed.state, parsed.assetKey);
-      return;
-    }
-    await adoptProcessedBlob(
+    mode = 'autosave';
+    notice = workbenchPersistenceCopy.reset;
+    publish(
       generation,
-      parsed.state,
-      dataUrl,
-      record.blob,
-      record.blob.type || image.mimeType,
-      parsed.assetKey,
+      defaultMagicItemWorkbenchState,
+      undefined,
+      encodeWorkbenchEnvelopeV8(defaultMagicItemWorkbenchState, null),
+      null,
     );
-  };
-
-  const hydrateLegacy = async (generation: number) => {
-    let raw: string | null;
-    try {
-      raw = deps.legacy.read();
-    } catch {
-      if (isCurrent(generation)) {
-        failClosed(generation, 'unavailable');
-      }
-      return;
-    }
-    if (!isCurrent(generation)) {
-      return;
-    }
-    if (raw === null) {
-      mode = 'autosave';
-      publish(
-        generation,
-        defaultMagicItemWorkbenchState,
-        undefined,
-        null,
-        null,
-      );
-      return;
-    }
-    const parsed = parseWorkbenchStorageJson(raw);
-    if (parsed.kind === 'malformed') {
-      degrade(generation, defaultMagicItemWorkbenchState);
-      return;
-    }
-    if (parsed.kind !== 'legacy') {
-      degrade(generation, parsed.state);
-      return;
-    }
-    await migrateLegacy(generation, parsed.state, raw);
   };
 
   const loadAndHydrate = async (generation: number) => {
@@ -992,7 +634,8 @@ export function createWorkbenchPersistenceSession(
       await hydrateStored(generation, loaded.record);
       return;
     }
-    await hydrateLegacy(generation);
+    mode = 'autosave';
+    publish(generation, defaultMagicItemWorkbenchState, undefined, null, null);
   };
 
   const session: WorkbenchPersistenceSession = {
@@ -1354,13 +997,11 @@ export function createBrowserWorkbenchPersistenceSession(): WorkbenchPersistence
   });
   session = createWorkbenchPersistenceSession({
     store,
-    legacy: createBrowserLegacyWorkbenchStorage(),
     convertPreviewToBlob: async (dataUrl) => previewDataUrlToBlob(dataUrl),
     blobToDataUrl: readBlobAsDataUrl,
     decodeImageDataUrl,
     measureImageDataUrl: async (dataUrl) =>
       await measureImageBlob(previewDataUrlToBlob(dataUrl)),
-    createBoundedPreview: createBoundedPreviewBlob,
     warn(message) {
       console.warn(message);
     },

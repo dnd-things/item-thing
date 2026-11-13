@@ -1,16 +1,20 @@
 'use client';
 
+import { useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   getCardImageDimensions,
   getCardSurfaceBorderRadius,
   getEffectiveImageAspectRatioForLayout,
-  getImageRightImageMarginTopRem,
   getResolvedCardWidthPx,
   isSideImageCardLayout,
   type MagicItemCardRendererProps,
   shouldStackVerticalCardMetadata,
 } from '../lib/card-renderer-options';
+import {
+  imageRightArtworkMarginTopRem,
+  measureFixedImageRightSurfaceHeightPx,
+} from '../lib/image-right-artwork-placement';
 import {
   artworkDataset,
   useFlippedImagePreviewUrl,
@@ -25,7 +29,6 @@ import { MagicItemVerticalPrintLayout } from './magic-item-vertical-print-layout
 
 export interface PrintMagicItemCardProps extends MagicItemCardRendererProps {
   className?: string;
-  cardPreviewSurfaceHeightPx?: number;
 }
 
 export function PrintMagicItemCard({
@@ -58,8 +61,15 @@ export function PrintMagicItemCard({
   requiresAttunement,
   flavorDescription,
   mechanicalDescription,
-  cardPreviewSurfaceHeightPx,
 }: PrintMagicItemCardProps) {
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const latchedWidthPxRef = useRef<number | null>(null);
+  const latchedHeightRef = useRef(0);
+  const [latchedFixedSurface, setLatchedFixedSurface] = useState<{
+    widthPx: number;
+    heightPx: number;
+  } | null>(null);
+
   const artwork = useFlippedImagePreviewUrl(
     imagePreviewUrl,
     imageRotationDegrees,
@@ -100,14 +110,54 @@ export function PrintMagicItemCard({
     imageBorderRadius,
   );
 
+  const resolvedWidthPx = getResolvedCardWidthPx(
+    cardLayout,
+    cardWidthAuto,
+    cardWidthPx,
+  );
+  const needsFixedArtworkLatch = isSideLayout && sideLayoutFlow === 'fixed';
+  const fixedLatchReady =
+    latchedFixedSurface !== null &&
+    latchedFixedSurface.widthPx === resolvedWidthPx &&
+    latchedFixedSurface.heightPx > 0;
+
+  useLayoutEffect(() => {
+    if (!needsFixedArtworkLatch) {
+      return;
+    }
+    const surface = surfaceRef.current;
+    if (!surface) {
+      return;
+    }
+    if (
+      latchedWidthPxRef.current === resolvedWidthPx &&
+      latchedHeightRef.current > 0
+    ) {
+      return;
+    }
+    const heightPx = measureFixedImageRightSurfaceHeightPx(surface);
+    latchedWidthPxRef.current = resolvedWidthPx;
+    latchedHeightRef.current = heightPx;
+    setLatchedFixedSurface({
+      widthPx: resolvedWidthPx,
+      heightPx,
+    });
+  }, [needsFixedArtworkLatch, resolvedWidthPx]);
+
   const sideImageMarginTopRem = isSideLayout
-    ? getImageRightImageMarginTopRem(
+    ? imageRightArtworkMarginTopRem({
         imageRightVerticalPosition,
         sideLayoutFlow,
         classificationAndRarity,
-        cardPreviewSurfaceHeightPx,
-      )
+        surfaceHeightPx:
+          needsFixedArtworkLatch && fixedLatchReady
+            ? latchedFixedSurface.heightPx
+            : 0,
+      })
     : 0;
+
+  const appliedSideImageMarginTopRem =
+    needsFixedArtworkLatch && !fixedLatchReady ? 0 : sideImageMarginTopRem;
 
   const slots = buildMagicItemPrintCardSlots({
     isSideLayout,
@@ -116,7 +166,7 @@ export function PrintMagicItemCard({
     cardImageDimensions,
     imageBorderWidthPx,
     imageBorderColor: artworkColor,
-    sideImageMarginTopRem,
+    sideImageMarginTopRem: appliedSideImageMarginTopRem,
     renderImageUrl,
     imageFileName,
     itemName,
@@ -136,7 +186,7 @@ export function PrintMagicItemCard({
 
   const surfaceClassName = cn(printCardClassNames.surface, className);
   const surfaceStyle = {
-    maxWidth: getResolvedCardWidthPx(cardLayout, cardWidthAuto, cardWidthPx),
+    maxWidth: resolvedWidthPx,
     ...(cardLayout === 'vertical' && { minWidth: 300 }),
     borderRadius: surfaceBorderRadius,
   };
@@ -183,7 +233,12 @@ export function PrintMagicItemCard({
   const showSideMediaColumn = !shouldUseWrappedSideLayout;
 
   return (
-    <div className={surfaceClassName} style={surfaceStyle} {...readiness}>
+    <div
+      ref={surfaceRef}
+      className={surfaceClassName}
+      style={surfaceStyle}
+      {...readiness}
+    >
       <MagicItemSidePrintLayout.Root
         imageAspectRatio={layoutImageAspectRatio}
         resolvedImageAspectRatio={resolvedImageAspectRatio}
@@ -200,7 +255,7 @@ export function PrintMagicItemCard({
                 printCardClassNames.sideMediaColumn,
               )}
               mediaColumnStyle={{
-                marginTop: `${sideImageMarginTopRem}rem`,
+                marginTop: `${appliedSideImageMarginTopRem}rem`,
               }}
               mediaFrameClassName={printCardClassNames.sideMediaFrame}
             >

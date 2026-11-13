@@ -6,11 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
 import type { CardExportBrowserPayload } from '@/features/server-render-card/card-export-payload';
-import {
-  assertMeasuredCardOutput,
-  waitForArtworkState,
-  waitForStableElementBox,
-} from '@/features/workbench/lib/export-card-artwork';
+import { executeCardRasterExport } from '@/features/workbench/lib/execute-card-raster-export';
+import { waitForStableElementBox } from '@/features/workbench/lib/export-card-artwork';
 import { serializeArtworkLimitError } from '@/lib/artwork-limit-error';
 
 interface CardExportWindowGlobals {
@@ -53,29 +50,6 @@ function exportFailureText(error: unknown): string {
   );
 }
 
-async function runHtmlToImageExport(params: {
-  node: HTMLElement;
-  format: 'png' | 'jpg';
-  pixelRatio: 1 | 2;
-}): Promise<string> {
-  assertMeasuredCardOutput(
-    params.node.offsetWidth,
-    params.node.offsetHeight,
-    params.pixelRatio,
-  );
-  if (params.format === 'png') {
-    return await toPng(params.node, {
-      pixelRatio: params.pixelRatio,
-      skipAutoScale: true,
-    });
-  }
-  return await toJpeg(params.node, {
-    pixelRatio: params.pixelRatio,
-    quality: 0.92,
-    skipAutoScale: true,
-  });
-}
-
 async function runExportPipeline(
   payload: CardExportBrowserPayload,
   cardRef: RefObject<HTMLDivElement | null>,
@@ -94,12 +68,16 @@ async function runExportPipeline(
     globals.__CARD_EXPORT_ERROR__ = 'unsupported_card_style';
     return;
   }
-  await waitForArtworkState(node, { generation: CARD_EXPORT_GENERATION });
-  await waitForStableElementBox(node);
-  const dataUrl = await runHtmlToImageExport({
+  const dataUrl = await executeCardRasterExport({
     node,
     format: payload.format,
     pixelRatio: payload.pixelRatio,
+    generation: CARD_EXPORT_GENERATION,
+    rasterizer: {
+      toPng: (target, options) => toPng(target as HTMLElement, options),
+      toJpeg: (target, options) => toJpeg(target as HTMLElement, options),
+    },
+    settleSize: waitForStableElementBox,
   });
   globals.__CARD_EXPORT_RESULT__ = dataUrl;
   globals.__CARD_EXPORT_STATUS__ = 'ok';

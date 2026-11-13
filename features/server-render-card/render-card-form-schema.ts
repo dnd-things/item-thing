@@ -1,14 +1,12 @@
 import { z } from 'zod';
 import { normalizeArtworkCustomColor } from '@/features/card-renderer/lib/artwork-color-source';
-import {
-  type ImageAspectRatioOption,
-  imageBorderWidthPxRange,
-} from '@/features/card-renderer/lib/card-renderer-options';
+import { imageBorderWidthPxRange } from '@/features/card-renderer/lib/card-renderer-options';
 import {
   getRenderStyleFieldIds,
   type RenderStyleFieldId,
   type SupportedStyleCapability,
 } from '@/features/workbench/lib/card-style-capability-registry';
+import { durableCardStateSchema } from '@/lib/durable-card-state';
 
 export const renderCardItemJsonSchema = z.object({
   itemName: z.string().min(1),
@@ -76,16 +74,7 @@ const pixelRatioFormSchema = z
   .union([z.literal(1), z.literal(2), z.literal('1'), z.literal('2')])
   .transform((value): 1 | 2 => (value === '1' || value === 1 ? 1 : 2));
 
-const imageAspectRatioSchema = z.enum([
-  'based-on-image',
-  'square',
-  'portrait',
-  'portrait-3-4',
-  'portrait-2-3',
-  'portrait-9-16',
-  'landscape',
-  'widescreen',
-] satisfies ReadonlyArray<ImageAspectRatioOption>);
+const imageAspectRatioSchema = durableCardStateSchema.shape.imageAspectRatio;
 
 const sharedRenderCardMultipartFieldsSchema = z.object({
   pixelRatio: pixelRatioFormSchema,
@@ -93,9 +82,9 @@ const sharedRenderCardMultipartFieldsSchema = z.object({
 });
 
 const renderStyleFieldSchemaMap = {
-  cardBorderRadius: z.enum(['none', 'small', 'large']).optional(),
-  cardLayout: z.enum(['vertical', 'image-right']).optional(),
-  sideLayoutFlow: z.enum(['fixed', 'fluid']).optional(),
+  cardBorderRadius: durableCardStateSchema.shape.cardBorderRadius.optional(),
+  cardLayout: durableCardStateSchema.shape.cardLayout.optional(),
+  sideLayoutFlow: durableCardStateSchema.shape.sideLayoutFlow.optional(),
   imageAspectRatio: imageAspectRatioSchema.optional(),
   imageSize: optionalIntegerFieldSchema({ min: 30, max: 100 }),
   cardWidthAuto: booleanFormFieldSchema.optional(),
@@ -109,9 +98,8 @@ const renderStyleFieldSchemaMap = {
   imageRotationDegrees: optionalNumberFieldSchema({ min: 0, max: 360 }),
   imageFlipHorizontal: booleanFormFieldSchema.optional(),
   imageFlipVertical: booleanFormFieldSchema.optional(),
-  artworkColorSource: z
-    .enum(['auto-complement', 'triad-left', 'triad-right', 'neutral', 'custom'])
-    .optional(),
+  artworkColorSource:
+    durableCardStateSchema.shape.artworkColorSource.optional(),
   artworkCustomColor: z
     .string()
     .transform((value) => normalizeArtworkCustomColor(value))
@@ -154,34 +142,12 @@ function getFormEntry(
 function collectRenderFieldEntries(
   formData: FormData,
 ): Record<string, FormDataEntryValue> {
-  type ArtworkColorAliasEntries = Partial<
-    Record<
-      | 'artworkColorSource'
-      | 'artworkCustomColor'
-      | 'minimalArtworkThemeSource'
-      | 'minimalArtworkThemeCustomColor',
-      FormDataEntryValue
-    >
-  >;
-  const entries: Record<string, FormDataEntryValue> & ArtworkColorAliasEntries =
-    {};
+  const entries: Record<string, FormDataEntryValue> = {};
   for (const [key, value] of formData.entries()) {
     if (key === 'artwork' || key === 'item') {
       continue;
     }
     entries[key] = value;
-  }
-  if (
-    entries.artworkColorSource === undefined &&
-    entries.minimalArtworkThemeSource !== undefined
-  ) {
-    entries.artworkColorSource = entries.minimalArtworkThemeSource;
-  }
-  if (
-    entries.artworkCustomColor === undefined &&
-    entries.minimalArtworkThemeCustomColor !== undefined
-  ) {
-    entries.artworkCustomColor = entries.minimalArtworkThemeCustomColor;
   }
   return entries;
 }

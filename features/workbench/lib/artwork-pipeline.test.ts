@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import sharp from 'sharp';
-import { getImageRightImageMarginTopRem } from '@/features/card-renderer/lib/card-renderer-options.ts';
+import { imageRightArtworkMarginTopRem } from '@/features/card-renderer/lib/image-right-artwork-placement.ts';
 import {
   ArtworkLimitError,
   artworkLimitErrorFromSerialized,
@@ -39,10 +39,6 @@ import {
   materializeCanonicalArtwork,
   readArtworkBundle,
 } from './artwork-source.ts';
-import {
-  DISPLAYED_CARD_SURFACE_HEIGHT_ATTR,
-  readDisplayedCardPreviewSurfaceHeight,
-} from './displayed-card-height.ts';
 import {
   completeCapturedExport,
   createCardExportLock,
@@ -766,7 +762,6 @@ describe('canonical export preparation', () => {
       snapshot: toWorkbenchSnapshotForExport(state),
       format: 'jpg' as const,
       pixelRatio: 2 as const,
-      cardPreviewSurfaceHeightPx: 440,
       bundle,
       reuseEpoch: 0,
     };
@@ -882,7 +877,6 @@ describe('canonical export preparation', () => {
           snapshot: toWorkbenchSnapshotForExport(state),
           format: 'png',
           pixelRatio: 2,
-          cardPreviewSurfaceHeightPx: 400,
           bundle: null,
           reuseEpoch: 0,
         },
@@ -1078,29 +1072,21 @@ describe('export readiness, measurement, and limit responses', () => {
     }
   });
 
-  test('fixed-side export uses the displayed measurement instead of a later outer height', () => {
-    const node = {
-      offsetHeight: 900,
-      getAttribute(name: string) {
-        return name === DISPLAYED_CARD_SURFACE_HEIGHT_ATTR ? '779' : null;
-      },
-    };
-    const measured = readDisplayedCardPreviewSurfaceHeight(node);
-    const previewMargin = getImageRightImageMarginTopRem(
-      32,
-      'fixed',
-      'Weapon, rare',
-      measured,
-    );
-    const movedMargin = getImageRightImageMarginTopRem(
-      32,
-      'fixed',
-      'Weapon, rare',
-      node.offsetHeight,
-    );
-    assert.equal(measured, 779);
-    assert.equal(previewMargin, 30);
-    assert.notEqual(previewMargin, movedMargin);
+  test('fixed-side margin uses latched surface height not shifted outer height', () => {
+    const latchedMargin = imageRightArtworkMarginTopRem({
+      imageRightVerticalPosition: 32,
+      sideLayoutFlow: 'fixed',
+      classificationAndRarity: 'Weapon, rare',
+      surfaceHeightPx: 779,
+    });
+    const shiftedMargin = imageRightArtworkMarginTopRem({
+      imageRightVerticalPosition: 32,
+      sideLayoutFlow: 'fixed',
+      classificationAndRarity: 'Weapon, rare',
+      surfaceHeightPx: 900,
+    });
+    assert.equal(latchedMargin, 30);
+    assert.notEqual(latchedMargin, shiftedMargin);
   });
 
   test('legacy data URL byte length is known before a native decode', () => {

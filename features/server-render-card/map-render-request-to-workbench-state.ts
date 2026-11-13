@@ -77,9 +77,14 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
       ? input.artworkFileName
       : 'artwork.png';
 
+  const {
+    format: _format,
+    pixelRatio: _pixelRatio,
+    ...cardFields
+  } = input.fields;
   const workbenchState = normalizeWorkbenchStateForStyle({
     ...defaultMagicItemWorkbenchState,
-    ...input.fields,
+    ...cardFields,
     cardStyle: input.style,
     resolvedImageAspectRatio,
     imageFileName: safeFileName,

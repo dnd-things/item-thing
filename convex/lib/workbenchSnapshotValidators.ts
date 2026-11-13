@@ -1,41 +1,43 @@
-import { v } from 'convex/values';
+import { type Validator, v } from 'convex/values';
+import {
+  type DurableCardState,
+  durableCardStateSchema,
+} from '../../lib/durable-card-state';
 
 const cardLayoutValidator = v.union(
-  v.literal('vertical'),
-  v.literal('image-right'),
+  ...durableCardStateSchema.shape.cardLayout.options.map((value) =>
+    v.literal(value),
+  ),
 );
 
-const sideLayoutFlowValidator = v.union(v.literal('fixed'), v.literal('fluid'));
+const sideLayoutFlowValidator = v.union(
+  ...durableCardStateSchema.shape.sideLayoutFlow.options.map((value) =>
+    v.literal(value),
+  ),
+);
 
 const cardStyleValidator = v.union(
-  v.literal('print'),
-  v.literal('minimal'),
-  v.literal('classic'),
+  ...durableCardStateSchema.shape.cardStyle.options.map((value) =>
+    v.literal(value),
+  ),
 );
 
 const cardBorderRadiusValidator = v.union(
-  v.literal('none'),
-  v.literal('small'),
-  v.literal('large'),
+  ...durableCardStateSchema.shape.cardBorderRadius.options.map((value) =>
+    v.literal(value),
+  ),
 );
 
 const imageAspectRatioValidator = v.union(
-  v.literal('based-on-image'),
-  v.literal('square'),
-  v.literal('portrait'),
-  v.literal('portrait-3-4'),
-  v.literal('portrait-2-3'),
-  v.literal('portrait-9-16'),
-  v.literal('landscape'),
-  v.literal('widescreen'),
+  ...durableCardStateSchema.shape.imageAspectRatio.options.map((value) =>
+    v.literal(value),
+  ),
 );
 
 const artworkColorSourceValidator = v.union(
-  v.literal('auto-complement'),
-  v.literal('triad-left'),
-  v.literal('triad-right'),
-  v.literal('neutral'),
-  v.literal('custom'),
+  ...durableCardStateSchema.shape.artworkColorSource.options.map((value) =>
+    v.literal(value),
+  ),
 );
 
 /**
@@ -65,21 +67,8 @@ const sharedWorkbenchSnapshotShape = {
   requiresAttunement: v.boolean(),
   flavorDescription: v.string(),
   mechanicalDescription: v.string(),
-} as const;
+} satisfies { [K in keyof DurableCardState]: Validator<DurableCardState[K]> };
 
-const currentWorkbenchSnapshotValidator = v.object({
-  ...sharedWorkbenchSnapshotShape,
-  artworkColorSource: artworkColorSourceValidator,
-  artworkCustomColor: v.string(),
-});
-
-const legacyWorkbenchSnapshotValidator = v.object({
-  ...sharedWorkbenchSnapshotShape,
-  minimalArtworkThemeSource: artworkColorSourceValidator,
-  minimalArtworkThemeCustomColor: v.string(),
-});
-
-export const workbenchSnapshotValidator = v.union(
-  currentWorkbenchSnapshotValidator,
-  legacyWorkbenchSnapshotValidator,
+export const workbenchSnapshotValidator = v.object(
+  sharedWorkbenchSnapshotShape,
 );

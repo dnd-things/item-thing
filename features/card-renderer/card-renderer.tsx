@@ -9,8 +9,6 @@ import {
 
 export interface CardRendererProps extends MagicItemCardRendererProps {
   className?: string;
-  /** Measured preview card height (px) for fixed image-right margin scaling; omit when unknown. */
-  cardPreviewSurfaceHeightPx?: number;
 }
 
 export function CardRenderer({ cardStyle, ...rest }: CardRendererProps) {

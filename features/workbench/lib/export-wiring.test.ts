@@ -124,7 +124,6 @@ test('export surfaces, download ownership, and route limits', async () => {
     const prepared = {
       captured: {
         state: { ...defaults, cardStyle },
-        cardPreviewSurfaceHeightPx: 600,
         bundle: null,
       },
       preparedUrl: '',
@@ -155,7 +154,6 @@ test('export surfaces, download ownership, and route limits', async () => {
     PreviewSurface: React.ComponentType<{
       cardRef: { current: null };
       workbenchState: Record<string, unknown>;
-      cardPreviewSurfaceHeightPx: number;
     }>;
   };
   const previewMarkup = server.renderToStaticMarkup(
@@ -166,19 +164,20 @@ test('export surfaces, download ownership, and route limits', async () => {
         cardLayout: 'image-right',
         sideLayoutFlow: 'fixed',
       },
-      cardPreviewSurfaceHeightPx: 779,
     }),
   );
-  assert.match(previewMarkup, /data-card-preview-surface-height="779"/);
+  assert.equal(
+    previewMarkup.includes('data-card-preview-surface-height'),
+    false,
+  );
   const workbenchSource = fs.readFileSync(
     path.join(root, 'features/workbench/item-card-workbench.tsx'),
     'utf8',
   );
-  assert.match(
-    workbenchSource,
-    /readDisplayedCardPreviewSurfaceHeight\(\s*cardRef\.current,?\s*\)/,
+  assert.equal(
+    workbenchSource.includes('readDisplayedCardPreviewSurfaceHeight'),
+    false,
   );
-  assert.equal(workbenchSource.includes('offsetHeight'), false);
 
   const slots: unknown[] = [];
   let cursor = 0;
@@ -261,6 +260,39 @@ test('export surfaces, download ownership, and route limits', async () => {
       waitForArtworkState: async () => undefined,
       assertMeasuredCardOutput() {
         return undefined;
+      },
+    },
+    '../lib/execute-card-raster-export': {
+      executeCardRasterExport: async (input: {
+        format: 'png' | 'jpg';
+        pixelRatio: 1 | 2;
+        node: unknown;
+        rasterizer: {
+          toPng: (
+            node: unknown,
+            options: { pixelRatio: 1 | 2; skipAutoScale: true },
+          ) => Promise<string>;
+          toJpeg: (
+            node: unknown,
+            options: {
+              pixelRatio: 1 | 2;
+              quality: number;
+              skipAutoScale: true;
+            },
+          ) => Promise<string>;
+        };
+      }) => {
+        if (input.format === 'png') {
+          return input.rasterizer.toPng(input.node, {
+            pixelRatio: input.pixelRatio,
+            skipAutoScale: true,
+          });
+        }
+        return input.rasterizer.toJpeg(input.node, {
+          pixelRatio: input.pixelRatio,
+          quality: 0.92,
+          skipAutoScale: true,
+        });
       },
     },
     'html-to-image': {
@@ -657,6 +689,7 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
   const frames: Array<() => void> = [];
   const captures: unknown[] = [];
   const links: string[] = [];
+  const anchorHrefs: string[] = [];
   const previousFrame = globalThis.requestAnimationFrame;
   const previousDocument = globalThis.document;
   const previousWindow = (globalThis as { window?: unknown }).window;
@@ -675,6 +708,7 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
       const anchor: { download?: string; href?: string; click: () => void } = {
         click() {
           links.push(anchor.download ?? '');
+          anchorHrefs.push(anchor.href ?? '');
         },
       };
       return anchor;
@@ -730,7 +764,6 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
         state: { ...defaults, itemName: 'Captured', imagePreviewUrl: '' },
         snapshot: { itemName: 'Captured' },
         bundle: null,
-        cardPreviewSurfaceHeightPx: 0,
         ...input,
       }),
       onExportComplete() {
@@ -781,6 +814,130 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
       pixelRatio: 2,
       skipAutoScale: true,
     });
+
+    const jpegDataUrl = 'data:image/jpeg;base64,/9j/4AAQ';
+    const downloadHostJpeg = createHost();
+    const downloadDomJpeg = readinessNode();
+    downloadHostJpeg.cells[0] = 'jpg';
+    const jpegDownloadLoad = loader({
+      react: downloadHostJpeg.react,
+      '@/components/ui/button': { Button: 'button' },
+      '@/components/ui/toggle-group': {
+        ToggleGroup: 'div',
+        ToggleGroupItem: 'span',
+      },
+      '@hugeicons/core-free-icons': { Download04Icon: {} },
+      '@hugeicons/react': { HugeiconsIcon: () => null },
+      './card-export-surface': { CardExportSurface: 'mock-surface' },
+      'html-to-image': {
+        toPng: async () => {
+          throw new Error('unexpected png');
+        },
+        toJpeg: async (node: unknown, options: unknown) => {
+          captures.push({ node, options });
+          return jpegDataUrl;
+        },
+      },
+    });
+    const { DownloadControlsCard: DownloadControlsCardJpeg } = jpegDownloadLoad(
+      'features/workbench/components/download-controls-card.tsx',
+    ) as {
+      DownloadControlsCard: (props: unknown) => unknown;
+    };
+    const jpegClick = findButton(
+      downloadHostJpeg.render(() => DownloadControlsCardJpeg(downloadProps)),
+    )?.props.onClick;
+    assert.ok(jpegClick);
+    jpegClick();
+    await flush();
+    const jpegSurface = downloadHostJpeg.refs[1];
+    assert.ok(jpegSurface);
+    jpegSurface.current = downloadDomJpeg.node;
+    await frame();
+    await frame();
+    downloadDomJpeg.state.ready = 'ready';
+    downloadDomJpeg.state.generation = '1';
+    downloadDomJpeg.state.images = [{ complete: true, naturalWidth: 12 }];
+    await frame();
+    await flush();
+    assert.equal(links.at(-1), 'item-thing-captured.jpg');
+    assert.equal(anchorHrefs.at(-1), jpegDataUrl);
+    assert.deepEqual((captures.at(-1) as { options: unknown }).options, {
+      pixelRatio: 2,
+      quality: 0.92,
+      skipAutoScale: true,
+    });
+
+    frames.length = 0;
+    const automatedJpegHost = createHost();
+    const automatedJpegDom = readinessNode();
+    (globalThis as { window?: unknown }).window = {
+      __MAGIC_ITEM_CARD_EXPORT__: {
+        state: defaults,
+        format: 'jpg',
+        pixelRatio: 2,
+      },
+    };
+    const beforeJpegAutomated = captures.length;
+    const automatedJpegLoad = loader({
+      react: automatedJpegHost.react,
+      '@/features/card-renderer/card-renderer': {
+        CardRenderer: 'production-renderer-boundary',
+      },
+      'html-to-image': {
+        toPng: async () => {
+          throw new Error('unexpected png');
+        },
+        toJpeg: async (node: unknown, options: unknown) => {
+          captures.push({ node, options });
+          return jpegDataUrl;
+        },
+      },
+    });
+    const { CardExportClient: CardExportClientJpeg } = automatedJpegLoad(
+      'app/internal/card-export/card-export-client.tsx',
+    ) as { CardExportClient: () => unknown };
+    automatedJpegHost.render(CardExportClientJpeg);
+    const automatedJpegRef = automatedJpegHost.refs[0];
+    assert.ok(automatedJpegRef);
+    automatedJpegRef.current = automatedJpegDom.node;
+    automatedJpegHost.render(CardExportClientJpeg);
+    await flush();
+    await frame();
+    await frame();
+    await frame();
+    const jpegWindow = (
+      globalThis as unknown as {
+        window: {
+          __CARD_EXPORT_STATUS__?: string;
+          __CARD_EXPORT_RESULT__?: string;
+        };
+      }
+    ).window;
+    assert.equal(jpegWindow.__CARD_EXPORT_STATUS__, undefined);
+    automatedJpegDom.state.ready = 'ready';
+    automatedJpegDom.state.generation = '1';
+    automatedJpegDom.state.images = [{ complete: true, naturalWidth: 12 }];
+    for (let stableFrames = 0; stableFrames < 5; stableFrames += 1) {
+      await flush();
+      if (frames.length > 0) {
+        await frame();
+      }
+      if (jpegWindow.__CARD_EXPORT_STATUS__ === 'ok') {
+        break;
+      }
+    }
+    await flush();
+    assert.equal(jpegWindow.__CARD_EXPORT_STATUS__, 'ok');
+    assert.equal(jpegWindow.__CARD_EXPORT_RESULT__, jpegDataUrl);
+    assert.equal(captures.length, beforeJpegAutomated + 1);
+    assert.deepEqual((captures.at(-1) as { options: unknown }).options, {
+      pixelRatio: 2,
+      quality: 0.92,
+      skipAutoScale: true,
+    });
+    assert.equal(automatedJpegDom.node.offsetWidth, 432);
+    assert.equal(automatedJpegDom.node.offsetHeight, 600);
 
     let serializedOutputError = '';
     for (const mode of ['failed-image', 'output-limit'] as const) {

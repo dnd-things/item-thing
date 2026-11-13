@@ -16,7 +16,6 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   cardWidthPxStep,
   getCardWidthPxRange,
-  getDefaultCardWidthPx,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import { useMinimalArtworkTheme } from '@/features/card-renderer/lib/use-minimal-artwork-theme';
 
@@ -24,10 +23,8 @@ import {
   getWorkbenchControlsForPlacement,
   type WorkbenchControlId,
 } from '../lib/card-style-capability-registry';
-import {
-  getImageFramePresetFieldValues,
-  type ImageFramePresetValue,
-} from '../lib/image-frame-preset';
+import type { WorkbenchEditHandler } from '../lib/edit-workbench';
+import type { ImageFramePresetValue } from '../lib/image-frame-preset';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardBorderRadiusOptions,
@@ -71,16 +68,6 @@ function deriveImageFramePreset(
   return '';
 }
 
-function applyImageFramePreset(
-  setWorkbenchField: WorkbenchFieldSetter,
-  preset: ImageFramePresetValue,
-): void {
-  const values = getImageFramePresetFieldValues(preset);
-  setWorkbenchField('imageBorderWidthPx', values.imageBorderWidthPx);
-  setWorkbenchField('imageBorderRadius', values.imageBorderRadius);
-  setWorkbenchField('imageAspectRatio', values.imageAspectRatio);
-}
-
 function deriveQuickLayout(
   workbenchState: MagicItemWorkbenchState,
 ): QuickLayoutValue | '' {
@@ -100,7 +87,7 @@ interface PreviewColumnProps {
   cardRef: RefObject<HTMLDivElement | null>;
   showAdvancedWorkbenchControls: boolean;
   workbenchState: MagicItemWorkbenchState;
-  setWorkbenchField: WorkbenchFieldSetter;
+  onWorkbenchEdit: WorkbenchEditHandler;
   artworkLogicalWidth?: number;
   artworkLogicalHeight?: number;
 }
@@ -109,12 +96,15 @@ export function PreviewColumn({
   cardRef,
   showAdvancedWorkbenchControls,
   workbenchState,
-  setWorkbenchField,
+  onWorkbenchEdit,
   artworkLogicalWidth,
   artworkLogicalHeight,
 }: PreviewColumnProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [hasOpenedSettings, setHasOpenedSettings] = useState(false);
+  const setWorkbenchField: WorkbenchFieldSetter = (fieldName, fieldValue) => {
+    onWorkbenchEdit({ kind: 'field', key: fieldName, value: fieldValue });
+  };
   const imageRightVerticalPositionBounds = useImageRightVerticalPositionBounds(
     cardRef,
     workbenchState,
@@ -145,18 +135,6 @@ export function PreviewColumn({
         ? 'Add an artwork border to choose its color'
         : undefined;
 
-  function handleQuickLayoutChange(value: string) {
-    if (value === 'stacked') {
-      setWorkbenchField('cardLayout', 'vertical');
-      setWorkbenchField('sideLayoutFlow', 'fixed');
-      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('vertical'));
-    } else if (value === 'compact') {
-      setWorkbenchField('cardLayout', 'image-right');
-      setWorkbenchField('sideLayoutFlow', 'fluid');
-      setWorkbenchField('cardWidthPx', getDefaultCardWidthPx('image-right'));
-    }
-  }
-
   function renderBasicControl(controlId: WorkbenchControlId) {
     switch (controlId) {
       case 'quickLayout':
@@ -166,8 +144,8 @@ export function PreviewColumn({
             variant="outline"
             onValueChange={(nextValues) => {
               const nextValue = nextValues[nextValues.length - 1];
-              if (nextValue) {
-                handleQuickLayoutChange(nextValue);
+              if (nextValue === 'stacked' || nextValue === 'compact') {
+                onWorkbenchEdit({ kind: 'quick-layout', value: nextValue });
               }
             }}
           >
@@ -187,10 +165,10 @@ export function PreviewColumn({
             onValueChange={(nextValues) => {
               const nextValue = nextValues[nextValues.length - 1];
               if (nextValue) {
-                applyImageFramePreset(
-                  setWorkbenchField,
-                  nextValue as ImageFramePresetValue,
-                );
+                onWorkbenchEdit({
+                  kind: 'image-frame',
+                  value: nextValue as ImageFramePresetValue,
+                });
               }
             }}
           >
@@ -214,7 +192,11 @@ export function PreviewColumn({
               options={cardBorderRadiusOptions}
               value={workbenchState.cardBorderRadius}
               onValueChange={(value) => {
-                setWorkbenchField('cardBorderRadius', value);
+                onWorkbenchEdit({
+                  kind: 'field',
+                  key: 'cardBorderRadius',
+                  value,
+                });
               }}
             />
           </div>
@@ -228,13 +210,11 @@ export function PreviewColumn({
               variant="outline"
               className="rounded-full"
               onPressedChange={(pressed) => {
-                setWorkbenchField('cardWidthAuto', pressed);
-                if (pressed) {
-                  setWorkbenchField(
-                    'cardWidthPx',
-                    getDefaultCardWidthPx(workbenchState.cardLayout),
-                  );
-                }
+                onWorkbenchEdit({
+                  kind: 'field',
+                  key: 'cardWidthAuto',
+                  value: pressed,
+                });
               }}
             >
               Auto
@@ -255,8 +235,10 @@ export function PreviewColumn({
                     : nextValue;
 
                   if (typeof nextCardWidth === 'number') {
-                    setWorkbenchField('cardWidthAuto', false);
-                    setWorkbenchField('cardWidthPx', nextCardWidth);
+                    onWorkbenchEdit({
+                      kind: 'card-width-px',
+                      value: nextCardWidth,
+                    });
                   }
                 }}
               />
@@ -274,11 +256,14 @@ export function PreviewColumn({
             source={workbenchState.artworkColorSource}
             swatches={minimalArtworkTheme.swatches}
             onCustomColorChange={(value) => {
-              setWorkbenchField('artworkCustomColor', value);
-              setWorkbenchField('artworkColorSource', 'custom');
+              onWorkbenchEdit({ kind: 'artwork-custom-color', value });
             }}
             onSourceChange={(value) => {
-              setWorkbenchField('artworkColorSource', value);
+              onWorkbenchEdit({
+                kind: 'field',
+                key: 'artworkColorSource',
+                value,
+              });
             }}
           />
         );
@@ -301,7 +286,7 @@ export function PreviewColumn({
               options={cardStyleOptions}
               value={workbenchState.cardStyle}
               onValueChange={(value) => {
-                setWorkbenchField('cardStyle', value);
+                onWorkbenchEdit({ kind: 'field', key: 'cardStyle', value });
               }}
             />
           </div>
@@ -342,13 +327,6 @@ export function PreviewColumn({
         artworkLogicalHeight !== undefined
           ? { artworkLogicalWidth, artworkLogicalHeight }
           : {})}
-        {...(workbenchState.cardLayout === 'image-right' &&
-        workbenchState.sideLayoutFlow === 'fixed'
-          ? {
-              cardPreviewSurfaceHeightPx:
-                imageRightVerticalPositionBounds.measuredCardSurfaceHeightPx,
-            }
-          : {})}
       />
 
       {showAdvancedWorkbenchControls && (hasOpenedSettings || isDrawerOpen) ? (
@@ -359,7 +337,7 @@ export function PreviewColumn({
           open={isDrawerOpen}
           onOpenChange={setIsDrawerOpen}
           imageRightVerticalPositionBounds={imageRightVerticalPositionBounds}
-          setWorkbenchField={setWorkbenchField}
+          onWorkbenchEdit={onWorkbenchEdit}
           workbenchState={workbenchState}
         />
       ) : null}

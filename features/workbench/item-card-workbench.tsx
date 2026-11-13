@@ -3,11 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  getImageRightVerticalPositionDefaultForFixedSideLayout,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
-  isCardStyleSupported,
-} from '@/features/card-renderer/lib/card-renderer-options';
+import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
 import { readArtworkLimitError } from '@/lib/artwork-limit-error';
 import {
   DownloadControlsCard,
@@ -20,8 +16,7 @@ import {
   isAbortError,
   markPreparedFile,
 } from './lib/artwork-source';
-import { normalizeWorkbenchStateForStyle } from './lib/card-style-capability-registry';
-import { readDisplayedCardPreviewSurfaceHeight } from './lib/displayed-card-height';
+import { editWorkbench, type WorkbenchEdit } from './lib/edit-workbench';
 import type { CapturedCardExport } from './lib/export-card-artwork';
 import {
   preparedArtworkBundle,
@@ -264,52 +259,11 @@ export function ItemCardWorkbench({
     };
   }, [form, persistencePhase, workbenchState]);
 
-  const setWorkbenchField = useCallback(
-    <TKey extends keyof MagicItemWorkbenchState>(
-      fieldName: TKey,
-      fieldValue: MagicItemWorkbenchState[TKey],
-    ) => {
-      setWorkbenchState((previousState) => {
-        const nextState: MagicItemWorkbenchState = {
-          ...previousState,
-          [fieldName]: fieldValue,
-        };
-
-        if (fieldName === 'cardLayout' && fieldValue === 'image-right') {
-          if (previousState.sideLayoutFlow === 'fixed') {
-            nextState.imageRightVerticalPosition =
-              getImageRightVerticalPositionDefaultForFixedSideLayout(
-                previousState.classificationAndRarity,
-              );
-          } else if (previousState.sideLayoutFlow === 'fluid') {
-            nextState.imageRightVerticalPosition =
-              imageRightVerticalPositionDefaultForFluidSideLayout;
-          }
-        }
-
-        if (fieldName === 'sideLayoutFlow') {
-          if (
-            fieldValue === 'fixed' &&
-            previousState.cardLayout === 'image-right'
-          ) {
-            nextState.imageRightVerticalPosition =
-              getImageRightVerticalPositionDefaultForFixedSideLayout(
-                previousState.classificationAndRarity,
-              );
-          } else if (
-            fieldValue === 'fluid' &&
-            previousState.cardLayout === 'image-right'
-          ) {
-            nextState.imageRightVerticalPosition =
-              imageRightVerticalPositionDefaultForFluidSideLayout;
-          }
-        }
-
-        return normalizeWorkbenchStateForStyle(nextState);
-      });
-    },
-    [],
-  );
+  const onWorkbenchEdit = useCallback((edit: WorkbenchEdit) => {
+    setWorkbenchState((previousState) =>
+      editWorkbench(previousState, previewStateRef.current, edit),
+    );
+  }, []);
 
   const previewReadyForFile =
     !(imageFile instanceof File) ||
@@ -333,9 +287,6 @@ export function ItemCardWorkbench({
         snapshot: toWorkbenchSnapshotForExport(state),
         format: input.format,
         pixelRatio: input.pixelRatio,
-        cardPreviewSurfaceHeightPx: readDisplayedCardPreviewSurfaceHeight(
-          cardRef.current,
-        ),
         bundle: sessionRef.current?.captureArtwork() ?? null,
         reuseEpoch: captureReuseOwnership(),
       };
@@ -393,7 +344,7 @@ export function ItemCardWorkbench({
                 cardRef={cardRef}
                 showAdvancedWorkbenchControls={showAdvancedWorkbenchControls}
                 workbenchState={previewState}
-                setWorkbenchField={setWorkbenchField}
+                onWorkbenchEdit={onWorkbenchEdit}
                 {...(artworkLogical
                   ? {
                       artworkLogicalWidth: artworkLogical.width,
