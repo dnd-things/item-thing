@@ -1,22 +1,17 @@
 'use client';
 
+import { drawArtworkFromBlobToObjectUrl } from '@/features/artwork/browser';
 import {
   artworkLimitCopy,
   assertCardOutputBudget,
   needsRasterTransform,
 } from './artwork-geometry';
 import {
-  browserCanvasFactory,
-  canvasToPngBlob,
-  renderTransformedCanvas,
-} from './artwork-raster';
-import {
   type ArtworkBundle,
   type CanonicalArtwork,
   materializeCanonicalArtwork,
 } from './artwork-source';
 import {
-  loadImageElementFromObjectUrl,
   measureImageBlob,
   rasterizeNativeCrop,
 } from './read-image-preview-data';
@@ -71,41 +66,15 @@ export async function renderExportArtworkUrl(input: {
   flipHorizontal: boolean;
   flipVertical: boolean;
 }): Promise<{ url: string; release: () => void }> {
-  const image = await loadImageElementFromObjectUrl(input.blob);
-  const factory = browserCanvasFactory();
-  let canvas: ReturnType<typeof factory.create> | null = null;
-  try {
-    canvas = renderTransformedCanvas(
-      image,
-      {
-        logicalWidth: input.logicalWidth,
-        logicalHeight: input.logicalHeight,
-        rotationDegrees: input.rotationDegrees,
-        flipHorizontal: input.flipHorizontal,
-        flipVertical: input.flipVertical,
-        policy: 'export',
-      },
-      factory,
-    );
-    const png = await canvasToPngBlob(canvas);
-    const url = URL.createObjectURL(png);
-    let released = false;
-    return {
-      url,
-      release() {
-        if (released) {
-          return;
-        }
-        released = true;
-        URL.revokeObjectURL(url);
-      },
-    };
-  } finally {
-    if (canvas) {
-      factory.release(canvas);
-    }
-    image.src = '';
-  }
+  return drawArtworkFromBlobToObjectUrl({
+    blob: input.blob,
+    logicalWidth: input.logicalWidth,
+    logicalHeight: input.logicalHeight,
+    rotationDegrees: input.rotationDegrees,
+    flipHorizontal: input.flipHorizontal,
+    flipVertical: input.flipVertical,
+    policy: 'export',
+  });
 }
 
 export async function prepareCapturedExport(

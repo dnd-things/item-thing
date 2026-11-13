@@ -7,9 +7,6 @@ import {
   identityCrop,
   isIdentityCrop,
   isPositiveIntegerDimension,
-  SOURCE_MAX_BYTES,
-  SOURCE_MAX_EDGE_PX,
-  SOURCE_MAX_PIXELS,
 } from './artwork-geometry';
 
 export const ARTWORK_BUNDLE_VERSION = 1 as const;
@@ -86,10 +83,10 @@ export function readArtworkBundle(value: unknown): ArtworkBundle | null {
   if (record.preview.size <= 0 || record.source.size <= 0) {
     return null;
   }
-  if (
-    record.preview.size > SOURCE_MAX_BYTES ||
-    record.source.size > SOURCE_MAX_BYTES
-  ) {
+  try {
+    assertEncodedArtworkBytes(record.preview.size);
+    assertEncodedArtworkBytes(record.source.size);
+  } catch {
     return null;
   }
   if (!isImageMime(record.preview.type) || !isImageMime(record.source.type)) {
@@ -97,15 +94,12 @@ export function readArtworkBundle(value: unknown): ArtworkBundle | null {
   }
   const sourceWidth = record.sourceWidth;
   const sourceHeight = record.sourceHeight;
-  if (
-    typeof sourceWidth !== 'number' ||
-    typeof sourceHeight !== 'number' ||
-    !isPositiveIntegerDimension(sourceWidth) ||
-    !isPositiveIntegerDimension(sourceHeight) ||
-    sourceWidth > SOURCE_MAX_EDGE_PX ||
-    sourceHeight > SOURCE_MAX_EDGE_PX ||
-    sourceWidth * sourceHeight > SOURCE_MAX_PIXELS
-  ) {
+  if (typeof sourceWidth !== 'number' || typeof sourceHeight !== 'number') {
+    return null;
+  }
+  try {
+    assertDecodedArtworkDimensions(sourceWidth, sourceHeight);
+  } catch {
     return null;
   }
   const crop = record.crop;

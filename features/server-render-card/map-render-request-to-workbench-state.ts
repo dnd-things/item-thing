@@ -1,8 +1,8 @@
+import { prepareArtworkFromBuffer } from '@/features/artwork/prepare-sharp';
 import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
 import { normalizeWorkbenchStateForStyle } from '@/features/workbench/lib/card-style-capability-registry';
 import type { MagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
 import { defaultMagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
-import { trimTransparentBounds } from '@/lib/trim-transparent-bounds';
 
 import type {
   RenderCardItemJson,
@@ -56,7 +56,7 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
 >(
   input: MapRenderRequestToWorkbenchStateInput<TStyle>,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {
-  const trimmedArtwork = await trimTransparentBounds(input.artworkBuffer);
+  const trimmedArtwork = await prepareArtworkFromBuffer(input.artworkBuffer);
   const widthPx = trimmedArtwork.width;
   const heightPx = trimmedArtwork.height;
   const resolvedImageAspectRatio = heightPx > 0 ? widthPx / heightPx : 1;
