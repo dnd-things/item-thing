@@ -5,11 +5,11 @@ import {
   imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import {
-  getImageFramePresetFieldValues,
+  applyImageFrame,
   type ImageFramePresetValue,
-} from './image-frame-preset';
+  normalizeWorkbenchStateForStyle,
+} from '@/features/card-renderer/lib/card-style';
 import {
   type MagicItemWorkbenchState,
   withItemDetails,
@@ -132,14 +132,9 @@ export function editWorkbench(
         artworkColorSource: 'custom',
       };
       break;
-    case 'image-frame': {
-      const presetFields = getImageFramePresetFieldValues(edit.value);
-      next = {
-        ...base,
-        ...presetFields,
-      };
+    case 'image-frame':
+      next = applyImageFrame(base, edit.value);
       break;
-    }
   }
 
   return normalizeWorkbenchStateForStyle(next);

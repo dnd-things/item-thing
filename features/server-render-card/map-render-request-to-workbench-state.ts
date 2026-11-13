@@ -1,6 +1,8 @@
 import { prepareArtworkFromBuffer } from '@/features/artwork/prepare-sharp';
-import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
-import { normalizeWorkbenchStateForStyle } from '@/features/workbench/lib/card-style-capability-registry';
+import {
+  normalizeWorkbenchStateForStyle,
+  type StyleCapability,
+} from '@/features/card-renderer/lib/card-style';
 import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
@@ -14,7 +16,7 @@ import type {
 } from './render-card-form-schema';
 
 export interface MapRenderRequestToWorkbenchStateInput<
-  TStyle extends SupportedStyleCapability,
+  TStyle extends StyleCapability,
 > {
   artworkBuffer: Buffer;
   artworkFileName: string;
@@ -56,7 +58,7 @@ function getMimeTypeForDataUrl(
 }
 
 export async function mapRenderRequestToMagicItemWorkbenchState<
-  TStyle extends SupportedStyleCapability,
+  TStyle extends StyleCapability,
 >(
   input: MapRenderRequestToWorkbenchStateInput<TStyle>,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {

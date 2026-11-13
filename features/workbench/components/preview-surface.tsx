@@ -5,8 +5,8 @@ import { CardRenderer } from '@/features/card-renderer/card-renderer';
 import {
   getCardSurfaceBorderRadius,
   getResolvedCardWidthPx,
-  isCardStyleSupported,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { resolveCardStyle } from '@/features/card-renderer/lib/card-style';
 import {
   cardStyleOptions,
   getOptionLabel,
@@ -26,6 +26,9 @@ export function PreviewSurface({
   artworkLogicalWidth,
   artworkLogicalHeight,
 }: PreviewSurfaceProps) {
+  const { layout: cardStyleLayout } = resolveCardStyle(
+    workbenchState.cardStyle,
+  );
   const selectedCardStyleLabel = getOptionLabel(
     cardStyleOptions,
     workbenchState.cardStyle,
@@ -46,7 +49,7 @@ export function PreviewSurface({
       <div data-print-hide className="preview-corner preview-corner--bl" />
       <div data-print-hide className="preview-corner preview-corner--br" />
       <div data-print-card ref={cardRef} className="relative z-1">
-        {isCardStyleSupported(workbenchState.cardStyle) ? (
+        {cardStyleLayout !== 'pending' ? (
           <CardRenderer
             {...workbenchState}
             artworkDrawPolicy="display"

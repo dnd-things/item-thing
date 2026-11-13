@@ -17,14 +17,14 @@ import {
   cardWidthPxStep,
   getCardWidthPxRange,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { useMinimalArtworkTheme } from '@/features/card-renderer/lib/use-minimal-artwork-theme';
-
 import {
-  getWorkbenchControlsForPlacement,
+  controlsForPlacement,
+  type ImageFramePresetValue,
+  readBasicChoice,
   type WorkbenchControlId,
-} from '../lib/card-style-capability-registry';
+} from '@/features/card-renderer/lib/card-style';
+import { useMinimalArtworkTheme } from '@/features/card-renderer/lib/use-minimal-artwork-theme';
 import type { WorkbenchEditHandler } from '../lib/edit-workbench';
-import type { ImageFramePresetValue } from '../lib/image-frame-preset';
 import { useImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
   cardBorderRadiusOptions,
@@ -43,45 +43,6 @@ const WorkbenchSettingsDrawer = dynamic(
     ),
   { ssr: false },
 );
-
-type QuickLayoutValue = 'stacked' | 'compact';
-
-function deriveImageFramePreset(
-  workbenchState: MagicItemWorkbenchState,
-): ImageFramePresetValue | '' {
-  const { imageBorderWidthPx, imageBorderRadius, imageAspectRatio } =
-    workbenchState;
-  if (
-    imageBorderWidthPx === 0 &&
-    imageBorderRadius === 0 &&
-    imageAspectRatio === 'based-on-image'
-  ) {
-    return 'borderless';
-  }
-  if (
-    imageBorderWidthPx === 5 &&
-    imageBorderRadius === 100 &&
-    imageAspectRatio === 'square'
-  ) {
-    return 'bordered';
-  }
-  return '';
-}
-
-function deriveQuickLayout(
-  workbenchState: MagicItemWorkbenchState,
-): QuickLayoutValue | '' {
-  if (workbenchState.cardLayout === 'vertical') {
-    return 'stacked';
-  }
-  if (
-    workbenchState.cardLayout === 'image-right' &&
-    workbenchState.sideLayoutFlow === 'fluid'
-  ) {
-    return 'compact';
-  }
-  return '';
-}
 
 interface PreviewColumnProps {
   cardRef: RefObject<HTMLDivElement | null>;
@@ -110,13 +71,10 @@ export function PreviewColumn({
     workbenchState,
     setWorkbenchField,
   );
-  const basicControls = getWorkbenchControlsForPlacement(
-    workbenchState.cardStyle,
-    'basic',
-  );
+  const basicControls = controlsForPlacement(workbenchState.cardStyle, 'basic');
 
-  const quickLayout = deriveQuickLayout(workbenchState);
-  const imageFramePreset = deriveImageFramePreset(workbenchState);
+  const quickLayout = readBasicChoice(workbenchState, 'quickLayout');
+  const imageFramePreset = readBasicChoice(workbenchState, 'imageFrame');
   const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
   const minimalArtworkTheme = useMinimalArtworkTheme(
     workbenchState.imagePreviewUrl,

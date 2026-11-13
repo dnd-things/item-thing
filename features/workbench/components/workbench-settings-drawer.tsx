@@ -30,9 +30,9 @@ import {
   mapUserPercentToImageRightVerticalPosition,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
-  getWorkbenchControlsForPlacement,
+  controlsForPlacement,
   type WorkbenchControlId,
-} from '../lib/card-style-capability-registry';
+} from '@/features/card-renderer/lib/card-style';
 import type { WorkbenchEditHandler } from '../lib/edit-workbench';
 import type { ImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
@@ -76,7 +76,7 @@ export function WorkbenchSettingsDrawer({
   const isTopImageLayout = workbenchState.cardLayout === 'vertical';
   const isImageRightLayout = workbenchState.cardLayout === 'image-right';
   const cardWidthRange = getCardWidthPxRange(workbenchState.cardLayout);
-  const advancedControls = getWorkbenchControlsForPlacement(
+  const advancedControls = controlsForPlacement(
     workbenchState.cardStyle,
     'advanced',
   );

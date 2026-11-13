@@ -206,20 +206,6 @@ export function getCardSurfaceBorderRadius(
   }
 }
 
-export const supportedCardStyleOptions = ['print', 'minimal'] as const;
-
-export function isMinimalCardStyle(cardStyle: CardStyleOption): boolean {
-  return cardStyle === 'minimal';
-}
-
-export function isCardStyleSupported(
-  cardStyle: CardStyleOption,
-): cardStyle is (typeof supportedCardStyleOptions)[number] {
-  return supportedCardStyleOptions.includes(
-    cardStyle as (typeof supportedCardStyleOptions)[number],
-  );
-}
-
 export function shouldStackVerticalCardMetadata(
   cardLayout: CardLayoutOption,
 ): boolean {

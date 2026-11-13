@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
+import { resolveCardStyle } from '@/features/card-renderer/lib/card-style';
 import { readArtworkLimitError } from '@/lib/artwork-limit-error';
 import {
   DownloadControlsCard,
@@ -264,7 +264,8 @@ export function ItemCardWorkbench({
     !(imageFile instanceof File) ||
     workbenchState.imagePreviewUrl.trim() !== '';
   const canDownload =
-    isCardStyleSupported(workbenchState.cardStyle) && previewReadyForFile;
+    resolveCardStyle(workbenchState.cardStyle).layout !== 'pending' &&
+    previewReadyForFile;
 
   const handleBeforeDownload = useCallback(async () => {
     const formValid = await form.trigger();

@@ -6,12 +6,12 @@ import {
   clampCardWidthPxForLayout,
   clampImageBorderWidthPx,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { normalizeWorkbenchStateForStyle } from '@/features/card-renderer/lib/card-style';
 import {
   type DurableCardState,
   durableCardStateSchema,
   toDurableCardState,
 } from '@/lib/durable-card-state';
-import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import type { MagicItemWorkbenchState } from './workbench-options';
 
 export const WORKBENCH_PERSISTENCE_VERSION = 8 as const;

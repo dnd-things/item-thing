@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { readBasicChoice } from '@/features/card-renderer/lib/card-style';
 import { toDurableCardState } from '@/lib/durable-card-state';
 import { editWorkbench } from './edit-workbench.ts';
 import { defaultMagicItemWorkbenchState } from './workbench-options.ts';
@@ -86,6 +87,7 @@ describe('editWorkbench', () => {
     assert.equal(next.imageRightVerticalPosition, 0);
     assert.equal(next.cardWidthPx, 608);
     assert.equal(next.classificationAndRarity, 'Weapon, rare');
+    assert.equal(readBasicChoice(next, 'quickLayout'), 'compact');
     assertReloadMatchesDurable(next, durableExpectation(next));
   });
 
@@ -124,6 +126,7 @@ describe('editWorkbench', () => {
       { kind: 'field', key: 'sideLayoutFlow', value: 'fixed' },
     );
     assert.equal(next.imageRightVerticalPosition, 13);
+    assert.equal(readBasicChoice(next, 'quickLayout'), null);
   });
 
   test('manual width preserved when switching to image-right with auto false', () => {
@@ -205,5 +208,6 @@ describe('editWorkbench', () => {
     assert.equal(next.imageAspectRatio, 'square');
     assert.equal(next.classificationAndRarity, 'Weapon, rare');
     assert.equal(next.imageRightVerticalPosition, 13);
+    assert.equal(readBasicChoice(next, 'imageFrame'), 'bordered');
   });
 });

@@ -10,7 +10,9 @@ import {
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
 
-export type SupportedStyleCapability = 'print' | 'minimal';
+export type StyleCapability = 'print' | 'minimal';
+
+export type CardStyleLayout = 'print' | 'minimal' | 'pending';
 
 export type WorkbenchControlPlacement = 'none' | 'basic' | 'advanced' | 'both';
 
@@ -48,6 +50,12 @@ export type RenderStyleFieldId =
   | 'artworkColorSource'
   | 'artworkCustomColor';
 
+export type ImageFramePresetValue = 'borderless' | 'bordered';
+
+export type QuickLayoutValue = 'stacked' | 'compact';
+
+export type BasicChoiceId = 'quickLayout' | 'imageFrame';
+
 interface StyleCapabilityConfig {
   controls: Record<WorkbenchControlId, WorkbenchControlPlacement>;
   renderFields: ReadonlyArray<RenderStyleFieldId>;
@@ -65,6 +73,33 @@ export interface StyleNormalizableWorkbenchState {
   imageBorderWidthPx: number;
   imageRightVerticalPosition: number;
 }
+
+export interface BasicChoiceReadableWorkbenchState {
+  cardLayout: CardLayoutOption;
+  sideLayoutFlow: SideLayoutFlowOption;
+  imageBorderWidthPx: number;
+  imageBorderRadius: number;
+  imageAspectRatio: ImageAspectRatioOption;
+}
+
+const imageFramePresetFieldValues = {
+  borderless: {
+    imageBorderWidthPx: 0,
+    imageBorderRadius: 0,
+    imageAspectRatio: 'based-on-image' as const,
+  },
+  bordered: {
+    imageBorderWidthPx: 5,
+    imageBorderRadius: 100,
+    imageAspectRatio: 'square' as const,
+  },
+} as const satisfies Record<
+  ImageFramePresetValue,
+  Pick<
+    StyleNormalizableWorkbenchState,
+    'imageBorderWidthPx' | 'imageBorderRadius' | 'imageAspectRatio'
+  >
+>;
 
 const workbenchControlOrderByPlacement = {
   basic: [
@@ -160,24 +195,29 @@ const styleCapabilityRegistry = {
       'artworkCustomColor',
     ],
   },
-} as const satisfies Record<SupportedStyleCapability, StyleCapabilityConfig>;
+} as const satisfies Record<StyleCapability, StyleCapabilityConfig>;
 
-function resolveStyleCapability(
-  cardStyle: CardStyleOption,
-): SupportedStyleCapability {
+function resolveStyleCapability(cardStyle: CardStyleOption): StyleCapability {
   if (cardStyle === 'minimal') {
     return 'minimal';
   }
   return 'print';
 }
 
-export function getSupportedStyleCapability(
-  cardStyle: CardStyleOption,
-): SupportedStyleCapability {
-  return resolveStyleCapability(cardStyle);
+export function resolveCardStyle(cardStyle: CardStyleOption): {
+  capability: StyleCapability;
+  layout: CardStyleLayout;
+} {
+  if (cardStyle === 'minimal') {
+    return { capability: 'minimal', layout: 'minimal' };
+  }
+  if (cardStyle === 'classic') {
+    return { capability: 'print', layout: 'pending' };
+  }
+  return { capability: 'print', layout: 'print' };
 }
 
-export function getWorkbenchControlsForPlacement(
+export function controlsForPlacement(
   cardStyle: CardStyleOption,
   placement: 'basic' | 'advanced',
 ): ReadonlyArray<WorkbenchControlId> {
@@ -189,19 +229,88 @@ export function getWorkbenchControlsForPlacement(
   });
 }
 
-export function getWorkbenchControlPlacement(
-  cardStyle: CardStyleOption,
-  controlId: WorkbenchControlId,
-): WorkbenchControlPlacement {
-  return styleCapabilityRegistry[resolveStyleCapability(cardStyle)].controls[
-    controlId
-  ];
+export function renderStyleFieldIds(
+  capability: StyleCapability,
+): ReadonlyArray<RenderStyleFieldId> {
+  return styleCapabilityRegistry[capability].renderFields;
 }
 
-export function getRenderStyleFieldIds(
-  style: SupportedStyleCapability,
-): ReadonlyArray<RenderStyleFieldId> {
-  return styleCapabilityRegistry[style].renderFields;
+export function applyImageFrame<T extends StyleNormalizableWorkbenchState>(
+  state: T,
+  value: ImageFramePresetValue,
+): T {
+  return {
+    ...state,
+    ...imageFramePresetFieldValues[value],
+  };
+}
+
+export function readBasicChoice(
+  state: BasicChoiceReadableWorkbenchState,
+  choiceId: BasicChoiceId,
+): QuickLayoutValue | ImageFramePresetValue | null {
+  if (choiceId === 'quickLayout') {
+    if (state.cardLayout === 'vertical') {
+      return 'stacked';
+    }
+    if (
+      state.cardLayout === 'image-right' &&
+      state.sideLayoutFlow === 'fluid'
+    ) {
+      return 'compact';
+    }
+    return null;
+  }
+  const borderless = imageFramePresetFieldValues.borderless;
+  const bordered = imageFramePresetFieldValues.bordered;
+  const matchesBorderless =
+    state.imageBorderWidthPx === borderless.imageBorderWidthPx &&
+    state.imageBorderRadius === borderless.imageBorderRadius &&
+    state.imageAspectRatio === borderless.imageAspectRatio;
+  const matchesBordered =
+    state.imageBorderWidthPx === bordered.imageBorderWidthPx &&
+    state.imageBorderRadius === bordered.imageBorderRadius &&
+    state.imageAspectRatio === bordered.imageAspectRatio;
+  if (matchesBorderless) {
+    return 'borderless';
+  }
+  if (matchesBordered) {
+    return 'bordered';
+  }
+  const widthMatchesBorderless =
+    state.imageBorderWidthPx === borderless.imageBorderWidthPx;
+  const widthMatchesBordered =
+    state.imageBorderWidthPx === bordered.imageBorderWidthPx;
+  const radiusMatchesBorderless =
+    state.imageBorderRadius === borderless.imageBorderRadius;
+  const radiusMatchesBordered =
+    state.imageBorderRadius === bordered.imageBorderRadius;
+  const aspectMatchesBorderless =
+    state.imageAspectRatio === borderless.imageAspectRatio;
+  const aspectMatchesBordered =
+    state.imageAspectRatio === bordered.imageAspectRatio;
+  const widthOnly =
+    (widthMatchesBorderless || widthMatchesBordered) &&
+    !radiusMatchesBorderless &&
+    !radiusMatchesBordered &&
+    !aspectMatchesBorderless &&
+    !aspectMatchesBordered;
+  const radiusOnly =
+    (radiusMatchesBorderless || radiusMatchesBordered) &&
+    !widthMatchesBorderless &&
+    !widthMatchesBordered &&
+    !aspectMatchesBorderless &&
+    !aspectMatchesBordered;
+  const aspectOnly =
+    (aspectMatchesBorderless || aspectMatchesBordered) &&
+    !widthMatchesBorderless &&
+    !widthMatchesBordered &&
+    !radiusMatchesBorderless &&
+    !radiusMatchesBordered;
+  if (widthOnly || radiusOnly || aspectOnly) {
+    return null;
+  }
+  return null;
 }
 
 export function normalizeWorkbenchStateForStyle<

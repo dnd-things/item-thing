@@ -4,7 +4,7 @@ import { toJpeg, toPng } from 'html-to-image';
 import type { RefObject } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { CardRenderer } from '@/features/card-renderer/card-renderer';
-import { isCardStyleSupported } from '@/features/card-renderer/lib/card-renderer-options';
+import { resolveCardStyle } from '@/features/card-renderer/lib/card-style';
 import type { CardExportBrowserPayload } from '@/features/server-render-card/card-export-payload';
 import { executeCardRasterExport } from '@/features/workbench/lib/execute-card-raster-export';
 import { waitForStableElementBox } from '@/features/workbench/lib/export-card-artwork';
@@ -63,7 +63,7 @@ async function runExportPipeline(
     globals.__CARD_EXPORT_ERROR__ = 'missing_card_node';
     return;
   }
-  if (!isCardStyleSupported(payload.state.cardStyle)) {
+  if (resolveCardStyle(payload.state.cardStyle).layout === 'pending') {
     globals.__CARD_EXPORT_STATUS__ = 'error';
     globals.__CARD_EXPORT_ERROR__ = 'unsupported_card_style';
     return;
