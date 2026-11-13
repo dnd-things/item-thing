@@ -1,5 +1,9 @@
 import { ConvexError } from 'convex/values';
 
+import type { Id } from '../_generated/dataModel';
+import type { MutationCtx, QueryCtx } from '../_generated/server';
+import { SOURCE_OPTIMIZER_VERSION } from './sourceOptimizerVersion.ts';
+
 export const STALE_OPTIMIZER_VERSION = 'stale_optimizer_version';
 export const STALE_SOURCE = 'stale_source';
 
@@ -38,37 +42,49 @@ export function sourceReuseStatus(args: {
   };
 }
 
-export type FinalizeCandidateStorageDb = {
-  storageExists(storageId: string): Promise<boolean>;
-  findContentHash(
-    contentHash: string,
-  ): Promise<{ id: string; storageId: string } | null>;
-  deleteContentHash(id: string): Promise<void>;
-  insertContentHash(contentHash: string, storageId: string): Promise<void>;
-  findSourceOptimization(
-    inputHash: string,
-    optimizerVersion: string,
-  ): Promise<{ id: string; storageId: string } | null>;
-  deleteSourceOptimization(id: string): Promise<void>;
-  insertSourceOptimization(row: {
-    inputHash: string;
-    optimizerVersion: string;
-    storageId: string;
-  }): Promise<void>;
-  deleteStorage(storageId: string): Promise<void>;
-};
+async function storageIdExists(
+  ctx: MutationCtx,
+  storageId: Id<'_storage'>,
+): Promise<boolean> {
+  return (await ctx.db.system.get('_storage', storageId)) !== null;
+}
 
-export async function finalizeCandidateStorageRecords(args: {
-  db: FinalizeCandidateStorageDb;
-  activeOptimizerVersion: string;
-  candidateStorageId: string;
-  contentHash: string;
-  inputHash?: string;
-  optimizerVersion?: string;
-}): Promise<string> {
+export async function lookupLiveSourceOptimization(
+  ctx: QueryCtx,
+  args: { inputHash: string; optimizerVersion: string },
+): Promise<Id<'_storage'> | null> {
+  const row = await ctx.db
+    .query('sourceOptimizationCache')
+    .withIndex('by_inputHash_optimizerVersion', (q) =>
+      q
+        .eq('inputHash', args.inputHash)
+        .eq('optimizerVersion', args.optimizerVersion),
+    )
+    .unique();
+  if (row === null) {
+    return null;
+  }
+  const storageExists =
+    (await ctx.db.system.get('_storage', row.storageId)) !== null;
+  const storageId = liveCachedStorageId(row, storageExists);
+  if (storageId === null) {
+    return null;
+  }
+  return row.storageId;
+}
+
+export async function finalizeCandidateStorageRecords(
+  ctx: MutationCtx,
+  args: {
+    candidateStorageId: Id<'_storage'>;
+    contentHash: string;
+    inputHash?: string;
+    optimizerVersion?: string;
+  },
+): Promise<Id<'_storage'>> {
   if (
     args.optimizerVersion !== undefined &&
-    args.optimizerVersion !== args.activeOptimizerVersion
+    args.optimizerVersion !== SOURCE_OPTIMIZER_VERSION
   ) {
     throw sourceReuseFailure(STALE_OPTIMIZER_VERSION);
   }
@@ -78,31 +94,41 @@ export async function finalizeCandidateStorageRecords(args: {
 
   let inputRow =
     inputHash !== undefined && optimizerVersion !== undefined
-      ? await args.db.findSourceOptimization(inputHash, optimizerVersion)
+      ? await ctx.db
+          .query('sourceOptimizationCache')
+          .withIndex('by_inputHash_optimizerVersion', (q) =>
+            q
+              .eq('inputHash', inputHash)
+              .eq('optimizerVersion', optimizerVersion),
+          )
+          .unique()
       : null;
-  let canonical: string | null = null;
+  let canonical: Id<'_storage'> | null = null;
   if (inputRow !== null) {
-    if (await args.db.storageExists(inputRow.storageId)) {
+    if (await storageIdExists(ctx, inputRow.storageId)) {
       canonical = inputRow.storageId;
     } else {
-      await args.db.deleteSourceOptimization(inputRow.id);
+      await ctx.db.delete(inputRow._id);
       inputRow = null;
     }
   }
 
-  let outputRow = await args.db.findContentHash(args.contentHash);
+  let outputRow = await ctx.db
+    .query('storageByContentHash')
+    .withIndex('by_contentHash', (q) => q.eq('contentHash', args.contentHash))
+    .first();
   if (
     outputRow !== null &&
-    !(await args.db.storageExists(outputRow.storageId))
+    !(await storageIdExists(ctx, outputRow.storageId))
   ) {
-    await args.db.deleteContentHash(outputRow.id);
+    await ctx.db.delete(outputRow._id);
     outputRow = null;
   }
 
   if (canonical === null) {
     if (outputRow !== null) {
       canonical = outputRow.storageId;
-    } else if (await args.db.storageExists(args.candidateStorageId)) {
+    } else if (await storageIdExists(ctx, args.candidateStorageId)) {
       canonical = args.candidateStorageId;
     } else {
       throw new Error('Candidate storage not found');
@@ -114,7 +140,10 @@ export async function finalizeCandidateStorageRecords(args: {
     (outputRow !== null && outputRow.storageId === args.candidateStorageId);
 
   if (canonical === args.candidateStorageId && outputRow === null) {
-    await args.db.insertContentHash(args.contentHash, canonical);
+    await ctx.db.insert('storageByContentHash', {
+      contentHash: args.contentHash,
+      storageId: canonical,
+    });
   }
 
   if (
@@ -122,7 +151,7 @@ export async function finalizeCandidateStorageRecords(args: {
     optimizerVersion !== undefined &&
     inputRow === null
   ) {
-    await args.db.insertSourceOptimization({
+    await ctx.db.insert('sourceOptimizationCache', {
       inputHash,
       optimizerVersion,
       storageId: canonical,
@@ -130,7 +159,7 @@ export async function finalizeCandidateStorageRecords(args: {
   }
 
   if (args.candidateStorageId !== canonical && !candidateIsMapped) {
-    await args.db.deleteStorage(args.candidateStorageId);
+    await ctx.storage.delete(args.candidateStorageId);
   }
 
   return canonical;
