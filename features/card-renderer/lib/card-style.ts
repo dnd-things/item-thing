@@ -6,9 +6,9 @@ import {
   clampImageBorderWidthPx,
   getDefaultCardWidthPx,
   type ImageAspectRatioOption,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { defaultImageRightVerticalPosition } from '@/features/card-renderer/lib/image-right-artwork-placement';
 
 export type StyleCapability = 'print' | 'minimal';
 
@@ -328,8 +328,10 @@ export function normalizeWorkbenchStateForStyle<
           imageAspectRatio: 'based-on-image' as const,
           imageBorderRadius: 0,
           imageBorderWidthPx: 0,
-          imageRightVerticalPosition:
-            imageRightVerticalPositionDefaultForFluidSideLayout,
+          imageRightVerticalPosition: defaultImageRightVerticalPosition(
+            'fluid',
+            '',
+          ),
         }
       : { ...state };
 

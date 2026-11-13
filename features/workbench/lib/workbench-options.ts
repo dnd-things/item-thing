@@ -8,9 +8,9 @@ import {
   type CardStyleOption,
   getDefaultCardWidthPx,
   type ImageAspectRatioOption,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { defaultImageRightVerticalPosition } from '@/features/card-renderer/lib/image-right-artwork-placement';
 import type { DurableCardState } from '@/lib/durable-card-state';
 export interface SelectionOption<TValue extends string> {
   label: string;
@@ -101,8 +101,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
   imageBorderWidthPx: 0,
-  imageRightVerticalPosition:
-    imageRightVerticalPositionDefaultForFluidSideLayout,
+  imageRightVerticalPosition: defaultImageRightVerticalPosition('fluid', ''),
   imageRotationDegrees: 0,
   imageFlipHorizontal: false,
   imageFlipVertical: false,

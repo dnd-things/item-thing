@@ -1,8 +1,6 @@
 import {
   type CardLayoutOption,
   getDefaultCardWidthPx,
-  getImageRightVerticalPositionDefaultForFixedSideLayout,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
@@ -10,6 +8,7 @@ import {
   type ImageFramePresetValue,
   normalizeWorkbenchStateForStyle,
 } from '@/features/card-renderer/lib/card-style';
+import { defaultImageRightVerticalPosition } from '@/features/card-renderer/lib/image-right-artwork-placement';
 import {
   type MagicItemWorkbenchState,
   withItemDetails,
@@ -33,15 +32,10 @@ function applyImageRightVerticalPositionForFlow(
   flow: SideLayoutFlowOption,
   classificationAndRarity: string,
 ): void {
-  if (flow === 'fixed') {
-    state.imageRightVerticalPosition =
-      getImageRightVerticalPositionDefaultForFixedSideLayout(
-        classificationAndRarity,
-      );
-  } else {
-    state.imageRightVerticalPosition =
-      imageRightVerticalPositionDefaultForFluidSideLayout;
-  }
+  state.imageRightVerticalPosition = defaultImageRightVerticalPosition(
+    flow,
+    classificationAndRarity,
+  );
 }
 
 function withCardLayout(

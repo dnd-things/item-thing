@@ -24,15 +24,16 @@ import {
   getCardWidthPxRange,
   imageBorderRadiusRange,
   imageBorderWidthPxRange,
-  imageRightVerticalPositionRange,
-  imageRightVerticalPositionUserRange,
-  mapImageRightVerticalPositionToUserPercent,
-  mapUserPercentToImageRightVerticalPosition,
 } from '@/features/card-renderer/lib/card-renderer-options';
 import {
   controlsForPlacement,
   type WorkbenchControlId,
 } from '@/features/card-renderer/lib/card-style';
+import {
+  imageRightVerticalSlider,
+  reconcileImageRightVerticalPosition,
+  storedImageRightVerticalPositionForSlider,
+} from '@/features/card-renderer/lib/image-right-artwork-placement';
 import type { WorkbenchEditHandler } from '../lib/edit-workbench';
 import type { ImageRightVerticalPositionBounds } from '../lib/use-image-right-vertical-position-bounds';
 import {
@@ -81,12 +82,24 @@ export function WorkbenchSettingsDrawer({
     'advanced',
   );
 
+  const imageRightFirstPaint = reconcileImageRightVerticalPosition({
+    cardLayout: workbenchState.cardLayout,
+    sideLayoutFlow: workbenchState.sideLayoutFlow,
+    classificationAndRarity: workbenchState.classificationAndRarity,
+    surface: { kind: 'unmeasured' },
+    stored: workbenchState.imageRightVerticalPosition,
+  });
   const imageRightBoundsMin =
-    imageRightVerticalPositionBounds?.min ??
-    imageRightVerticalPositionRange.min;
+    imageRightVerticalPositionBounds?.min ?? imageRightFirstPaint.bounds.min;
   const imageRightBoundsMax =
-    imageRightVerticalPositionBounds?.max ??
-    imageRightVerticalPositionRange.max;
+    imageRightVerticalPositionBounds?.max ?? imageRightFirstPaint.bounds.max;
+  const imageRightSliderPercent =
+    imageRightVerticalPositionBounds?.sliderPercent ??
+    imageRightFirstPaint.sliderPercent;
+  const imageRightSliderBounds = {
+    min: imageRightBoundsMin,
+    max: imageRightBoundsMax,
+  };
 
   const setWorkbenchField: WorkbenchFieldSetter = (fieldName, fieldValue) => {
     onWorkbenchEdit({ kind: 'field', key: fieldName, value: fieldValue });
@@ -292,16 +305,10 @@ export function WorkbenchSettingsDrawer({
               <Slider
                 aria-label="Artwork vertical position"
                 id="drawer-image-vertical-position"
-                value={[
-                  mapImageRightVerticalPositionToUserPercent(
-                    workbenchState.imageRightVerticalPosition,
-                    imageRightBoundsMin,
-                    imageRightBoundsMax,
-                  ),
-                ]}
-                min={imageRightVerticalPositionUserRange.min}
-                max={imageRightVerticalPositionUserRange.max}
-                step={imageRightVerticalPositionUserRange.step}
+                value={[imageRightSliderPercent]}
+                min={imageRightVerticalSlider.min}
+                max={imageRightVerticalSlider.max}
+                step={imageRightVerticalSlider.step}
                 onValueChange={(nextValue) => {
                   const nextPercent = Array.isArray(nextValue)
                     ? nextValue[0]
@@ -309,21 +316,16 @@ export function WorkbenchSettingsDrawer({
                   if (typeof nextPercent === 'number') {
                     setWorkbenchField(
                       'imageRightVerticalPosition',
-                      mapUserPercentToImageRightVerticalPosition(
+                      storedImageRightVerticalPositionForSlider(
                         nextPercent,
-                        imageRightBoundsMin,
-                        imageRightBoundsMax,
+                        imageRightSliderBounds,
                       ),
                     );
                   }
                 }}
               />
               <span className="min-w-10 text-right text-sm font-medium text-muted-foreground tabular-nums">
-                {mapImageRightVerticalPositionToUserPercent(
-                  workbenchState.imageRightVerticalPosition,
-                  imageRightBoundsMin,
-                  imageRightBoundsMax,
-                )}
+                {imageRightSliderPercent}
               </span>
             </div>
           </Field>
