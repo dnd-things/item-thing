@@ -1,11 +1,8 @@
 'use client';
 
-export type ArtworkColorSource =
-  | 'auto-complement'
-  | 'triad-left'
-  | 'triad-right'
-  | 'neutral'
-  | 'custom';
+import type { DurableCardState } from '@/lib/durable-card-state';
+
+export type ArtworkColorSource = DurableCardState['artworkColorSource'];
 
 export type DerivedArtworkColorSource = Exclude<ArtworkColorSource, 'custom'>;
 export type HueArtworkColorSource = Exclude<

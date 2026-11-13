@@ -32,6 +32,12 @@ export type WorkbenchCommitResult =
 
 export type WorkbenchCommitInput =
   | {
+      kind: 'reset';
+      json: string;
+      expectedJson: string;
+      previousAssetKey: string | null;
+    }
+  | {
       kind: 'metadata';
       json: string;
       assetKey: string | null;
@@ -365,7 +371,24 @@ export function createWorkbenchArtworkStore(
         const workbenchStore = transaction.objectStore(WORKBENCH_STORE);
         const artworkStore = transaction.objectStore(ARTWORK_STORE);
 
-        if (input.kind === 'metadata') {
+        if (input.kind === 'reset') {
+          const request = workbenchStore.get(CURRENT_RECORD_KEY);
+          request.onsuccess = () => {
+            if (request.result !== input.expectedJson) {
+              conflict = true;
+              transaction.abort();
+              return;
+            }
+            try {
+              workbenchStore.put(input.json, CURRENT_RECORD_KEY);
+              if (input.previousAssetKey)
+                artworkStore.delete(input.previousAssetKey);
+            } catch (error) {
+              enqueueFailure.reason = reasonFromUnknown(error);
+              transaction.abort();
+            }
+          };
+        } else if (input.kind === 'metadata') {
           if (input.assetKey === null) {
             workbenchStore.put(input.json, CURRENT_RECORD_KEY);
           } else {

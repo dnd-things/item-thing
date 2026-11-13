@@ -6,7 +6,7 @@ import { createWorkbenchArtworkStore } from './workbench-artwork-store.ts';
 import { workbenchItemDetailsSchema } from './workbench-form-schema.ts';
 import { defaultMagicItemWorkbenchState } from './workbench-options.ts';
 import {
-  encodeWorkbenchEnvelopeV7,
+  encodeWorkbenchEnvelopeV8,
   fileFromImageBytes,
   parseImageDataUrl,
   parseWorkbenchStorageJson,
@@ -351,7 +351,7 @@ describe('workbench persistence codec', () => {
     assert.equal('imagePreviewUrl' in projected, false);
     assert.equal('draftToken' in projected, false);
     assert.deepEqual(Object.keys(projected), [...persistedWorkbenchStateKeys]);
-    const json = encodeWorkbenchEnvelopeV7(extra, 'asset-1');
+    const json = encodeWorkbenchEnvelopeV8(extra, 'asset-1');
     assert.equal(json.includes(preview), false);
     assert.equal(json.includes('draftToken'), false);
     assert.equal(json.includes('do-not-store'), false);
@@ -360,17 +360,17 @@ describe('workbench persistence codec', () => {
       assetKey: string;
       state: Record<string, unknown>;
     };
-    assert.equal(parsed.version, 7);
+    assert.equal(parsed.version, 8);
     assert.equal(parsed.assetKey, 'asset-1');
     assert.equal('imagePreviewUrl' in parsed.state, false);
   });
 
   test('round-trips normalized workbench fields and keeps exact preview bytes', async () => {
     const state = sampleState();
-    const json = encodeWorkbenchEnvelopeV7(state, null);
+    const json = encodeWorkbenchEnvelopeV8(state, null);
     const parsed = parseWorkbenchStorageJson(json);
-    assert.equal(parsed.kind, 'v7');
-    if (parsed.kind !== 'v7') {
+    assert.equal(parsed.kind, 'v8');
+    if (parsed.kind !== 'v8') {
       return;
     }
     const restored = {
@@ -378,7 +378,7 @@ describe('workbench persistence codec', () => {
       imagePreviewUrl: state.imagePreviewUrl,
     };
     assert.deepEqual(restored, state);
-    assert.equal(encodeWorkbenchEnvelopeV7(restored, null), json);
+    assert.equal(encodeWorkbenchEnvelopeV8(restored, null), json);
     const blob = previewDataUrlToBlob(state.imagePreviewUrl);
     assert.equal(blob.type, 'image/png');
     assert.deepEqual(new Uint8Array(await blob.arrayBuffer()), pngBytes);
@@ -399,70 +399,6 @@ describe('workbench persistence codec', () => {
     assert.equal('imagePreviewUrl' in snapshot, false);
     assert.equal(snapshot.imageFileName, 'sword.png');
     assert.equal(snapshot.mechanicalDescription, 'Deals damage.');
-  });
-
-  test('keeps legacy normalization for supported versions and rejects the rest', () => {
-    const v1 = parseWorkbenchStorageJson(
-      JSON.stringify({
-        version: 1,
-        state: {
-          itemName: 'Scale',
-          imageRightVerticalPosition: 4,
-          imageRotationDegrees: 22,
-          cardWidthAuto: false,
-          cardWidthPx: 10,
-          minimalArtworkThemeSource: 'neutral',
-          minimalArtworkThemeCustomColor: '#AbC',
-        },
-      }),
-    );
-    assert.equal(v1.kind, 'legacy');
-    if (v1.kind !== 'legacy') {
-      return;
-    }
-    assert.equal(v1.version, 1);
-    assert.equal(v1.state.itemName, 'Scale');
-    assert.equal(v1.state.imageRightVerticalPosition, 8);
-    assert.equal(v1.state.imageRotationDegrees, 15);
-    assert.equal(v1.state.cardWidthPx, 400);
-    assert.equal(v1.state.artworkColorSource, 'neutral');
-    assert.equal(v1.state.artworkCustomColor, '#aabbcc');
-
-    for (const version of [2, 3, 5, 6]) {
-      const parsed = parseWorkbenchStorageJson(
-        JSON.stringify({
-          version,
-          state: { itemName: `v${version}`, imagePreviewUrl: '' },
-        }),
-      );
-      assert.equal(parsed.kind, 'legacy');
-      if (parsed.kind === 'legacy') {
-        assert.equal(parsed.state.itemName, `v${version}`);
-        assert.equal(parsed.state.imageRightVerticalPosition, 0);
-      }
-    }
-
-    const unsupported = parseWorkbenchStorageJson(
-      JSON.stringify({
-        version: 4,
-        state: { itemName: 'Future', imagePreviewUrl: dataUrlFrom(pngBytes) },
-      }),
-    );
-    assert.equal(unsupported.kind, 'degraded');
-    if (unsupported.kind === 'degraded') {
-      assert.equal(unsupported.reason, 'unsupported-version');
-      assert.equal(unsupported.state.itemName, 'Future');
-      assert.equal(unsupported.state.imagePreviewUrl, '');
-    }
-    assert.equal(
-      parseWorkbenchStorageJson('{"version":9,"state":{}}').kind,
-      'degraded',
-    );
-    assert.equal(parseWorkbenchStorageJson('{').kind, 'malformed');
-    assert.equal(
-      parseWorkbenchStorageJson('{"version":6,"state":{"itemName":1}}').kind,
-      'degraded',
-    );
   });
 
   test('parses only image data URLs into exact bytes', async () => {
@@ -702,7 +638,7 @@ describe('native IndexedDB adapter transaction events', () => {
       (
         await store.commit({
           kind: 'replace',
-          json: encodeWorkbenchEnvelopeV7(sampleState(), 'asset-a'),
+          json: encodeWorkbenchEnvelopeV8(sampleState(), 'asset-a'),
           assetKey: 'asset-a',
           previousAssetKey: 'asset-old',
           newBlob: blob,
@@ -835,5 +771,81 @@ describe('preview URL ownership', () => {
     assert.equal(created, 1);
     assert.equal(revoked, 1);
     assert.equal(published.effectiveUrl, 'blob:new');
+  });
+});
+
+describe('conditional saved-card reset', () => {
+  test('a stale reset preserves a newer compatible save and its artwork', async () => {
+    const factory = new FakeFactory();
+    const store = createWorkbenchArtworkStore({
+      indexedDB: factory as unknown as IDBFactory,
+    });
+    const old = JSON.stringify({ version: 7, state: {}, assetKey: 'old' });
+    const blob = new Blob([pngBytes], { type: 'image/png' });
+    await store.commit({
+      kind: 'replace',
+      json: old,
+      assetKey: 'old',
+      previousAssetKey: null,
+      newBlob: blob,
+    });
+    const loaded = await store.load();
+    assert.equal(loaded.ok, true);
+    const newer = encodeWorkbenchEnvelopeV8(sampleState(), 'new');
+    await store.commit({
+      kind: 'replace',
+      json: newer,
+      assetKey: 'new',
+      previousAssetKey: 'old',
+      newBlob: blob,
+    });
+    const result = await store.commit({
+      kind: 'reset',
+      expectedJson: old,
+      json: encodeWorkbenchEnvelopeV8(defaultMagicItemWorkbenchState, null),
+      previousAssetKey: 'old',
+    });
+    assert.deepEqual(result, { ok: false, reason: 'conflict' });
+    const restored = await store.load();
+    assert.equal(restored.ok, true);
+    if (restored.ok) assert.equal(restored.record?.json, newer);
+    assert.equal(
+      factoryDatabase(factory).stores.get('artwork')?.get('new'),
+      blob,
+    );
+  });
+  test('an unchanged incompatible save resets and deletes only its associated artwork', async () => {
+    const factory = new FakeFactory();
+    const store = createWorkbenchArtworkStore({
+      indexedDB: factory as unknown as IDBFactory,
+    });
+    const old = JSON.stringify({ version: 7, state: {}, assetKey: 'old' });
+    await store.commit({
+      kind: 'replace',
+      json: old,
+      assetKey: 'old',
+      previousAssetKey: null,
+      newBlob: new Blob([pngBytes]),
+    });
+    const empty = encodeWorkbenchEnvelopeV8(
+      defaultMagicItemWorkbenchState,
+      null,
+    );
+    assert.deepEqual(
+      await store.commit({
+        kind: 'reset',
+        expectedJson: old,
+        json: empty,
+        previousAssetKey: 'old',
+      }),
+      { ok: true },
+    );
+    const loaded = await store.load();
+    assert.equal(loaded.ok, true);
+    if (loaded.ok) assert.equal(loaded.record?.json, empty);
+    assert.equal(
+      factoryDatabase(factory).stores.get('artwork')?.has('old'),
+      false,
+    );
   });
 });

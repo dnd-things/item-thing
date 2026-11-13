@@ -9,15 +9,17 @@ import {
   getDefaultCardWidthPx,
   type ImageAspectRatioOption,
   imageRightVerticalPositionDefaultForFluidSideLayout,
-  type MagicItemCardRendererProps,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import type { DurableCardState } from '@/lib/durable-card-state';
 export interface SelectionOption<TValue extends string> {
   label: string;
   value: TValue;
 }
 
-export type MagicItemWorkbenchState = MagicItemCardRendererProps;
+export type MagicItemWorkbenchState = DurableCardState & {
+  imagePreviewUrl: string;
+};
 
 export type WorkbenchFieldSetter = <TKey extends keyof MagicItemWorkbenchState>(
   fieldName: TKey,

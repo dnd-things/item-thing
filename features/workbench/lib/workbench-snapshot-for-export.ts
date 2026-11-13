@@ -1,13 +1,4 @@
-import type { MagicItemWorkbenchState } from './workbench-options';
-
-export type WorkbenchSnapshotForExport = Omit<
-  MagicItemWorkbenchState,
-  'imagePreviewUrl'
->;
-
-export function toWorkbenchSnapshotForExport(
-  state: MagicItemWorkbenchState,
-): WorkbenchSnapshotForExport {
-  const { imagePreviewUrl: _imagePreviewUrl, ...rest } = state;
-  return rest;
-}
+export {
+  type DurableCardState as WorkbenchSnapshotForExport,
+  toDurableCardState as toWorkbenchSnapshotForExport,
+} from '@/lib/durable-card-state';
