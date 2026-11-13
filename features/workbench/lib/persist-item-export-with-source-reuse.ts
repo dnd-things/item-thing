@@ -1,19 +1,17 @@
-import { ConvexError } from 'convex/values';
+import {
+  type CardExportCandidate,
+  type PreparedSource,
+  persistCardExport,
+  type SourceReuseStatus,
+} from '../../card-export/lib/persist-card-export.ts';
 
-export type PreparedSource = {
-  storageId: string;
-  optimizerVersion: string;
-};
+export { isRetryableSourceReuseError } from '../../card-export/lib/persist-card-export.ts';
+export type { PreparedSource, SourceReuseStatus };
 
 export type PreviewReuseSlot = {
   dataUrl: string;
   promise: Promise<PreparedSource>;
 } | null;
-
-export type SourceReuseStatus = {
-  optimizerVersion: string;
-  reusable: boolean;
-};
 
 type PreviewReuseDeps = {
   prepare: (dataUrl: string) => Promise<PreparedSource>;
@@ -22,10 +20,7 @@ type PreviewReuseDeps = {
 
 type SlotRef = { current: PreviewReuseSlot };
 
-type BoundPreparation = {
-  source: PreparedSource;
-  token: Promise<PreparedSource> | null;
-};
+type BrowserHold = Promise<PreparedSource> | null;
 
 const slotEpochs = new WeakMap<SlotRef, number>();
 
@@ -72,52 +67,66 @@ function installPreparation(
   return { promise, token: promise };
 }
 
-async function reusePrepared(
+async function readPreviewCandidate(
   slotRef: SlotRef,
   dataUrl: string,
-  currentPromise: Promise<PreparedSource>,
-  prepared: PreparedSource,
-  deps: PreviewReuseDeps,
   epoch: number,
-): Promise<BoundPreparation> {
-  const status = await deps.validate(prepared);
+  attempt: 1 | 2,
+  discard: BrowserHold,
+  deps: PreviewReuseDeps,
+): Promise<CardExportCandidate<BrowserHold>> {
   if (
-    status.reusable &&
-    status.optimizerVersion === prepared.optimizerVersion
-  ) {
-    return { source: prepared, token: currentPromise };
-  }
-  if (
+    discard !== null &&
     slotEpoch(slotRef) === epoch &&
-    slotRef.current?.promise === currentPromise
+    slotRef.current?.promise === discard
   ) {
-    const installed = installPreparation(slotRef, dataUrl, deps.prepare, epoch);
-    return { source: await installed.promise, token: installed.token };
+    slotRef.current = null;
   }
-  if (slotEpoch(slotRef) === epoch && slotRef.current?.dataUrl === dataUrl) {
-    return beginPreparation(slotRef, dataUrl, deps, epoch, true);
+  if (dataUrl.trim() === '') {
+    if (slotEpoch(slotRef) === epoch) {
+      releasePreviewReuseSlot(slotRef);
+    }
+    return { kind: 'absent' };
   }
-  return { source: await deps.prepare(dataUrl), token: null };
-}
-
-async function beginPreparation(
-  slotRef: SlotRef,
-  dataUrl: string,
-  deps: PreviewReuseDeps,
-  epoch: number,
-  replace: boolean,
-): Promise<BoundPreparation> {
+  const replace = attempt === 1;
   const current = slotRef.current;
   if (slotEpoch(slotRef) === epoch && current?.dataUrl === dataUrl) {
     const token = current.promise;
-    const prepared = await token;
-    return reusePrepared(slotRef, dataUrl, token, prepared, deps, epoch);
+    const source = await token;
+    return { kind: 'cached', source, hold: token };
   }
   if (slotEpoch(slotRef) !== epoch || (!replace && current !== null)) {
-    return { source: await deps.prepare(dataUrl), token: null };
+    const source = await deps.prepare(dataUrl);
+    return { kind: 'fresh', source, hold: null };
   }
   const installed = installPreparation(slotRef, dataUrl, deps.prepare, epoch);
-  return { source: await installed.promise, token: installed.token };
+  const source = await installed.promise;
+  return { kind: 'fresh', source, hold: installed.token };
+}
+
+async function replacePreviewCandidate(
+  slotRef: SlotRef,
+  dataUrl: string,
+  epoch: number,
+  hold: BrowserHold,
+  deps: PreviewReuseDeps,
+): Promise<CardExportCandidate<BrowserHold>> {
+  if (
+    hold !== null &&
+    slotEpoch(slotRef) === epoch &&
+    slotRef.current?.promise === hold
+  ) {
+    const installed = installPreparation(slotRef, dataUrl, deps.prepare, epoch);
+    const source = await installed.promise;
+    return { kind: 'fresh', source, hold: installed.token };
+  }
+  if (slotEpoch(slotRef) === epoch && slotRef.current?.dataUrl === dataUrl) {
+    const token = slotRef.current.promise;
+    const source = await token;
+    return { kind: 'cached', source, hold: token };
+  }
+  const source = await deps.prepare(dataUrl);
+  return { kind: 'fresh', source, hold: null };
 }
 
 export function releasePreviewReuseSlot(slotRef: SlotRef): void {
@@ -142,18 +151,6 @@ export function syncPreviewReuseSlotOnArtworkChange(
   artworkPresent.url = next;
 }
 
-export function isRetryableSourceReuseError(error: unknown): boolean {
-  if (!(error instanceof ConvexError)) {
-    return false;
-  }
-  const data: unknown = error.data;
-  if (typeof data !== 'object' || data === null || !('code' in data)) {
-    return false;
-  }
-  const code = data.code;
-  return code === 'stale_optimizer_version' || code === 'stale_source';
-}
-
 export async function persistExportWithPreviewReuse<TSnapshot>(
   slotRef: SlotRef,
   input: {
@@ -175,53 +172,34 @@ export async function persistExportWithPreviewReuse<TSnapshot>(
 ): Promise<void> {
   const dataUrl = input.sourceImagePreviewDataUrl;
   const epoch = ownedReuseEpoch(slotRef, input.reuseEpoch);
-  let token: Promise<PreparedSource> | null = null;
-
-  const run = async (
-    replace: boolean,
-    failedToken: Promise<PreparedSource> | null,
-  ): Promise<void> => {
-    if (dataUrl.trim() === '') {
-      if (slotEpoch(slotRef) === epoch) {
-        releasePreviewReuseSlot(slotRef);
+  await persistCardExport<BrowserHold>({
+    read: ({ attempt, discard }) =>
+      readPreviewCandidate(slotRef, dataUrl, epoch, attempt, discard, deps),
+    replace: (hold) =>
+      replacePreviewCandidate(slotRef, dataUrl, epoch, hold, deps),
+    isCurrent: (hold) => {
+      if (hold === null) {
+        return false;
+      }
+      return slotEpoch(slotRef) === epoch && slotRef.current?.promise === hold;
+    },
+    validate: deps.validate,
+    insert: async (source) => {
+      if (source === null) {
+        await deps.insert({
+          workbenchSnapshot: input.workbenchSnapshot,
+          exportFormat: input.exportFormat,
+          exportPixelRatio: input.exportPixelRatio,
+        });
+        return;
       }
       await deps.insert({
         workbenchSnapshot: input.workbenchSnapshot,
         exportFormat: input.exportFormat,
         exportPixelRatio: input.exportPixelRatio,
+        sourceImageStorageId: source.storageId,
+        sourceOptimizerVersion: source.optimizerVersion,
       });
-      return;
-    }
-    if (
-      failedToken !== null &&
-      slotEpoch(slotRef) === epoch &&
-      slotRef.current?.promise === failedToken
-    ) {
-      slotRef.current = null;
-    }
-    const bound = await beginPreparation(
-      slotRef,
-      dataUrl,
-      deps,
-      epoch,
-      replace,
-    );
-    token = bound.token;
-    await deps.insert({
-      workbenchSnapshot: input.workbenchSnapshot,
-      exportFormat: input.exportFormat,
-      exportPixelRatio: input.exportPixelRatio,
-      sourceImageStorageId: bound.source.storageId,
-      sourceOptimizerVersion: bound.source.optimizerVersion,
-    });
-  };
-
-  try {
-    await run(true, null);
-  } catch (error: unknown) {
-    if (!isRetryableSourceReuseError(error)) {
-      throw error;
-    }
-    await run(false, token);
-  }
+    },
+  });
 }

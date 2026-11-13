@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, test } from 'node:test';
 import { ConvexError } from 'convex/values';
-import { isRetryableSourceReuseError as apiRetryable } from '../features/server-render-card/source-artwork-reuse.ts';
-import { isRetryableSourceReuseError as browserRetryable } from '../features/workbench/lib/persist-item-export-with-source-reuse.ts';
+import { isRetryableSourceReuseError } from '../features/card-export/lib/persist-card-export.ts';
 import { SOURCE_OPTIMIZER_VERSION } from './lib/sourceOptimizerVersion.ts';
 import {
   createItemExportRecord,
@@ -323,13 +322,21 @@ describe('source reuse status and export insert', () => {
     assert.equal(inserted[1]?.sourceImageStorageId, 'missing');
     assert.equal(inserted[2]?.sourceImageStorageId, undefined);
     assert.equal(
-      browserRetryable(sourceReuseFailure(STALE_OPTIMIZER_VERSION)),
+      isRetryableSourceReuseError(sourceReuseFailure(STALE_OPTIMIZER_VERSION)),
       true,
     );
-    assert.equal(apiRetryable(sourceReuseFailure(STALE_SOURCE)), true);
-    assert.equal(browserRetryable(new Error('socket hang up')), false);
     assert.equal(
-      apiRetryable(new ConvexError({ code: 'not-a-reuse-error' })),
+      isRetryableSourceReuseError(sourceReuseFailure(STALE_SOURCE)),
+      true,
+    );
+    assert.equal(
+      isRetryableSourceReuseError(new Error('socket hang up')),
+      false,
+    );
+    assert.equal(
+      isRetryableSourceReuseError(
+        new ConvexError({ code: 'not-a-reuse-error' }),
+      ),
       false,
     );
   });

@@ -1,18 +1,16 @@
 import { createHash } from 'node:crypto';
-import { ConvexError } from 'convex/values';
+import {
+  type CardExportCandidate,
+  type PreparedSource,
+  persistCardExport,
+  type SourceReuseStatus,
+} from '../card-export/lib/persist-card-export.ts';
+
+export { isRetryableSourceReuseError } from '../card-export/lib/persist-card-export.ts';
+export type { PreparedSource, SourceReuseStatus };
 
 export const SOURCE_ARTWORK_REUSE_MAX_ENTRIES = 16;
 export const SOURCE_ARTWORK_REUSE_TTL_MS = 10 * 60 * 1000;
-
-export type PreparedSource = {
-  storageId: string;
-  optimizerVersion: string;
-};
-
-export type SourceReuseStatus = {
-  optimizerVersion: string;
-  reusable: boolean;
-};
 
 type ResolvedEntry = {
   kind: 'resolved';
@@ -50,18 +48,6 @@ export function sourceArtworkCacheKey(
   inputHash: string,
 ): string {
   return `${convexUrl}\0${inputHash}`;
-}
-
-export function isRetryableSourceReuseError(error: unknown): boolean {
-  if (!(error instanceof ConvexError)) {
-    return false;
-  }
-  const data: unknown = error.data;
-  if (typeof data !== 'object' || data === null || !('code' in data)) {
-    return false;
-  }
-  const code = data.code;
-  return code === 'stale_optimizer_version' || code === 'stale_source';
 }
 
 export function createSourceArtworkReuseCache(options?: {
@@ -233,42 +219,40 @@ export type SourceArtworkReuseCache = ReturnType<
 
 export const sourceArtworkReuseCache = createSourceArtworkReuseCache();
 
-async function obtainPreparedArtwork(
+type ServerHold = number | null;
+
+async function readArtworkCandidate(
   cache: SourceArtworkReuseCache,
   key: string,
-  failedGeneration: number | undefined,
-  deps: {
-    prepare: () => Promise<PreparedSource>;
-    validate: (prepared: PreparedSource) => Promise<SourceReuseStatus>;
-  },
-): Promise<{ source: PreparedSource; generation: number | undefined }> {
-  let invalidateGeneration = failedGeneration;
-  while (true) {
-    if (invalidateGeneration !== undefined) {
-      cache.invalidate(key, invalidateGeneration);
-      invalidateGeneration = undefined;
-    }
-    const resolved = cache.readResolved(key);
-    const generation = resolved === null ? undefined : cache.generationOf(key);
-    if (resolved === null || generation === undefined) {
-      const promise = cache.prepare(key, deps.prepare);
-      const preparedGeneration = cache.generationOf(key);
-      const source = await promise;
-      return { source, generation: preparedGeneration };
-    }
-    const status = await deps.validate(resolved);
-    if (cache.generationOf(key) !== generation) {
-      continue;
-    }
-    if (
-      status.reusable &&
-      status.optimizerVersion === resolved.optimizerVersion
-    ) {
-      cache.touch(key);
-      return { source: resolved, generation };
-    }
-    invalidateGeneration = generation;
+  discard: ServerHold,
+  prepare: () => Promise<PreparedSource>,
+): Promise<CardExportCandidate<ServerHold>> {
+  if (discard !== null) {
+    cache.invalidate(key, discard);
   }
+  const resolved = cache.readResolved(key);
+  if (resolved !== null) {
+    const generation = cache.generationOf(key);
+    if (generation !== undefined) {
+      return { kind: 'cached', source: resolved, hold: generation };
+    }
+  }
+  const promise = cache.prepare(key, prepare);
+  const preparedGeneration = cache.generationOf(key);
+  const source = await promise;
+  return { kind: 'fresh', source, hold: preparedGeneration ?? null };
+}
+
+async function replaceArtworkCandidate(
+  cache: SourceArtworkReuseCache,
+  key: string,
+  hold: ServerHold,
+  prepare: () => Promise<PreparedSource>,
+): Promise<CardExportCandidate<ServerHold>> {
+  if (hold !== null && cache.generationOf(key) === hold) {
+    cache.invalidate(key, hold);
+  }
+  return readArtworkCandidate(cache, key, null, prepare);
 }
 
 export async function persistArtworkExport<TSnapshot>(args: {
@@ -292,42 +276,33 @@ export async function persistArtworkExport<TSnapshot>(args: {
     args.convexUrl,
     hashSourceArtwork(args.sourceBytes),
   );
-  const deps = {
-    prepare: args.prepare,
+  await persistCardExport<ServerHold>({
+    read: ({ discard }) =>
+      readArtworkCandidate(args.cache, key, discard, args.prepare),
+    replace: (hold) =>
+      replaceArtworkCandidate(args.cache, key, hold, args.prepare),
+    isCurrent: (hold) => {
+      if (hold === null) {
+        return false;
+      }
+      return args.cache.generationOf(key) === hold;
+    },
     validate: args.validate,
-  };
-  let failedGeneration: number | undefined;
-  try {
-    const obtained = await obtainPreparedArtwork(
-      args.cache,
-      key,
-      undefined,
-      deps,
-    );
-    failedGeneration = obtained.generation;
-    await args.insert({
-      snapshot: args.snapshot,
-      exportFormat: args.exportFormat,
-      exportPixelRatio: args.exportPixelRatio,
-      sourceImageStorageId: obtained.source.storageId,
-      sourceOptimizerVersion: obtained.source.optimizerVersion,
-    });
-  } catch (error: unknown) {
-    if (!isRetryableSourceReuseError(error)) {
-      throw error;
-    }
-    const obtained = await obtainPreparedArtwork(
-      args.cache,
-      key,
-      failedGeneration,
-      deps,
-    );
-    await args.insert({
-      snapshot: args.snapshot,
-      exportFormat: args.exportFormat,
-      exportPixelRatio: args.exportPixelRatio,
-      sourceImageStorageId: obtained.source.storageId,
-      sourceOptimizerVersion: obtained.source.optimizerVersion,
-    });
-  }
+    insert: async (source) => {
+      if (source === null) {
+        throw new Error('Artwork export requires a source');
+      }
+      const resolved = args.cache.readResolved(key);
+      if (resolved !== null && resolved.storageId === source.storageId) {
+        args.cache.touch(key);
+      }
+      await args.insert({
+        snapshot: args.snapshot,
+        exportFormat: args.exportFormat,
+        exportPixelRatio: args.exportPixelRatio,
+        sourceImageStorageId: source.storageId,
+        sourceOptimizerVersion: source.optimizerVersion,
+      });
+    },
+  });
 }
