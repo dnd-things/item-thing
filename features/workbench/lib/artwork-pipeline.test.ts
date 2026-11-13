@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import sharp from 'sharp';
+import {
+  CARD_OUTPUT_MAX_EDGE_PX,
+  DISPLAY_MAX_EDGE_PX,
+  DISPLAY_MAX_PIXELS,
+  INSPECTION_MAX_EDGE_PX,
+  SOURCE_MAX_BYTES,
+  SOURCE_MAX_EDGE_PX,
+} from '@/features/artwork/limits.ts';
 import { imageRightArtworkMarginTopRem } from '@/features/card-renderer/lib/image-right-artwork-placement.ts';
 import {
   ArtworkLimitError,
@@ -13,19 +21,13 @@ import {
   assertCardOutputBudget,
   assertDecodedArtworkDimensions,
   assertEncodedArtworkBytes,
-  CARD_OUTPUT_MAX_EDGE_PX,
-  DISPLAY_MAX_EDGE_PX,
-  DISPLAY_MAX_PIXELS,
   dataUrlEncodedByteLength,
   findVisibleAlphaBounds,
   getInspectionDimensions,
-  INSPECTION_MAX_EDGE_PX,
   identityCrop,
   mapInspectionCropToSource,
   planArtworkDraw,
   rotatedBoundingBox,
-  SOURCE_MAX_BYTES,
-  SOURCE_MAX_EDGE_PX,
 } from './artwork-geometry.ts';
 import type { DrawCanvas, DrawContext } from './artwork-raster.ts';
 import {

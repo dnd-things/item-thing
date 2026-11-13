@@ -295,21 +295,34 @@ test('non-image-right layout does not read card height', () => {
   assert.equal(host.offsetHeightReads, 0);
 });
 
-test('layout effect still calls both vertical position state setters', () => {
-  const source = fs.readFileSync(
-    path.join(
-      root,
-      'features/workbench/lib/use-image-right-vertical-position-bounds.ts',
+test('layout effect clamps stored fluid position above measured max', () => {
+  const host = createHookHost();
+  const load = loader({ react: host.react });
+  const { useImageRightVerticalPositionBounds } = load(
+    'features/workbench/lib/use-image-right-vertical-position-bounds.ts',
+  ) as {
+    useImageRightVerticalPositionBounds: (
+      cardRef: { current: unknown },
+      workbenchState: Record<string, unknown>,
+      setWorkbenchField: (key: string, value: number) => void,
+    ) => unknown;
+  };
+  const cardRef = { current: host.cardNode };
+  let writtenValue: number | undefined;
+  const setWorkbenchField = (_key: string, value: number): void => {
+    writtenValue = value;
+  };
+  host.render(() =>
+    useImageRightVerticalPositionBounds(
+      cardRef,
+      {
+        ...defaultMagicItemWorkbenchState,
+        cardLayout: 'image-right',
+        sideLayoutFlow: 'fluid',
+        imageRightVerticalPosition: 41,
+      },
+      setWorkbenchField,
     ),
-    'utf8',
   );
-  const effectBody = source.slice(
-    source.indexOf('useLayoutEffect(() => {'),
-    source.indexOf(
-      '}, [cardRef, setWorkbenchField, workbenchStateTriggerKey]);',
-    ),
-  );
-  assert.doesNotMatch(effectBody, /setMeasuredCardSurfaceHeightPx\(/);
-  assert.match(effectBody, /setVerticalPositionMax\(/);
-  assert.match(effectBody, /setWorkbenchField\('imageRightVerticalPosition'/);
+  assert.equal(writtenValue, 40);
 });

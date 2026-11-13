@@ -1,16 +1,18 @@
 import {
   type CardLayoutOption,
   getDefaultCardWidthPx,
-  getImageRightVerticalPositionDefaultForFixedSideLayout,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
-import { normalizeWorkbenchStateForStyle } from './card-style-capability-registry';
 import {
-  getImageFramePresetFieldValues,
+  applyImageFrame,
   type ImageFramePresetValue,
-} from './image-frame-preset';
-import type { MagicItemWorkbenchState } from './workbench-options';
+  normalizeWorkbenchStateForStyle,
+} from '@/features/card-renderer/lib/card-style';
+import { defaultImageRightVerticalPosition } from '@/features/card-renderer/lib/image-right-artwork-placement';
+import {
+  type MagicItemWorkbenchState,
+  withItemDetails,
+} from './workbench-options';
 
 export type WorkbenchEditHandler = (edit: WorkbenchEdit) => void;
 
@@ -25,34 +27,15 @@ export type WorkbenchEdit =
   | { kind: 'artwork-custom-color'; value: string }
   | { kind: 'image-frame'; value: ImageFramePresetValue };
 
-function mergeRenderedFormFields(
-  previous: MagicItemWorkbenchState,
-  rendered: MagicItemWorkbenchState,
-): MagicItemWorkbenchState {
-  return {
-    ...previous,
-    itemName: rendered.itemName,
-    classificationAndRarity: rendered.classificationAndRarity,
-    requiresAttunement: rendered.requiresAttunement,
-    flavorDescription: rendered.flavorDescription,
-    mechanicalDescription: rendered.mechanicalDescription,
-  };
-}
-
 function applyImageRightVerticalPositionForFlow(
   state: MagicItemWorkbenchState,
   flow: SideLayoutFlowOption,
   classificationAndRarity: string,
 ): void {
-  if (flow === 'fixed') {
-    state.imageRightVerticalPosition =
-      getImageRightVerticalPositionDefaultForFixedSideLayout(
-        classificationAndRarity,
-      );
-  } else {
-    state.imageRightVerticalPosition =
-      imageRightVerticalPositionDefaultForFluidSideLayout;
-  }
+  state.imageRightVerticalPosition = defaultImageRightVerticalPosition(
+    flow,
+    classificationAndRarity,
+  );
 }
 
 function withCardLayout(
@@ -115,7 +98,7 @@ export function editWorkbench(
   rendered: MagicItemWorkbenchState,
   edit: WorkbenchEdit,
 ): MagicItemWorkbenchState {
-  const base = mergeRenderedFormFields(previous, rendered);
+  const base = withItemDetails(previous, rendered);
   let next: MagicItemWorkbenchState;
 
   switch (edit.kind) {
@@ -143,14 +126,9 @@ export function editWorkbench(
         artworkColorSource: 'custom',
       };
       break;
-    case 'image-frame': {
-      const presetFields = getImageFramePresetFieldValues(edit.value);
-      next = {
-        ...base,
-        ...presetFields,
-      };
+    case 'image-frame':
+      next = applyImageFrame(base, edit.value);
       break;
-    }
   }
 
   return normalizeWorkbenchStateForStyle(next);

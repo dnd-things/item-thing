@@ -8,9 +8,9 @@ import {
   type CardStyleOption,
   getDefaultCardWidthPx,
   type ImageAspectRatioOption,
-  imageRightVerticalPositionDefaultForFluidSideLayout,
   type SideLayoutFlowOption,
 } from '@/features/card-renderer/lib/card-renderer-options';
+import { defaultImageRightVerticalPosition } from '@/features/card-renderer/lib/image-right-artwork-placement';
 import type { DurableCardState } from '@/lib/durable-card-state';
 export interface SelectionOption<TValue extends string> {
   label: string;
@@ -19,6 +19,21 @@ export interface SelectionOption<TValue extends string> {
 
 export type MagicItemWorkbenchState = DurableCardState & {
   imagePreviewUrl: string;
+};
+
+export type WorkbenchItemDetails = Pick<
+  MagicItemWorkbenchState,
+  | 'itemName'
+  | 'classificationAndRarity'
+  | 'requiresAttunement'
+  | 'flavorDescription'
+  | 'mechanicalDescription'
+>;
+
+export type WorkbenchArtworkChoice = {
+  imageFileName: string;
+  imagePreviewUrl: string;
+  resolvedImageAspectRatio: number;
 };
 
 export type WorkbenchFieldSetter = <TKey extends keyof MagicItemWorkbenchState>(
@@ -86,8 +101,7 @@ export const defaultMagicItemWorkbenchState: MagicItemWorkbenchState = {
   resolvedImageAspectRatio: 1,
   imageBorderRadius: 0,
   imageBorderWidthPx: 0,
-  imageRightVerticalPosition:
-    imageRightVerticalPositionDefaultForFluidSideLayout,
+  imageRightVerticalPosition: defaultImageRightVerticalPosition('fluid', ''),
   imageRotationDegrees: 0,
   imageFlipHorizontal: false,
   imageFlipVertical: false,
@@ -107,4 +121,37 @@ export function getOptionLabel<TValue extends string>(
   value: TValue,
 ): string {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+export function withItemDetails(
+  state: MagicItemWorkbenchState,
+  details: WorkbenchItemDetails,
+): MagicItemWorkbenchState {
+  return {
+    ...state,
+    itemName: details.itemName,
+    classificationAndRarity: details.classificationAndRarity,
+    requiresAttunement: details.requiresAttunement,
+    flavorDescription: details.flavorDescription,
+    mechanicalDescription: details.mechanicalDescription,
+  };
+}
+
+export function withArtworkChoice(
+  state: MagicItemWorkbenchState,
+  choice: WorkbenchArtworkChoice | null,
+): MagicItemWorkbenchState {
+  if (choice === null) {
+    return {
+      ...state,
+      imageFileName: '',
+      imagePreviewUrl: '',
+    };
+  }
+  return {
+    ...state,
+    imageFileName: choice.imageFileName,
+    imagePreviewUrl: choice.imagePreviewUrl,
+    resolvedImageAspectRatio: choice.resolvedImageAspectRatio,
+  };
 }

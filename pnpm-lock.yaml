@@ -105,6 +105,9 @@ importers:
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
+      convex-test:
+        specifier: 0.0.54
+        version: 0.0.54(convex@1.33.1(react@19.2.3))
       lefthook:
         specifier: ^2.1.4
         version: 2.1.4
@@ -1303,6 +1306,11 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  convex-test@0.0.54:
+    resolution: {integrity: sha512-C0v2SQcuxrELAJRNzE6fQ686XDPor7UFoC22jcoJXeCRqhLo8ZIMZ4jyUHoo1UdAL2enCb0AbiprCVpLDN8u9Q==}
+    peerDependencies:
+      convex: ^1.32.0
 
   convex@1.33.1:
     resolution: {integrity: sha512-mRhR1XqZPLhgJsUepecM/kOgQVRCWKJtHHtyEX/XYY4zmzfItG0D1GNh5fjNEkuO5+72X4PCkzbEFA6327rxog==}
@@ -4054,6 +4062,10 @@ snapshots:
   content-type@1.0.5: {}
 
   convert-source-map@2.0.0: {}
+
+  convex-test@0.0.54(convex@1.33.1(react@19.2.3)):
+    dependencies:
+      convex: 1.33.1(react@19.2.3)
 
   convex@1.33.1(react@19.2.3):
     dependencies:

@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { describe, test } from 'node:test';
-import { ConvexError } from 'convex/values';
-import { isRetryableSourceReuseError as apiRetryable } from '../features/server-render-card/source-artwork-reuse.ts';
-import { isRetryableSourceReuseError as browserRetryable } from '../features/workbench/lib/persist-item-export-with-source-reuse.ts';
+import { defineSchema, defineTable } from 'convex/server';
+import { ConvexError, v } from 'convex/values';
+import { convexTest } from 'convex-test';
+import { isRetryableSourceReuseError } from '../features/card-export/lib/persist-card-export.ts';
+import type { Id } from './_generated/dataModel';
+import type { MutationCtx, QueryCtx } from './_generated/server';
 import { SOURCE_OPTIMIZER_VERSION } from './lib/sourceOptimizerVersion.ts';
 import {
   createItemExportRecord,
-  type FinalizeCandidateStorageDb,
   finalizeCandidateStorageRecords,
   liveCachedStorageId,
+  lookupLiveSourceOptimization,
   STALE_OPTIMIZER_VERSION,
   STALE_SOURCE,
   sourceReuseFailure,
@@ -17,155 +20,150 @@ import {
 } from './lib/sourceReuse.ts';
 import { storeOptimizedSourceImage } from './optimizeSourcePng.ts';
 
+const schema = defineSchema({
+  storageByContentHash: defineTable({
+    contentHash: v.string(),
+    storageId: v.id('_storage'),
+  }).index('by_contentHash', ['contentHash']),
+
+  sourceOptimizationCache: defineTable({
+    inputHash: v.string(),
+    optimizerVersion: v.string(),
+    storageId: v.id('_storage'),
+  }).index('by_inputHash_optimizerVersion', ['inputHash', 'optimizerVersion']),
+});
+
 const ACTIVE = SOURCE_OPTIMIZER_VERSION;
+
+const modules: Record<string, () => Promise<unknown>> = {
+  './convex/_generated/server.js': () => import('./_generated/server.js'),
+};
+
+type TestConvex = ReturnType<typeof convexTest>;
+
+function createTest(): TestConvex {
+  return convexTest(schema, modules);
+}
 
 function sha256Hex(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function createCacheDb() {
-  let storage = new Set<string>();
-  let content = new Map<string, { id: string; storageId: string }>();
-  let inputs = new Map<
-    string,
-    {
-      id: string;
-      storageId: string;
-      inputHash: string;
-      optimizerVersion: string;
-    }
-  >();
-  let nextId = 1;
-  let chain: Promise<void> = Promise.resolve();
-
-  const snapshot = () => ({
-    storage: new Set(storage),
-    content: new Map(content),
-    inputs: new Map(inputs),
-    nextId,
-  });
-
-  const restore = (saved: ReturnType<typeof snapshot>) => {
-    storage = saved.storage;
-    content = saved.content;
-    inputs = saved.inputs;
-    nextId = saved.nextId;
-  };
-
-  const view = (): FinalizeCandidateStorageDb => ({
-    storageExists: async (storageId) => storage.has(storageId),
-    findContentHash: async (contentHash) => content.get(contentHash) ?? null,
-    deleteContentHash: async (id) => {
-      for (const [hash, row] of content) {
-        if (row.id === id) {
-          content.delete(hash);
-        }
-      }
-    },
-    insertContentHash: async (contentHash, storageId) => {
-      if (content.has(contentHash)) {
-        throw new Error(`duplicate content hash ${contentHash}`);
-      }
-      content.set(contentHash, { id: `content-${nextId}`, storageId });
-      nextId += 1;
-    },
-    findSourceOptimization: async (inputHash, optimizerVersion) =>
-      inputs.get(`${inputHash}\0${optimizerVersion}`) ?? null,
-    deleteSourceOptimization: async (id) => {
-      for (const [key, row] of inputs) {
-        if (row.id === id) {
-          inputs.delete(key);
-        }
-      }
-    },
-    insertSourceOptimization: async (row) => {
-      const key = `${row.inputHash}\0${row.optimizerVersion}`;
-      if (inputs.has(key)) {
-        throw new Error(`duplicate input mapping ${key}`);
-      }
-      inputs.set(key, { ...row, id: `input-${nextId}` });
-      nextId += 1;
-    },
-    deleteStorage: async (storageId) => {
-      storage.delete(storageId);
-    },
-  });
-
-  return {
-    seedStorage(ids: string[]) {
-      for (const id of ids) {
-        storage.add(id);
-      }
-    },
-    seedContent(contentHash: string, storageId: string) {
-      content.set(contentHash, { id: `content-${nextId}`, storageId });
-      nextId += 1;
-    },
-    seedInput(inputHash: string, optimizerVersion: string, storageId: string) {
-      inputs.set(`${inputHash}\0${optimizerVersion}`, {
-        id: `input-${nextId}`,
-        inputHash,
-        optimizerVersion,
-        storageId,
-      });
-      nextId += 1;
-    },
-    transaction<T>(
-      run: (db: FinalizeCandidateStorageDb) => Promise<T>,
-    ): Promise<T> {
-      const result = chain.then(async () => {
-        const saved = snapshot();
-        try {
-          return await run(view());
-        } catch (error) {
-          restore(saved);
-          throw error;
-        }
-      });
-      chain = result.then(
-        () => undefined,
-        () => undefined,
-      );
-      return result;
-    },
-    hasStorage(storageId: string) {
-      return storage.has(storageId);
-    },
-    contentStorage(contentHash: string) {
-      return content.get(contentHash)?.storageId;
-    },
-    inputStorage(inputHash: string, optimizerVersion: string) {
-      return inputs.get(`${inputHash}\0${optimizerVersion}`)?.storageId;
-    },
-    contentSize() {
-      return content.size;
-    },
-    inputSize() {
-      return inputs.size;
-    },
-  };
+async function storeBlob(
+  t: TestConvex,
+  label: string,
+): Promise<Id<'_storage'>> {
+  return t.run(async (ctx) =>
+    ctx.storage.store(new Blob([Buffer.from(label)])),
+  );
 }
 
-function finalize(
-  db: ReturnType<typeof createCacheDb>,
+async function storageExists(
+  t: TestConvex,
+  storageId: Id<'_storage'>,
+): Promise<boolean> {
+  return t.run(
+    async (ctx) => (await ctx.db.system.get('_storage', storageId)) !== null,
+  );
+}
+
+async function seedDeadContentHash(
+  t: TestConvex,
+  contentHash: string,
+): Promise<Id<'_storage'>> {
+  return t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob([Buffer.from('dead')]));
+    await ctx.db.insert('storageByContentHash', { contentHash, storageId });
+    await ctx.storage.delete(storageId);
+    return storageId;
+  });
+}
+
+async function seedDeadInputMapping(
+  t: TestConvex,
+  inputHash: string,
+  optimizerVersion: string,
+): Promise<Id<'_storage'>> {
+  return t.run(async (ctx) => {
+    const storageId = await ctx.storage.store(new Blob([Buffer.from('dead')]));
+    await ctx.db.insert('sourceOptimizationCache', {
+      inputHash,
+      optimizerVersion,
+      storageId,
+    });
+    await ctx.storage.delete(storageId);
+    return storageId;
+  });
+}
+
+async function contentRowStorage(
+  t: TestConvex,
+  contentHash: string,
+): Promise<Id<'_storage'> | undefined> {
+  const row = await t.run(async (ctx) => {
+    const db = (ctx as unknown as MutationCtx).db;
+    return db
+      .query('storageByContentHash')
+      .withIndex('by_contentHash', (q) => q.eq('contentHash', contentHash))
+      .first();
+  });
+  return row?.storageId;
+}
+
+async function inputRowStorage(
+  t: TestConvex,
+  inputHash: string,
+  optimizerVersion: string,
+): Promise<Id<'_storage'> | undefined> {
+  const row = await t.run(async (ctx) => {
+    const db = (ctx as unknown as MutationCtx).db;
+    return db
+      .query('sourceOptimizationCache')
+      .withIndex('by_inputHash_optimizerVersion', (q) =>
+        q.eq('inputHash', inputHash).eq('optimizerVersion', optimizerVersion),
+      )
+      .unique();
+  });
+  return row?.storageId;
+}
+
+async function contentRowCount(t: TestConvex): Promise<number> {
+  return t.run(
+    async (ctx) =>
+      (await ctx.db.query('storageByContentHash').collect()).length,
+  );
+}
+
+async function inputRowCount(t: TestConvex): Promise<number> {
+  return t.run(
+    async (ctx) =>
+      (await ctx.db.query('sourceOptimizationCache').collect()).length,
+  );
+}
+
+async function finalize(
+  t: TestConvex,
   args: {
-    candidateStorageId: string;
+    candidateStorageId: Id<'_storage'>;
     contentHash: string;
     inputHash?: string;
     optimizerVersion?: string;
-    activeOptimizerVersion?: string;
   },
-) {
-  return db.transaction((tx) =>
-    finalizeCandidateStorageRecords({
-      db: tx,
-      activeOptimizerVersion: args.activeOptimizerVersion ?? ACTIVE,
-      candidateStorageId: args.candidateStorageId,
-      contentHash: args.contentHash,
-      ...(args.inputHash !== undefined ? { inputHash: args.inputHash } : {}),
-      ...(args.optimizerVersion !== undefined
-        ? { optimizerVersion: args.optimizerVersion }
-        : {}),
+): Promise<Id<'_storage'>> {
+  return t.mutation(async (ctx) =>
+    finalizeCandidateStorageRecords(ctx as unknown as MutationCtx, args),
+  );
+}
+
+async function lookup(
+  t: TestConvex,
+  inputHash: string,
+  optimizerVersion: string,
+): Promise<Id<'_storage'> | null> {
+  return t.query(async (ctx) =>
+    lookupLiveSourceOptimization(ctx as unknown as QueryCtx, {
+      inputHash,
+      optimizerVersion,
     }),
   );
 }
@@ -323,13 +321,21 @@ describe('source reuse status and export insert', () => {
     assert.equal(inserted[1]?.sourceImageStorageId, 'missing');
     assert.equal(inserted[2]?.sourceImageStorageId, undefined);
     assert.equal(
-      browserRetryable(sourceReuseFailure(STALE_OPTIMIZER_VERSION)),
+      isRetryableSourceReuseError(sourceReuseFailure(STALE_OPTIMIZER_VERSION)),
       true,
     );
-    assert.equal(apiRetryable(sourceReuseFailure(STALE_SOURCE)), true);
-    assert.equal(browserRetryable(new Error('socket hang up')), false);
     assert.equal(
-      apiRetryable(new ConvexError({ code: 'not-a-reuse-error' })),
+      isRetryableSourceReuseError(sourceReuseFailure(STALE_SOURCE)),
+      true,
+    );
+    assert.equal(
+      isRetryableSourceReuseError(new Error('socket hang up')),
+      false,
+    );
+    assert.equal(
+      isRetryableSourceReuseError(
+        new ConvexError({ code: 'not-a-reuse-error' }),
+      ),
       false,
     );
   });
@@ -337,13 +343,19 @@ describe('source reuse status and export insert', () => {
 
 describe('durable finalization', () => {
   test('version fence rejects before any cache write or candidate delete', async () => {
-    const db = createCacheDb();
-    db.seedStorage(['candidate', 'kept']);
-    db.seedContent('kept-hash', 'kept');
+    const t = createTest();
+    const candidate = await storeBlob(t, 'candidate');
+    const kept = await storeBlob(t, 'kept');
+    await t.run(async (ctx) => {
+      await ctx.db.insert('storageByContentHash', {
+        contentHash: 'kept-hash',
+        storageId: kept,
+      });
+    });
     await assert.rejects(
       () =>
-        finalize(db, {
-          candidateStorageId: 'candidate',
+        finalize(t, {
+          candidateStorageId: candidate,
           contentHash: 'new-hash',
           inputHash: 'input',
           optimizerVersion: 'retired-version',
@@ -354,172 +366,224 @@ describe('durable finalization', () => {
         return true;
       },
     );
-    assert.equal(db.hasStorage('candidate'), true);
-    assert.equal(db.contentStorage('new-hash'), undefined);
-    assert.equal(db.contentStorage('kept-hash'), 'kept');
-    assert.equal(db.inputSize(), 0);
+    assert.equal(await storageExists(t, candidate), true);
+    assert.equal(await contentRowStorage(t, 'new-hash'), undefined);
+    assert.equal(await contentRowStorage(t, 'kept-hash'), kept);
+    assert.equal(await inputRowCount(t), 0);
   });
 
   test('legacy output dedup repairs a dead hash row and keeps a live one', async () => {
-    const repaired = createCacheDb();
-    repaired.seedStorage(['candidate']);
-    repaired.seedContent('hash', 'deleted-output');
+    const repaired = createTest();
+    const candidate = await storeBlob(repaired, 'candidate');
+    await seedDeadContentHash(repaired, 'hash');
     assert.equal(
       await finalize(repaired, {
-        candidateStorageId: 'candidate',
+        candidateStorageId: candidate,
         contentHash: 'hash',
       }),
-      'candidate',
+      candidate,
     );
-    assert.equal(repaired.contentStorage('hash'), 'candidate');
-    assert.equal(repaired.inputSize(), 0);
-    assert.equal(repaired.hasStorage('candidate'), true);
+    assert.equal(await contentRowStorage(repaired, 'hash'), candidate);
+    assert.equal(await inputRowCount(repaired), 0);
+    assert.equal(await storageExists(repaired, candidate), true);
 
-    const deduped = createCacheDb();
-    deduped.seedStorage(['candidate', 'canonical']);
-    deduped.seedContent('hash', 'canonical');
+    const deduped = createTest();
+    const loser = await storeBlob(deduped, 'candidate');
+    const canonical = await storeBlob(deduped, 'canonical');
+    await deduped.run(async (ctx) => {
+      await ctx.db.insert('storageByContentHash', {
+        contentHash: 'hash',
+        storageId: canonical,
+      });
+    });
     assert.equal(
       await finalize(deduped, {
-        candidateStorageId: 'candidate',
+        candidateStorageId: loser,
         contentHash: 'hash',
       }),
-      'canonical',
+      canonical,
     );
-    assert.equal(deduped.hasStorage('candidate'), false);
-    assert.equal(deduped.hasStorage('canonical'), true);
-    assert.equal(deduped.contentStorage('hash'), 'canonical');
+    assert.equal(await storageExists(deduped, loser), false);
+    assert.equal(await storageExists(deduped, canonical), true);
+    assert.equal(await contentRowStorage(deduped, 'hash'), canonical);
 
-    const same = createCacheDb();
-    same.seedStorage(['canonical']);
-    same.seedContent('hash', 'canonical');
+    const same = createTest();
+    const only = await storeBlob(same, 'canonical');
+    await same.run(async (ctx) => {
+      await ctx.db.insert('storageByContentHash', {
+        contentHash: 'hash',
+        storageId: only,
+      });
+    });
     assert.equal(
       await finalize(same, {
-        candidateStorageId: 'canonical',
+        candidateStorageId: only,
         contentHash: 'hash',
       }),
-      'canonical',
+      only,
     );
-    assert.equal(same.hasStorage('canonical'), true);
+    assert.equal(await storageExists(same, only), true);
   });
 
   test('stale input and output mappings are replaced by a live candidate', async () => {
-    const db = createCacheDb();
-    db.seedStorage(['candidate']);
-    db.seedInput('input', ACTIVE, 'deleted-output');
-    db.seedContent('hash', 'deleted-output');
+    const t = createTest();
+    const candidate = await storeBlob(t, 'candidate');
+    await seedDeadInputMapping(t, 'input', ACTIVE);
+    await seedDeadContentHash(t, 'hash');
     assert.equal(
-      await finalize(db, {
-        candidateStorageId: 'candidate',
+      await finalize(t, {
+        candidateStorageId: candidate,
         contentHash: 'hash',
         inputHash: 'input',
         optimizerVersion: ACTIVE,
       }),
-      'candidate',
+      candidate,
     );
-    assert.equal(db.inputStorage('input', ACTIVE), 'candidate');
-    assert.equal(db.contentStorage('hash'), 'candidate');
-    assert.equal(db.hasStorage('candidate'), true);
+    assert.equal(await inputRowStorage(t, 'input', ACTIVE), candidate);
+    assert.equal(await contentRowStorage(t, 'hash'), candidate);
+    assert.equal(await storageExists(t, candidate), true);
   });
 
   test('a missing candidate fails and the rolled-back rows stay until a later repair', async () => {
-    const db = createCacheDb();
-    db.seedInput('input', ACTIVE, 'deleted-output');
-    db.seedContent('hash', 'deleted-output');
+    const t = createTest();
+    const deadInputId = await seedDeadInputMapping(t, 'input', ACTIVE);
+    const deadContentId = await seedDeadContentHash(t, 'hash');
+    const missing = await t.run(async (ctx) => {
+      const ephemeral = await ctx.storage.store(
+        new Blob([Buffer.from('gone')]),
+      );
+      await ctx.storage.delete(ephemeral);
+      return ephemeral;
+    });
     await assert.rejects(
       () =>
-        finalize(db, {
-          candidateStorageId: 'missing-candidate',
+        finalize(t, {
+          candidateStorageId: missing,
           contentHash: 'hash',
           inputHash: 'input',
           optimizerVersion: ACTIVE,
         }),
       /Candidate storage not found/,
     );
-    assert.equal(db.inputStorage('input', ACTIVE), 'deleted-output');
-    assert.equal(db.contentStorage('hash'), 'deleted-output');
+    assert.equal(await inputRowStorage(t, 'input', ACTIVE), deadInputId);
+    assert.equal(await contentRowStorage(t, 'hash'), deadContentId);
 
-    db.seedStorage(['fresh']);
+    const fresh = await storeBlob(t, 'fresh');
     assert.equal(
-      await finalize(db, {
-        candidateStorageId: 'fresh',
+      await finalize(t, {
+        candidateStorageId: fresh,
         contentHash: 'hash',
         inputHash: 'input',
         optimizerVersion: ACTIVE,
       }),
-      'fresh',
+      fresh,
     );
-    assert.equal(db.inputStorage('input', ACTIVE), 'fresh');
-    assert.equal(db.contentStorage('hash'), 'fresh');
+    assert.equal(await inputRowStorage(t, 'input', ACTIVE), fresh);
+    assert.equal(await contentRowStorage(t, 'hash'), fresh);
   });
 
   test('concurrent different outputs keep the first live input mapping', async () => {
-    const db = createCacheDb();
-    db.seedStorage(['output-a', 'output-b']);
-    const first = finalize(db, {
-      candidateStorageId: 'output-a',
-      contentHash: 'hash-a',
-      inputHash: 'same-input',
-      optimizerVersion: ACTIVE,
-    });
-    const second = finalize(db, {
-      candidateStorageId: 'output-b',
-      contentHash: 'hash-b',
-      inputHash: 'same-input',
-      optimizerVersion: ACTIVE,
-    });
-    assert.deepEqual(await Promise.all([first, second]), [
-      'output-a',
-      'output-a',
+    const t = createTest();
+    const outputA = await storeBlob(t, 'output-a');
+    const outputB = await storeBlob(t, 'output-b');
+    const [first, second] = await Promise.all([
+      finalize(t, {
+        candidateStorageId: outputA,
+        contentHash: 'hash-a',
+        inputHash: 'same-input',
+        optimizerVersion: ACTIVE,
+      }),
+      finalize(t, {
+        candidateStorageId: outputB,
+        contentHash: 'hash-b',
+        inputHash: 'same-input',
+        optimizerVersion: ACTIVE,
+      }),
     ]);
-    assert.equal(db.hasStorage('output-a'), true);
-    assert.equal(db.hasStorage('output-b'), false);
-    assert.equal(db.contentStorage('hash-a'), 'output-a');
-    assert.equal(db.contentStorage('hash-b'), undefined);
-    assert.equal(db.inputStorage('same-input', ACTIVE), 'output-a');
-    assert.equal(db.contentSize(), 1);
-    assert.equal(db.inputSize(), 1);
+    assert.equal(first, outputA);
+    assert.equal(second, outputA);
+    assert.equal(await storageExists(t, outputA), true);
+    assert.equal(await storageExists(t, outputB), false);
+    assert.equal(await contentRowStorage(t, 'hash-a'), outputA);
+    assert.equal(await contentRowStorage(t, 'hash-b'), undefined);
+    assert.equal(await inputRowStorage(t, 'same-input', ACTIVE), outputA);
+    assert.equal(await contentRowCount(t), 1);
+    assert.equal(await inputRowCount(t), 1);
   });
 
   test('different input hashes do not alias, and a mapped candidate is not deleted', async () => {
-    const db = createCacheDb();
-    db.seedStorage(['alpha', 'beta']);
+    const t = createTest();
+    const alpha = await storeBlob(t, 'alpha');
+    const beta = await storeBlob(t, 'beta');
     assert.equal(
-      await finalize(db, {
-        candidateStorageId: 'alpha',
+      await finalize(t, {
+        candidateStorageId: alpha,
         contentHash: 'hash-alpha',
         inputHash: 'bytes-alpha',
         optimizerVersion: ACTIVE,
       }),
-      'alpha',
+      alpha,
     );
     assert.equal(
-      await finalize(db, {
-        candidateStorageId: 'beta',
+      await finalize(t, {
+        candidateStorageId: beta,
         contentHash: 'hash-beta',
         inputHash: 'bytes-beta',
         optimizerVersion: ACTIVE,
       }),
-      'beta',
+      beta,
     );
-    assert.equal(db.inputStorage('bytes-alpha', ACTIVE), 'alpha');
-    assert.equal(db.inputStorage('bytes-beta', ACTIVE), 'beta');
+    assert.equal(await inputRowStorage(t, 'bytes-alpha', ACTIVE), alpha);
+    assert.equal(await inputRowStorage(t, 'bytes-beta', ACTIVE), beta);
 
-    const guarded = createCacheDb();
-    guarded.seedStorage(['input-canonical', 'output-canonical']);
-    guarded.seedInput('input', ACTIVE, 'input-canonical');
-    guarded.seedContent('candidate-hash', 'output-canonical');
+    const guarded = createTest();
+    const inputCanonical = await storeBlob(guarded, 'input-canonical');
+    const outputCanonical = await storeBlob(guarded, 'output-canonical');
+    await guarded.run(async (ctx) => {
+      await ctx.db.insert('sourceOptimizationCache', {
+        inputHash: 'input',
+        optimizerVersion: ACTIVE,
+        storageId: inputCanonical,
+      });
+      await ctx.db.insert('storageByContentHash', {
+        contentHash: 'candidate-hash',
+        storageId: outputCanonical,
+      });
+    });
     assert.equal(
       await finalize(guarded, {
-        candidateStorageId: 'output-canonical',
+        candidateStorageId: outputCanonical,
         contentHash: 'candidate-hash',
         inputHash: 'input',
         optimizerVersion: ACTIVE,
       }),
-      'input-canonical',
+      inputCanonical,
     );
-    assert.equal(guarded.hasStorage('output-canonical'), true);
-    assert.equal(guarded.hasStorage('input-canonical'), true);
-    assert.equal(guarded.contentStorage('candidate-hash'), 'output-canonical');
+    assert.equal(await storageExists(guarded, outputCanonical), true);
+    assert.equal(await storageExists(guarded, inputCanonical), true);
+    assert.equal(
+      await contentRowStorage(guarded, 'candidate-hash'),
+      outputCanonical,
+    );
+  });
+
+  test('lookup returns the id finalize wrote, and a deleted blob yields null', async () => {
+    const t = createTest();
+    const candidate = await storeBlob(t, 'lookup-candidate');
+    const contentHash = 'lookup-hash';
+    const inputHash = 'lookup-input';
+    const id = await finalize(t, {
+      candidateStorageId: candidate,
+      contentHash,
+      inputHash,
+      optimizerVersion: ACTIVE,
+    });
+    assert.equal(await lookup(t, inputHash, ACTIVE), id);
+    await t.run(async (ctx) => {
+      await ctx.storage.delete(id);
+    });
+    assert.equal(await lookup(t, inputHash, ACTIVE), null);
+    assert.equal(await inputRowStorage(t, inputHash, ACTIVE), id);
   });
 });
 

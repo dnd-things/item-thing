@@ -1,4 +1,7 @@
-import type { MagicItemWorkbenchState } from './workbench-options';
+import {
+  type MagicItemWorkbenchState,
+  withItemDetails,
+} from './workbench-options';
 
 export interface WorkbenchAutosaveFormValues {
   itemName?: string;
@@ -22,17 +25,19 @@ export function bindWorkbenchFormAutosave(input: {
   };
   const subscription = input.watch((values) => {
     const rendered = input.getRenderedState();
-    publish({
-      ...rendered,
-      itemName: values.itemName ?? rendered.itemName,
-      classificationAndRarity:
-        values.classificationAndRarity ?? rendered.classificationAndRarity,
-      requiresAttunement:
-        values.requiresAttunement ?? rendered.requiresAttunement,
-      flavorDescription: values.flavorDescription ?? rendered.flavorDescription,
-      mechanicalDescription:
-        values.mechanicalDescription ?? rendered.mechanicalDescription,
-    });
+    publish(
+      withItemDetails(rendered, {
+        itemName: values.itemName ?? rendered.itemName,
+        classificationAndRarity:
+          values.classificationAndRarity ?? rendered.classificationAndRarity,
+        requiresAttunement:
+          values.requiresAttunement ?? rendered.requiresAttunement,
+        flavorDescription:
+          values.flavorDescription ?? rendered.flavorDescription,
+        mechanicalDescription:
+          values.mechanicalDescription ?? rendered.mechanicalDescription,
+      }),
+    );
   });
   return {
     unsubscribe() {

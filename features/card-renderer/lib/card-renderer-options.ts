@@ -89,93 +89,6 @@ export function clampImageBorderWidthPx(value: number): number {
   );
 }
 
-export const imageRightVerticalPositionRange = {
-  /** Static defaults / persistence fallback; live workbench min is from `getImageRightVerticalPositionMin`. */
-  min: -4,
-  /** Static ceiling for fixed flow, defaults, and persistence fallback; fluid workbench max is height-derived. */
-  max: 32,
-  step: 1,
-  default: 0,
-} as const;
-
-/** Workbench slider domain for image-right vertical position (internal bounds mapped linearly). */
-export const imageRightVerticalPositionUserRange = {
-  min: 0,
-  max: 100,
-  step: 1,
-} as const;
-
-/** Preview card height divisor for the image-right vertical position slider max (1 step per 16px). */
-export const IMAGE_RIGHT_VERTICAL_POSITION_CARD_HEIGHT_PX_PER_STEP =
-  16 as const;
-
-/**
- * Fixed image-right vertical slider: at this measured preview card height, slider **0** / **100**
- * map to **∓30rem** margin-top (50 → 0). Shorter/taller cards scale linearly.
- */
-export const IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX =
-  779 as const;
-
-export const IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_HALF_RANGE_REM_AT_REFERENCE =
-  30 as const;
-
-export function computeImageRightVerticalPositionMaxFromCardHeightPx(
-  heightPx: number,
-): number {
-  return Math.floor(
-    heightPx / IMAGE_RIGHT_VERTICAL_POSITION_CARD_HEIGHT_PX_PER_STEP,
-  );
-}
-
-export function getImageRightVerticalPositionMin(
-  classificationAndRarity: string | undefined,
-): number {
-  return (classificationAndRarity?.trim().length ?? 0) > 0 ? -6 : -4;
-}
-
-/** Default internal position when entering image-right + fluid (0rem margin-top). */
-export const imageRightVerticalPositionDefaultForFluidSideLayout = 0 as const;
-
-export function mapImageRightVerticalPositionToUserPercent(
-  position: number,
-  boundsMin: number,
-  boundsMax: number,
-): number {
-  if (boundsMax <= boundsMin) {
-    return 50;
-  }
-  const userPercent = Math.round(
-    (100 * (position - boundsMin)) / (boundsMax - boundsMin),
-  );
-  return Math.min(100, Math.max(0, userPercent));
-}
-
-export function mapUserPercentToImageRightVerticalPosition(
-  userPercent: number,
-  boundsMin: number,
-  boundsMax: number,
-): number {
-  if (boundsMax <= boundsMin) {
-    return boundsMin;
-  }
-  const clampedPercent = Math.min(100, Math.max(0, userPercent));
-  const position = Math.round(
-    boundsMin + (clampedPercent / 100) * (boundsMax - boundsMin),
-  );
-  return Math.min(boundsMax, Math.max(boundsMin, position));
-}
-
-export function getImageRightVerticalPositionDefaultForFixedSideLayout(
-  classificationAndRarity: string,
-): number {
-  const boundsMin = getImageRightVerticalPositionMin(classificationAndRarity);
-  return mapUserPercentToImageRightVerticalPosition(
-    50,
-    boundsMin,
-    imageRightVerticalPositionRange.max,
-  );
-}
-
 export function getImageBorderStyle(
   imageBorderWidthPx: number,
   color = 'rgba(0, 0, 0, 0.6)',
@@ -204,20 +117,6 @@ export function getCardSurfaceBorderRadius(
     default:
       return 30;
   }
-}
-
-export const supportedCardStyleOptions = ['print', 'minimal'] as const;
-
-export function isMinimalCardStyle(cardStyle: CardStyleOption): boolean {
-  return cardStyle === 'minimal';
-}
-
-export function isCardStyleSupported(
-  cardStyle: CardStyleOption,
-): cardStyle is (typeof supportedCardStyleOptions)[number] {
-  return supportedCardStyleOptions.includes(
-    cardStyle as (typeof supportedCardStyleOptions)[number],
-  );
 }
 
 export function shouldStackVerticalCardMetadata(

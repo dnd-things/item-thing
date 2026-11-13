@@ -939,6 +939,170 @@ test('callers block the wrong generation, an incomplete image, and a failed imag
     assert.equal(automatedJpegDom.node.offsetWidth, 432);
     assert.equal(automatedJpegDom.node.offsetHeight, 600);
 
+    const fontGate = deferred();
+    (globalThis.document as { fonts: { ready: Promise<unknown> } }).fonts = {
+      ready: fontGate.promise,
+    };
+    let fontDownloadCompleted = false;
+    const fontDownloadHost = createHost();
+    const fontDownloadDom = readinessNode();
+    const fontDownloadLoad = loader({
+      react: fontDownloadHost.react,
+      '@/components/ui/button': { Button: 'button' },
+      '@/components/ui/toggle-group': {
+        ToggleGroup: 'div',
+        ToggleGroupItem: 'span',
+      },
+      '@hugeicons/core-free-icons': { Download04Icon: {} },
+      '@hugeicons/react': { HugeiconsIcon: () => null },
+      './card-export-surface': { CardExportSurface: 'mock-surface' },
+      'html-to-image': {
+        toPng: async (node: unknown, options: unknown) => {
+          captures.push({ node, options });
+          return 'data:image/png;base64,AA==';
+        },
+        toJpeg: async () => {
+          throw new Error('unexpected jpeg');
+        },
+      },
+    });
+    const { DownloadControlsCard: FontDownloadControlsCard } = fontDownloadLoad(
+      'features/workbench/components/download-controls-card.tsx',
+    ) as {
+      DownloadControlsCard: (props: unknown) => unknown;
+    };
+    const fontDownloadProps = {
+      ...downloadProps,
+      onExportComplete() {
+        fontDownloadCompleted = true;
+      },
+    };
+    const renderFontDownload = () =>
+      fontDownloadHost.render(() =>
+        FontDownloadControlsCard(fontDownloadProps),
+      );
+    const beforeFontCaptures = captures.length;
+    const beforeFontLinks = links.length;
+    const fontDownloadClick = findButton(renderFontDownload())?.props.onClick;
+    assert.ok(fontDownloadClick);
+    fontDownloadClick();
+    await flush();
+    const fontSurface = fontDownloadHost.refs[1];
+    assert.ok(fontSurface);
+    fontSurface.current = fontDownloadDom.node;
+    await frame();
+    await frame();
+    assert.equal(captures.length, beforeFontCaptures);
+    assert.equal(links.length, beforeFontLinks);
+    assert.equal(fontDownloadCompleted, false);
+    fontDownloadDom.state.ready = 'ready';
+    fontDownloadDom.state.generation = '1';
+    fontDownloadDom.state.images = [{ complete: true, naturalWidth: 12 }];
+    await flush();
+    while (frames.length > 0) {
+      await frame();
+    }
+    await flush();
+    assert.equal(captures.length, beforeFontCaptures);
+    assert.equal(links.length, beforeFontLinks);
+    assert.equal(fontDownloadCompleted, false);
+    fontGate.resolve();
+    await flush();
+    for (let wait = 0; wait < 12; wait += 1) {
+      await flush();
+      if (frames.length > 0) {
+        await frame();
+      }
+      if (captures.length > beforeFontCaptures) {
+        break;
+      }
+    }
+    assert.equal(captures.length, beforeFontCaptures + 1);
+    assert.equal(links.at(-1), 'item-thing-captured.png');
+    assert.equal(fontDownloadCompleted, true);
+
+    const headlessFontGate = deferred();
+    (globalThis.document as { fonts: { ready: Promise<unknown> } }).fonts = {
+      ready: headlessFontGate.promise,
+    };
+    frames.length = 0;
+    const headlessFontHost = createHost();
+    const headlessFontDom = readinessNode();
+    (globalThis as { window?: unknown }).window = {
+      __MAGIC_ITEM_CARD_EXPORT__: {
+        state: defaults,
+        format: 'png',
+        pixelRatio: 2,
+      },
+    };
+    const beforeHeadlessCaptures = captures.length;
+    const headlessFontLoad = loader({
+      react: headlessFontHost.react,
+      '@/features/card-renderer/card-renderer': {
+        CardRenderer: 'production-renderer-boundary',
+      },
+      'html-to-image': {
+        toPng: async (node: unknown, options: unknown) => {
+          captures.push({ node, options });
+          return 'data:image/png;base64,AA==';
+        },
+        toJpeg: async () => {
+          throw new Error('unexpected jpeg');
+        },
+      },
+    });
+    const { CardExportClient: HeadlessFontCardExportClient } = headlessFontLoad(
+      'app/internal/card-export/card-export-client.tsx',
+    ) as { CardExportClient: () => unknown };
+    headlessFontHost.render(HeadlessFontCardExportClient);
+    const headlessFontRef = headlessFontHost.refs[0];
+    assert.ok(headlessFontRef);
+    headlessFontRef.current = headlessFontDom.node;
+    headlessFontHost.render(HeadlessFontCardExportClient);
+    await flush();
+    const headlessFontWindow = (
+      globalThis as unknown as {
+        window: {
+          __CARD_EXPORT_STATUS__?: string;
+          __CARD_EXPORT_RESULT__?: string;
+        };
+      }
+    ).window;
+    assert.equal(headlessFontWindow.__CARD_EXPORT_STATUS__, undefined);
+    assert.equal(captures.length, beforeHeadlessCaptures);
+    headlessFontDom.state.ready = 'ready';
+    headlessFontDom.state.generation = '1';
+    headlessFontDom.state.images = [{ complete: true, naturalWidth: 12 }];
+    await flush();
+    while (frames.length > 0) {
+      await frame();
+    }
+    await flush();
+    assert.equal(headlessFontWindow.__CARD_EXPORT_STATUS__, undefined);
+    assert.equal(captures.length, beforeHeadlessCaptures);
+    headlessFontGate.resolve();
+    await flush();
+    for (let wait = 0; wait < 12; wait += 1) {
+      await flush();
+      if (frames.length > 0) {
+        await frame();
+      }
+      if (headlessFontWindow.__CARD_EXPORT_STATUS__ === 'ok') {
+        break;
+      }
+    }
+    await flush();
+    assert.equal(headlessFontWindow.__CARD_EXPORT_STATUS__, 'ok');
+    assert.equal(
+      headlessFontWindow.__CARD_EXPORT_RESULT__,
+      'data:image/png;base64,AA==',
+    );
+    assert.equal(captures.length, beforeHeadlessCaptures + 1);
+
+    (globalThis.document as { fonts: { ready: Promise<unknown> } }).fonts = {
+      ready: Promise.resolve(),
+    };
+
     let serializedOutputError = '';
     for (const mode of ['failed-image', 'output-limit'] as const) {
       frames.length = 0;

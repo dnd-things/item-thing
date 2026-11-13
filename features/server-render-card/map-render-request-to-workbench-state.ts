@@ -1,8 +1,14 @@
-import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
-import { normalizeWorkbenchStateForStyle } from '@/features/workbench/lib/card-style-capability-registry';
-import type { MagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
-import { defaultMagicItemWorkbenchState } from '@/features/workbench/lib/workbench-options';
-import { trimTransparentBounds } from '@/lib/trim-transparent-bounds';
+import { prepareArtworkFromBuffer } from '@/features/artwork/prepare-sharp';
+import {
+  normalizeWorkbenchStateForStyle,
+  type StyleCapability,
+} from '@/features/card-renderer/lib/card-style';
+import {
+  defaultMagicItemWorkbenchState,
+  type MagicItemWorkbenchState,
+  withArtworkChoice,
+  withItemDetails,
+} from '@/features/workbench/lib/workbench-options';
 
 import type {
   RenderCardItemJson,
@@ -10,7 +16,7 @@ import type {
 } from './render-card-form-schema';
 
 export interface MapRenderRequestToWorkbenchStateInput<
-  TStyle extends SupportedStyleCapability,
+  TStyle extends StyleCapability,
 > {
   artworkBuffer: Buffer;
   artworkFileName: string;
@@ -52,14 +58,11 @@ function getMimeTypeForDataUrl(
 }
 
 export async function mapRenderRequestToMagicItemWorkbenchState<
-  TStyle extends SupportedStyleCapability,
+  TStyle extends StyleCapability,
 >(
   input: MapRenderRequestToWorkbenchStateInput<TStyle>,
 ): Promise<MapRenderRequestToWorkbenchStateResult> {
-  const trimmedArtwork = await trimTransparentBounds(input.artworkBuffer);
-  const widthPx = trimmedArtwork.width;
-  const heightPx = trimmedArtwork.height;
-  const resolvedImageAspectRatio = heightPx > 0 ? widthPx / heightPx : 1;
+  const trimmedArtwork = await prepareArtworkFromBuffer(input.artworkBuffer);
 
   const renderMimeType =
     trimmedArtwork.mimeType.trim() !== ''
@@ -83,17 +86,22 @@ export async function mapRenderRequestToMagicItemWorkbenchState<
     ...cardFields
   } = input.fields;
   const workbenchState = normalizeWorkbenchStateForStyle({
-    ...defaultMagicItemWorkbenchState,
+    ...withArtworkChoice(
+      withItemDetails(defaultMagicItemWorkbenchState, {
+        itemName: input.item.itemName,
+        classificationAndRarity: input.item.classificationAndRarity,
+        requiresAttunement: input.item.requiresAttunement,
+        flavorDescription: input.item.flavorDescription,
+        mechanicalDescription: input.item.mechanicalDescription,
+      }),
+      {
+        imageFileName: safeFileName,
+        imagePreviewUrl,
+        resolvedImageAspectRatio: trimmedArtwork.aspectRatio,
+      },
+    ),
     ...cardFields,
     cardStyle: input.style,
-    resolvedImageAspectRatio,
-    imageFileName: safeFileName,
-    imagePreviewUrl,
-    itemName: input.item.itemName,
-    classificationAndRarity: input.item.classificationAndRarity,
-    requiresAttunement: input.item.requiresAttunement,
-    flavorDescription: input.item.flavorDescription,
-    mechanicalDescription: input.item.mechanicalDescription,
   });
 
   return {

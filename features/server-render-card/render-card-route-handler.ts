@@ -1,5 +1,5 @@
 import { after, NextResponse } from 'next/server';
-import type { SupportedStyleCapability } from '@/features/workbench/lib/card-style-capability-registry';
+import type { StyleCapability } from '@/features/card-renderer/lib/card-style';
 import { artworkLimitHttpResponse } from '@/lib/artwork-limit-error';
 import { serverLogger } from '@/lib/server-logger';
 
@@ -17,7 +17,7 @@ import { runPuppeteerCardExport } from './run-puppeteer-card-export';
 
 export async function handleRenderCardRoute(
   request: Request,
-  style: SupportedStyleCapability,
+  style: StyleCapability,
 ) {
   let apiSecret: string;
   let internalSecret: string;

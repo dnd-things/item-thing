@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { normalizeArtworkCustomColor } from '@/features/card-renderer/lib/artwork-color-source';
 import { imageBorderWidthPxRange } from '@/features/card-renderer/lib/card-renderer-options';
 import {
-  getRenderStyleFieldIds,
   type RenderStyleFieldId,
-  type SupportedStyleCapability,
-} from '@/features/workbench/lib/card-style-capability-registry';
+  renderStyleFieldIds,
+  type StyleCapability,
+} from '@/features/card-renderer/lib/card-style';
 import { durableCardStateSchema } from '@/lib/durable-card-state';
 
 export const renderCardItemJsonSchema = z.object({
@@ -107,10 +107,10 @@ const renderStyleFieldSchemaMap = {
 } as const satisfies Record<RenderStyleFieldId, z.ZodTypeAny>;
 
 function pickRenderStyleFieldSchemaShape(
-  style: SupportedStyleCapability,
+  style: StyleCapability,
 ): Record<string, z.ZodTypeAny> {
   return Object.fromEntries(
-    getRenderStyleFieldIds(style).map((fieldId) => [
+    renderStyleFieldIds(style).map((fieldId) => [
       fieldId,
       renderStyleFieldSchemaMap[fieldId],
     ]),
@@ -125,12 +125,13 @@ const renderCardFieldsSchemaByStyle = {
     pickRenderStyleFieldSchemaShape('minimal'),
   ),
 } as const satisfies Record<
-  SupportedStyleCapability,
+  StyleCapability,
   z.ZodObject<Record<string, z.ZodTypeAny>>
 >;
 
-export type RenderCardMultipartFields<TStyle extends SupportedStyleCapability> =
-  z.infer<(typeof renderCardFieldsSchemaByStyle)[TStyle]>;
+export type RenderCardMultipartFields<TStyle extends StyleCapability> = z.infer<
+  (typeof renderCardFieldsSchemaByStyle)[TStyle]
+>;
 
 function getFormEntry(
   formData: FormData,
@@ -152,9 +153,7 @@ function collectRenderFieldEntries(
   return entries;
 }
 
-export interface ParseRenderCardFormSuccess<
-  TStyle extends SupportedStyleCapability,
-> {
+export interface ParseRenderCardFormSuccess<TStyle extends StyleCapability> {
   ok: true;
   artwork: File;
   artworkBuffer: Buffer;
@@ -169,12 +168,12 @@ export interface ParseRenderCardFormFailure {
   details?: unknown;
 }
 
-export type ParseRenderCardFormResult<TStyle extends SupportedStyleCapability> =
+export type ParseRenderCardFormResult<TStyle extends StyleCapability> =
   | ParseRenderCardFormSuccess<TStyle>
   | ParseRenderCardFormFailure;
 
 export async function parseRenderCardMultipartFormData<
-  TStyle extends SupportedStyleCapability,
+  TStyle extends StyleCapability,
 >(
   formData: FormData,
   style: TStyle,

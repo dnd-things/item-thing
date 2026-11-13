@@ -19,6 +19,7 @@ import {
 import {
   defaultMagicItemWorkbenchState,
   type MagicItemWorkbenchState,
+  withArtworkChoice,
 } from './workbench-options';
 import {
   decodeImageDataUrl,
@@ -385,12 +386,11 @@ export function createWorkbenchPersistenceSession(
     preview: AcceptedPreview,
   ): MagicItemWorkbenchState => {
     const base = latestState ?? defaultMagicItemWorkbenchState;
-    return {
-      ...base,
+    return withArtworkChoice(base, {
       imageFileName: preview.file.name,
       imagePreviewUrl: preview.previewUrl,
       resolvedImageAspectRatio: preview.aspectRatio,
-    };
+    });
   };
 
   const enqueueMetadata = () => {
@@ -904,11 +904,7 @@ export function createWorkbenchPersistenceSession(
       if (disposed) {
         return;
       }
-      const cleared = {
-        ...state,
-        imageFileName: '',
-        imagePreviewUrl: '',
-      };
+      const cleared = withArtworkChoice(state, null);
       latestState = cleared;
       acceptedFile = undefined;
       restoredFile = undefined;
@@ -924,11 +920,7 @@ export function createWorkbenchPersistenceSession(
         if (ticket !== queueTicket || epoch !== imageEpoch || disposed) {
           return;
         }
-        const snapshot = {
-          ...(latestState ?? cleared),
-          imageFileName: '',
-          imagePreviewUrl: '',
-        };
+        const snapshot = withArtworkChoice(latestState ?? cleared, null);
         const json = encodeWorkbenchEnvelopeV8(snapshot, null);
         const result = await deps.store.commit({
           kind: 'replace',

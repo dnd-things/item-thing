@@ -5,9 +5,9 @@ import {
   STALE_OPTIMIZER_VERSION,
   STALE_SOURCE,
 } from '../../../convex/lib/sourceReuse.ts';
+import { isRetryableSourceReuseError } from '../../card-export/lib/persist-card-export.ts';
 import {
   capturePreviewReuseOwnership,
-  isRetryableSourceReuseError,
   type PreviewReuseSlot,
   persistExportWithPreviewReuse,
   releasePreviewReuseSlot,

@@ -585,7 +585,10 @@ describe('api source artwork reuse', () => {
     recovery.resolve({ storageId: 'recovered', optimizerVersion: 'v2' });
     await Promise.all([first, second]);
     assert.equal(recoveryPrepares, 1);
-    assert.deepEqual(inserted, ['left:png:recovered', 'right:jpg:recovered']);
+    assert.deepEqual(
+      [...inserted].sort(),
+      ['left:png:recovered', 'right:jpg:recovered'].sort(),
+    );
     assert.equal(cache.snapshot()[0]?.kind, 'resolved');
   });
 

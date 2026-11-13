@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { createFormControl } from 'react-hook-form';
+import { SOURCE_MAX_BYTES } from '@/features/artwork/limits.ts';
 import { ArtworkLimitError } from '@/lib/artwork-limit-error';
-import {
-  artworkLimitCopy,
-  identityCrop,
-  SOURCE_MAX_BYTES,
-} from './artwork-geometry.ts';
+import { artworkLimitCopy, identityCrop } from './artwork-geometry.ts';
 import { type ArtworkBundle, createArtworkBundle } from './artwork-source.ts';
 import { prepareCapturedExport } from './export-card-artwork.ts';
 import type {

@@ -3,14 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   artworkLimitCopy,
+  browserCanvasFactory,
+  drawArtworkFromPreviewUrlToObjectUrl,
   needsRasterTransform,
   normalizeRotationDegrees,
-} from '@/features/workbench/lib/artwork-geometry';
-import {
-  browserCanvasFactory,
-  canvasToPngBlob,
-  renderTransformedCanvas,
-} from '@/features/workbench/lib/artwork-raster';
+} from '@/features/artwork/browser';
 
 /**
  * When rotation or flips are enabled, draws the source image to a canvas and returns a `blob:` URL.
@@ -20,30 +17,6 @@ import {
  * pre-rotated canvas to the same box.)
  * Canvas order: rotate first, then flips.
  */
-
-export function resolveTransformedObjectUrl(input: {
-  cancelled: boolean;
-  blob: Blob | null;
-  previousUrl: string | null;
-  sourceUrl: string;
-  createObjectURL: (blob: Blob) => string;
-  revokeObjectURL: (url: string) => void;
-}): { effectiveUrl: string; ownedUrl: string | null } {
-  if (input.cancelled) {
-    return { effectiveUrl: input.sourceUrl, ownedUrl: input.previousUrl };
-  }
-  if (!input.blob) {
-    if (input.previousUrl) {
-      input.revokeObjectURL(input.previousUrl);
-    }
-    return { effectiveUrl: input.sourceUrl, ownedUrl: null };
-  }
-  if (input.previousUrl) {
-    input.revokeObjectURL(input.previousUrl);
-  }
-  const ownedUrl = input.createObjectURL(input.blob);
-  return { effectiveUrl: ownedUrl, ownedUrl };
-}
 
 export interface ArtworkRenderResult {
   effectiveUrl: string;
@@ -154,116 +127,58 @@ export function useFlippedImagePreviewUrl(
           },
     );
   }
-  const blobUrlRef = useRef<string | null>(null);
+  const ownedArtworkRef = useRef<{ release: () => void } | null>(null);
 
   useEffect(() => {
-    const revokeBlobUrl = () => {
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+    const releaseOwnedArtwork = () => {
+      ownedArtworkRef.current?.release();
+      ownedArtworkRef.current = null;
     };
 
     if (!imagePreviewUrl.trim()) {
-      revokeBlobUrl();
+      releaseOwnedArtwork();
       setRender(idleRender('', false));
       return;
     }
 
     if (alreadyTransformed || !transformNeeded) {
-      revokeBlobUrl();
+      releaseOwnedArtwork();
       setRender(idleRender(imagePreviewUrl, alreadyTransformed));
       return;
     }
 
     let cancelled = false;
-    const image = new Image();
-    image.onload = () => {
-      if (cancelled) {
-        image.onload = null;
-        image.onerror = null;
-        image.src = '';
-        return;
-      }
-      const width =
-        logicalWidth && logicalWidth > 0 ? logicalWidth : image.naturalWidth;
-      const height =
-        logicalHeight && logicalHeight > 0
-          ? logicalHeight
-          : image.naturalHeight;
-      let canvas: ReturnType<
-        ReturnType<typeof browserCanvasFactory>['create']
-      > | null = null;
-      const factory = browserCanvasFactory();
-      try {
-        canvas = renderTransformedCanvas(
-          image,
-          {
-            logicalWidth: width,
-            logicalHeight: height,
-            rotationDegrees: imageRotationDegrees,
-            flipHorizontal: imageFlipHorizontal,
-            flipVertical: imageFlipVertical,
-            policy,
-          },
-          factory,
-        );
-        void canvasToPngBlob(canvas).then(
-          (blob) => {
-            factory.release(canvas as NonNullable<typeof canvas>);
-            canvas = null;
-            if (cancelled || blob.size === 0) {
-              return;
-            }
-            const resolved = resolveTransformedObjectUrl({
-              cancelled,
-              blob,
-              previousUrl: blobUrlRef.current,
-              sourceUrl: imagePreviewUrl,
-              createObjectURL: URL.createObjectURL.bind(URL),
-              revokeObjectURL: URL.revokeObjectURL.bind(URL),
-            });
-            if (cancelled) {
-              if (
-                resolved.ownedUrl &&
-                resolved.ownedUrl !== blobUrlRef.current
-              ) {
-                URL.revokeObjectURL(resolved.ownedUrl);
-              }
-              return;
-            }
-            blobUrlRef.current = resolved.ownedUrl;
-            setRender({
-              effectiveUrl: resolved.effectiveUrl,
-              ready: true,
-              error: null,
-              transformed: true,
-            });
-          },
-          () => {
-            if (canvas) {
-              factory.release(canvas);
-            }
-            if (cancelled) {
-              return;
-            }
-            revokeBlobUrl();
-            setRender({
-              effectiveUrl: '',
-              ready: false,
-              error: artworkLimitCopy.encodeFailed,
-              transformed: false,
-            });
-          },
-        );
-      } catch (error) {
-        if (canvas) {
-          factory.release(canvas);
+    void drawArtworkFromPreviewUrlToObjectUrl(
+      {
+        previewUrl: imagePreviewUrl,
+        logicalWidth,
+        logicalHeight,
+        rotationDegrees: imageRotationDegrees,
+        flipHorizontal: imageFlipHorizontal,
+        flipVertical: imageFlipVertical,
+        policy,
+      },
+      browserCanvasFactory(),
+    )
+      .then((drawn) => {
+        if (cancelled) {
+          drawn.release();
+          return;
         }
+        releaseOwnedArtwork();
+        ownedArtworkRef.current = drawn;
+        setRender({
+          effectiveUrl: drawn.url,
+          ready: true,
+          error: null,
+          transformed: true,
+        });
+      })
+      .catch((error) => {
         if (cancelled) {
           return;
         }
-        revokeBlobUrl();
+        releaseOwnedArtwork();
         setRender({
           effectiveUrl: '',
           ready: false,
@@ -273,32 +188,11 @@ export function useFlippedImagePreviewUrl(
               : artworkLimitCopy.encodeFailed,
           transformed: false,
         });
-      } finally {
-        image.onload = null;
-        image.onerror = null;
-        image.src = '';
-      }
-    };
-    image.onerror = () => {
-      if (cancelled) {
-        return;
-      }
-      revokeBlobUrl();
-      setRender({
-        effectiveUrl: '',
-        ready: false,
-        error: artworkLimitCopy.encodeFailed,
-        transformed: false,
       });
-    };
-    image.src = imagePreviewUrl;
 
     return () => {
       cancelled = true;
-      image.onload = null;
-      image.onerror = null;
-      image.src = '';
-      revokeBlobUrl();
+      releaseOwnedArtwork();
     };
   }, [
     alreadyTransformed,

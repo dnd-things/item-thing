@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import { resolveTransformedObjectUrl } from '../../card-renderer/lib/use-flipped-image-preview-url.ts';
+import { resolveTransformedObjectUrl } from '../../artwork/draw.ts';
 import { loadImageElementFromObjectUrl } from './read-image-preview-data.ts';
 import { createWorkbenchArtworkStore } from './workbench-artwork-store.ts';
 import { workbenchItemDetailsSchema } from './workbench-form-schema.ts';

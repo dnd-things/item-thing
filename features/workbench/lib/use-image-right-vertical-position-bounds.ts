@@ -3,10 +3,9 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from 'react';
 
 import {
-  computeImageRightVerticalPositionMaxFromCardHeightPx,
-  getImageRightVerticalPositionMin,
-  imageRightVerticalPositionRange,
-} from '@/features/card-renderer/lib/card-renderer-options';
+  type ImageRightVerticalSurface,
+  reconcileImageRightVerticalPosition,
+} from '@/features/card-renderer/lib/image-right-artwork-placement';
 
 import type {
   MagicItemWorkbenchState,
@@ -16,12 +15,9 @@ import type {
 export interface ImageRightVerticalPositionBounds {
   min: number;
   max: number;
+  sliderPercent: number;
 }
 
-/**
- * Stable, cheap key for remeasuring card height. Must not include `imagePreviewUrl`
- * (multi‑MB data URLs) — serializing it on every slider tick blocked the main thread.
- */
 function buildImageRightVerticalPositionMeasureKey(
   workbenchState: MagicItemWorkbenchState,
 ): string {
@@ -51,10 +47,6 @@ export function useImageRightVerticalPositionBounds(
   workbenchState: MagicItemWorkbenchState,
   setWorkbenchField: WorkbenchFieldSetter,
 ): ImageRightVerticalPositionBounds {
-  const verticalPositionMin = getImageRightVerticalPositionMin(
-    workbenchState.classificationAndRarity,
-  );
-
   const workbenchStateTriggerKey =
     buildImageRightVerticalPositionMeasureKey(workbenchState);
 
@@ -64,9 +56,22 @@ export function useImageRightVerticalPositionBounds(
   imageRightVerticalPositionRef.current =
     workbenchState.imageRightVerticalPosition;
 
-  const [verticalPositionMax, setVerticalPositionMax] = useState<number>(
-    imageRightVerticalPositionRange.max,
-  );
+  const [measuredSurfaceHeightPx, setMeasuredSurfaceHeightPx] = useState<
+    number | null
+  >(null);
+
+  const renderSurface: ImageRightVerticalSurface =
+    measuredSurfaceHeightPx === null
+      ? { kind: 'unmeasured' }
+      : { kind: 'measured', heightPx: measuredSurfaceHeightPx };
+
+  const reconciled = reconcileImageRightVerticalPosition({
+    cardLayout: workbenchState.cardLayout,
+    sideLayoutFlow: workbenchState.sideLayoutFlow,
+    classificationAndRarity: workbenchState.classificationAndRarity,
+    surface: renderSurface,
+    stored: workbenchState.imageRightVerticalPosition,
+  });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: workbenchStateTriggerKey remeasures when layout-affecting fields change (not vertical position); excludes huge imagePreviewUrl payload.
   useLayoutEffect(() => {
@@ -75,32 +80,24 @@ export function useImageRightVerticalPositionBounds(
     }
 
     const heightPx = cardRef.current?.offsetHeight ?? 0;
+    setMeasuredSurfaceHeightPx(heightPx);
 
-    const nextMin = getImageRightVerticalPositionMin(
-      workbenchState.classificationAndRarity,
-    );
+    const measureReconciled = reconcileImageRightVerticalPosition({
+      cardLayout: workbenchState.cardLayout,
+      sideLayoutFlow: workbenchState.sideLayoutFlow,
+      classificationAndRarity: workbenchState.classificationAndRarity,
+      surface: { kind: 'measured', heightPx },
+      stored: imageRightVerticalPositionRef.current,
+    });
 
-    let nextMax: number;
-    if (workbenchState.sideLayoutFlow === 'fluid') {
-      const computedMax =
-        computeImageRightVerticalPositionMaxFromCardHeightPx(heightPx);
-      nextMax = Math.max(computedMax, nextMin);
-    } else {
-      nextMax = Math.max(imageRightVerticalPositionRange.max, nextMin);
-    }
-
-    setVerticalPositionMax(nextMax);
-
-    const current = imageRightVerticalPositionRef.current;
-    if (current > nextMax) {
-      setWorkbenchField('imageRightVerticalPosition', nextMax);
-    } else if (current < nextMin) {
-      setWorkbenchField('imageRightVerticalPosition', nextMin);
+    if (measureReconciled.stored !== imageRightVerticalPositionRef.current) {
+      setWorkbenchField('imageRightVerticalPosition', measureReconciled.stored);
     }
   }, [cardRef, setWorkbenchField, workbenchStateTriggerKey]);
 
   return {
-    min: verticalPositionMin,
-    max: verticalPositionMax,
+    min: reconciled.bounds.min,
+    max: reconciled.bounds.max,
+    sliderPercent: reconciled.sliderPercent,
   };
 }

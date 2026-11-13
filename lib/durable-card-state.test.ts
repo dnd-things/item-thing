@@ -96,6 +96,54 @@ test('real render request produces only durable fields for both storage adapters
   }
 });
 
+test('non-square opaque artwork stores crop aspect ratio on workbench state', async () => {
+  const cropWidth = 6;
+  const cropHeight = 4;
+  const png = await sharp({
+    create: {
+      width: cropWidth,
+      height: cropHeight,
+      channels: 3,
+      background: '#336699',
+    },
+  })
+    .png()
+    .toBuffer();
+  const form = new FormData();
+  form.set(
+    'artwork',
+    new File([new Uint8Array(png)], 'wide.png', { type: 'image/png' }),
+  );
+  form.set(
+    'item',
+    JSON.stringify({
+      itemName: 'Wide token',
+      classificationAndRarity: 'Wondrous item, uncommon',
+      requiresAttunement: false,
+      flavorDescription: 'Flat.',
+      mechanicalDescription: 'Wide.',
+    }),
+  );
+  form.set('format', 'png');
+  form.set('pixelRatio', '1');
+  const parsed = await parseRenderCardMultipartFormData(form, 'print');
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) {
+    return;
+  }
+  const mapped = await mapRenderRequestToMagicItemWorkbenchState({
+    artworkBuffer: parsed.artworkBuffer,
+    artworkFileName: parsed.artwork.name,
+    fields: parsed.fields,
+    item: parsed.item,
+    style: 'print',
+  });
+  assert.equal(
+    mapped.workbenchState.resolvedImageAspectRatio,
+    cropWidth / cropHeight,
+  );
+});
+
 test('legacy color request fields are rejected rather than silently migrated', async () => {
   const form = await requestForm();
   form.set('minimalArtworkThemeSource', 'neutral');
