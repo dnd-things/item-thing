@@ -61,7 +61,9 @@ function scorePixelColor(
   return saturationWeight * (0.5 + midLightnessWeight * 0.5) * alphaWeight;
 }
 
-function findAccentColorFromImageData(imageData: ImageData): HslColor | null {
+export function findAccentColorFromImageData(
+  imageData: ImageData,
+): HslColor | null {
   const buckets = createHueBuckets();
   const { data } = imageData;
 
@@ -138,7 +140,7 @@ async function loadImage(sourceUrl: string): Promise<HTMLImageElement> {
   });
 }
 
-function getSampleCanvasDimensions(
+export function getSampleCanvasDimensions(
   width: number,
   height: number,
 ): { width: number; height: number } {

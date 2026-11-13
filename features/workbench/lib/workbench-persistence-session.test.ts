@@ -1564,7 +1564,6 @@ describe('v8 artwork bundles', () => {
         snapshot: toWorkbenchSnapshotForExport(state),
         format: 'png',
         pixelRatio: 1,
-        cardPreviewSurfaceHeightPx: 400,
         bundle: captured,
         reuseEpoch: 0,
       },

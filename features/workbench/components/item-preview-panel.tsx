@@ -8,7 +8,6 @@ import { PreviewSurface } from './preview-surface';
 interface ItemPreviewPanelProps {
   cardRef: RefObject<HTMLDivElement | null>;
   workbenchState: MagicItemWorkbenchState;
-  cardPreviewSurfaceHeightPx?: number;
   artworkLogicalWidth?: number;
   artworkLogicalHeight?: number;
 }
@@ -16,7 +15,6 @@ interface ItemPreviewPanelProps {
 export function ItemPreviewPanel({
   cardRef,
   workbenchState,
-  cardPreviewSurfaceHeightPx,
   artworkLogicalWidth,
   artworkLogicalHeight,
 }: ItemPreviewPanelProps) {
@@ -27,9 +25,6 @@ export function ItemPreviewPanel({
       {...(artworkLogicalWidth !== undefined &&
       artworkLogicalHeight !== undefined
         ? { artworkLogicalWidth, artworkLogicalHeight }
-        : {})}
-      {...(cardPreviewSurfaceHeightPx !== undefined
-        ? { cardPreviewSurfaceHeightPx }
         : {})}
     />
   );

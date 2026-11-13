@@ -29,7 +29,6 @@ export interface CapturedCardExport {
   snapshot: WorkbenchSnapshotForExport;
   format: 'png' | 'jpg';
   pixelRatio: 1 | 2;
-  cardPreviewSurfaceHeightPx: number;
   bundle: ArtworkBundle | null;
   reuseEpoch: number;
 }

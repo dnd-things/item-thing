@@ -6,8 +6,8 @@ import { type RefObject, useCallback, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { artworkLimitCopy } from '../lib/artwork-geometry';
+import { executeCardRasterExport } from '../lib/execute-card-raster-export';
 import {
-  assertMeasuredCardOutput,
   type CapturedCardExport,
   completeCapturedExport,
   createCardExportLock,
@@ -15,7 +15,6 @@ import {
   type PreparedCardExport,
   prepareCapturedExport,
   renderExportArtworkUrl,
-  waitForArtworkState,
 } from '../lib/export-card-artwork';
 import { loadHtmlToImage } from '../lib/html-to-image-loader';
 import { type DownloadExtension, getCardDownloadFilename } from '../lib/slug';
@@ -107,24 +106,22 @@ export function DownloadControlsCard({
             throw new Error(artworkLimitCopy.cardUnmeasured);
           }
           await document.fonts.ready;
-          await waitForArtworkState(node, { generation: exportId });
-          assertMeasuredCardOutput(
-            node.offsetWidth,
-            node.offsetHeight,
-            captured.pixelRatio,
-          );
-          const { toPng, toJpeg } = await loadHtmlToImage();
-          const dataUrl =
-            captured.format === 'png'
-              ? await toPng(node, {
-                  pixelRatio: captured.pixelRatio,
-                  skipAutoScale: true,
-                })
-              : await toJpeg(node, {
-                  pixelRatio: captured.pixelRatio,
-                  quality: 0.92,
-                  skipAutoScale: true,
-                });
+          const dataUrl = await executeCardRasterExport({
+            node,
+            format: captured.format,
+            pixelRatio: captured.pixelRatio,
+            generation: exportId,
+            rasterizer: {
+              toPng: async (target, options) => {
+                const { toPng } = await loadHtmlToImage();
+                return toPng(target as HTMLElement, options);
+              },
+              toJpeg: async (target, options) => {
+                const { toJpeg } = await loadHtmlToImage();
+                return toJpeg(target as HTMLElement, options);
+              },
+            },
+          });
           const link = document.createElement('a');
           link.download = filename;
           link.href = dataUrl;

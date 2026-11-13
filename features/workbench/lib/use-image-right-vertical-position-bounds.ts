@@ -16,8 +16,6 @@ import type {
 export interface ImageRightVerticalPositionBounds {
   min: number;
   max: number;
-  /** Preview wrapper `offsetHeight` when image-right (for fixed-layout margin scaling). */
-  measuredCardSurfaceHeightPx: number;
 }
 
 /**
@@ -70,9 +68,6 @@ export function useImageRightVerticalPositionBounds(
     imageRightVerticalPositionRange.max,
   );
 
-  const [measuredCardSurfaceHeightPx, setMeasuredCardSurfaceHeightPx] =
-    useState(0);
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: workbenchStateTriggerKey remeasures when layout-affecting fields change (not vertical position); excludes huge imagePreviewUrl payload.
   useLayoutEffect(() => {
     if (workbenchState.cardLayout !== 'image-right') {
@@ -80,8 +75,6 @@ export function useImageRightVerticalPositionBounds(
     }
 
     const heightPx = cardRef.current?.offsetHeight ?? 0;
-
-    setMeasuredCardSurfaceHeightPx(heightPx);
 
     const nextMin = getImageRightVerticalPositionMin(
       workbenchState.classificationAndRarity,
@@ -109,6 +102,5 @@ export function useImageRightVerticalPositionBounds(
   return {
     min: verticalPositionMin,
     max: verticalPositionMax,
-    measuredCardSurfaceHeightPx,
   };
 }

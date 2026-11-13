@@ -136,50 +136,6 @@ export function getImageRightVerticalPositionMin(
 /** Default internal position when entering image-right + fluid (0rem margin-top). */
 export const imageRightVerticalPositionDefaultForFluidSideLayout = 0 as const;
 
-export function computeImageRightFixedVerticalMarginHalfRangeRem(
-  cardPreviewSurfaceHeightPx: number,
-  boundsMin: number,
-  boundsMax: number,
-): number {
-  if (cardPreviewSurfaceHeightPx > 0) {
-    return (
-      (cardPreviewSurfaceHeightPx /
-        IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_REFERENCE_HEIGHT_PX) *
-      IMAGE_RIGHT_FIXED_VERTICAL_MARGIN_HALF_RANGE_REM_AT_REFERENCE
-    );
-  }
-  const span = boundsMax - boundsMin;
-  return span / 4;
-}
-
-/**
- * Image-right artwork `margin-top` in rem. **Fluid**: `position / 2`. **Fixed**: slider 50% → **0**;
- * 0% / 100% → **∓X** with X from `computeImageRightFixedVerticalMarginHalfRangeRem` when
- * `cardPreviewSurfaceHeightPx` is known, else static fallback `(boundsMax - boundsMin) / 4`.
- */
-export function getImageRightImageMarginTopRem(
-  position: number,
-  sideLayoutFlow: SideLayoutFlowOption,
-  classificationAndRarity: string,
-  cardPreviewSurfaceHeightPx?: number,
-): number {
-  if (sideLayoutFlow === 'fluid') {
-    return position / 2;
-  }
-  const boundsMin = getImageRightVerticalPositionMin(classificationAndRarity);
-  const boundsMax = imageRightVerticalPositionRange.max;
-  const span = boundsMax - boundsMin;
-  if (span <= 0) {
-    return 0;
-  }
-  const halfRangeRem = computeImageRightFixedVerticalMarginHalfRangeRem(
-    cardPreviewSurfaceHeightPx ?? 0,
-    boundsMin,
-    boundsMax,
-  );
-  return ((2 * (position - boundsMin)) / span - 1) * halfRangeRem;
-}
-
 export function mapImageRightVerticalPositionToUserPercent(
   position: number,
   boundsMin: number,

@@ -133,12 +133,21 @@ test('loadHtmlToImage boundaries', async () => {
 });
 
 test('workbench lazy import source boundaries', () => {
+  const executeRasterSource = fs.readFileSync(
+    path.join(root, 'features/workbench/lib/execute-card-raster-export.ts'),
+    'utf8',
+  );
+  assert.equal(executeRasterSource.includes("from 'html-to-image'"), false);
+  assert.equal(executeRasterSource.includes("import('html-to-image')"), false);
+
   const downloadSource = fs.readFileSync(
     path.join(root, 'features/workbench/components/download-controls-card.tsx'),
     'utf8',
   );
   assert.equal(downloadSource.includes("from 'html-to-image'"), false);
   assert.match(downloadSource, /loadHtmlToImage/);
+  assert.equal(downloadSource.includes('skipAutoScale'), false);
+  assert.equal(downloadSource.includes('quality: 0.92'), false);
 
   const previewSource = fs.readFileSync(
     path.join(root, 'features/workbench/components/preview-column.tsx'),
@@ -159,4 +168,6 @@ test('workbench lazy import source boundaries', () => {
   assert.match(cardExportSource, /from 'html-to-image'/);
   assert.equal(cardExportSource.includes('loadHtmlToImage'), false);
   assert.equal(cardExportSource.includes("import('html-to-image')"), false);
+  assert.equal(cardExportSource.includes('skipAutoScale'), false);
+  assert.equal(cardExportSource.includes('quality: 0.92'), false);
 });
